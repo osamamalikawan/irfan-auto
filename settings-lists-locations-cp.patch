@@ -1,0 +1,808 @@
+diff --git a/README.md b/README.md
+index dcff652..a0ebb08 100644
+--- a/README.md
++++ b/README.md
+@@ -4,7 +4,7 @@ Mobile-first stock screens. No users or login yet (that is a later module).
+ 
+ ## 1. Database
+ 1. Create a Supabase project.
+-2. SQL Editor: paste and run `supabase/migrations/0001_inventory.sql`.
++2. SQL Editor: run `supabase/migrations/0001_inventory.sql`, then `0002_settings.sql` (list visibility, CP rename).
+ 
+ ## 2. Run locally
+ ```bash
+@@ -41,3 +41,11 @@ Turn on Vercel "Deployment Protection" (Settings > Deployment Protection) until
+ ## Layout
+ - Phone and tablet (under 1024px): card list, bottom navigation, bottom-sheet stock changes.
+ - Desktop (1024px and up): dark side menu, top bar and the stock-by-location table from the original index.html.
++
++## Settings
++`/settings`: switch price lists on or off (hidden lists are left out of the Stock screen; nothing is deleted)
++and add stock locations (name, type, number of racks, optional rack prefix; racks are numbered 01, 02, 03…).
++The setting is shared by everyone until the Users module exists.
++
++## Prices
++CP is the **counter price** (selling price). It is stored in `products.cp` and shown on every stock row.
+diff --git a/app/api/inventory/lists/route.ts b/app/api/inventory/lists/route.ts
+new file mode 100644
+index 0000000..df50fb0
+--- /dev/null
++++ b/app/api/inventory/lists/route.ts
+@@ -0,0 +1,25 @@
++import { NextRequest, NextResponse } from "next/server";
++import { db } from "@/lib/supabase";
++
++export const dynamic = "force-dynamic";
++
++/** All price lists with product counts and visibility. */
++export async function GET() {
++  const { data, error } = await db().rpc("price_list_stats");
++  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
++  return NextResponse.json({ lists: (data ?? []).map((l: { products: number }) => ({ ...l, products: Number(l.products) })) });
++}
++
++/** Body: { id, visible }  or  { all: true, visible }  */
++export async function PATCH(req: NextRequest) {
++  const b = await req.json().catch(() => null);
++  if (typeof b?.visible !== "boolean") return NextResponse.json({ error: "visible must be true or false" }, { status: 400 });
++  const base = db().from("price_lists").update({ visible: b.visible });
++  let q: typeof base;
++  if (b.all === true) q = base.not("id", "is", null);
++  else if (typeof b.id === "string") q = base.eq("id", b.id);
++  else return NextResponse.json({ error: "Give a list id, or all: true" }, { status: 400 });
++  const { error } = await q;
++  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
++  return NextResponse.json({ ok: true });
++}
+diff --git a/app/api/inventory/locations/route.ts b/app/api/inventory/locations/route.ts
+new file mode 100644
+index 0000000..0abb793
+--- /dev/null
++++ b/app/api/inventory/locations/route.ts
+@@ -0,0 +1,38 @@
++import { NextRequest, NextResponse } from "next/server";
++import { db } from "@/lib/supabase";
++import { rackCodes, rackPrefix } from "@/lib/placement";
++
++export const dynamic = "force-dynamic";
++const LOCATION_TYPES = ["Shop", "Godown", "Warehouse", "Damaged stock"];
++
++export async function GET() {
++  const { data, error } = await db().from("locations").select("id,name,type,active,racks(count)").order("name");
++  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
++  // eslint-disable-next-line @typescript-eslint/no-explicit-any
++  return NextResponse.json({ locations: (data ?? []).map((l: any) => ({ id: l.id, name: l.name, type: l.type, active: l.active, racks: l.racks?.[0]?.count ?? 0 })) });
++}
++
++/** Body: { name, type, racks (0-500), prefix? }  Same fields as the prototype's "Add stock location". */
++export async function POST(req: NextRequest) {
++  const b = await req.json().catch(() => null);
++  const name = String(b?.name ?? "").trim().replace(/\s+/g, " ");
++  if (!name) return NextResponse.json({ error: "Location name is required." }, { status: 400 });
++  const type = LOCATION_TYPES.includes(b?.type) ? b.type : "Godown";
++  const parsed = parseInt(String(b?.racks ?? "0"), 10);
++  const count = Number.isFinite(parsed) ? parsed : 0;
++  if (count < 0 || count > 500) return NextResponse.json({ error: "Enter a rack count between 0 and 500." }, { status: 400 });
++  const prefix = String(b?.prefix ?? "").trim().slice(0, 6) || rackPrefix(name);
++
++  const sb = db();
++  const dup = await sb.from("locations").select("id").ilike("name", name.replace(/[\\%_]/g, "\\$&")).limit(1);
++  if (dup.error) return NextResponse.json({ error: dup.error.message }, { status: 500 });
++  if (dup.data?.length) return NextResponse.json({ error: "A location called '" + name + "' already exists." }, { status: 409 });
++
++  const { data: loc, error } = await sb.from("locations").insert({ name, type }).select("id,name").single();
++  if (error) return NextResponse.json({ error: error.message }, { status: error.code === "23505" ? 409 : 500 });
++  if (count > 0) {
++    const r = await sb.from("racks").insert(rackCodes(prefix, count).map((code) => ({ location_id: loc.id, code })));
++    if (r.error) return NextResponse.json({ error: r.error.message }, { status: 500 });
++  }
++  return NextResponse.json({ id: loc.id, name: loc.name, racks: count, prefix }, { status: 201 });
++}
+diff --git a/app/api/inventory/meta/route.ts b/app/api/inventory/meta/route.ts
+index 3a87c22..dba251b 100644
+--- a/app/api/inventory/meta/route.ts
++++ b/app/api/inventory/meta/route.ts
+@@ -3,10 +3,11 @@ import { db } from "@/lib/supabase";
+ 
+ export const dynamic = "force-dynamic";
+ 
++/** Lists returned here are only the visible ones (Settings > Price lists). */
+ export async function GET() {
+   const sb = db();
+   const [lists, locations, companies, brands] = await Promise.all([
+-    sb.from("price_lists").select("id,name").order("name"),
++    sb.from("price_lists").select("id,name").eq("visible", true).order("name"),
+     sb.from("locations").select("id,name").eq("active", true).order("name"),
+     sb.from("companies").select("name").order("name"),
+     sb.from("brands").select("name").order("name"),
+diff --git a/app/api/inventory/products/[id]/route.ts b/app/api/inventory/products/[id]/route.ts
+index b50b50f..b95d7d1 100644
+--- a/app/api/inventory/products/[id]/route.ts
++++ b/app/api/inventory/products/[id]/route.ts
+@@ -53,7 +53,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
+       patch.name_en = String(b.name_en).trim();
+     }
+     for (const k of ["code_name", "name_ur", "scheme", "unit"] as const) if (b[k] !== undefined) patch[k] = String(b[k]).trim() || (k === "unit" ? "pc" : null);
+-    if (b.cost !== undefined) patch.cost = Number(b.cost) || 0;
++    if (b.cp !== undefined) patch.cp = Number(b.cp) || 0;
+     if (b.reorder_level !== undefined) patch.reorder_level = Number(b.reorder_level) || 0;
+     if (b.list !== undefined) patch.list_id = await ensureNamed(sb, "price_lists", b.list);
+     if (b.brand !== undefined) patch.brand_id = await ensureNamed(sb, "brands", b.brand);
+diff --git a/app/api/inventory/products/route.ts b/app/api/inventory/products/route.ts
+index e6548a3..f57f87d 100644
+--- a/app/api/inventory/products/route.ts
++++ b/app/api/inventory/products/route.ts
+@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
+     ]);
+     const { data: p, error } = await sb.from("products").insert({
+       name_en: name, code_name: b.code_name?.trim() || null, name_ur: b.name_ur?.trim() || null,
+-      scheme: b.scheme?.trim() || null, cost: Number(b.cost) || 0, unit: b.unit?.trim() || "pc",
++      scheme: b.scheme?.trim() || null, cp: Number(b.cp) || 0, unit: b.unit?.trim() || "pc",
+       reorder_level: Number(b.reorder_level) || 0, list_id, brand_id, company_id,
+     }).select("id").single();
+     if (error) throw new Error(error.message);
+diff --git a/app/inventory/layout.tsx b/app/inventory/layout.tsx
+index 66ac079..b987dd3 100644
+--- a/app/inventory/layout.tsx
++++ b/app/inventory/layout.tsx
+@@ -1,20 +1,5 @@
+-import { Suspense } from "react";
+-import BottomNav from "@/components/BottomNav";
+-import Sidebar from "@/components/Sidebar";
+-import Topbar from "@/components/Topbar";
++import Shell from "@/components/Shell";
+ 
+-/* Phone/tablet: single column + bottom nav.  Desktop (lg+): dark sidebar + top bar, like the original HTML. */
+ export default function InventoryLayout({ children }: { children: React.ReactNode }) {
+-  return (
+-    <div className="lg:flex lg:min-h-dvh">
+-      <Sidebar />
+-      <div className="mx-auto min-h-dvh w-full max-w-2xl pb-[calc(env(safe-area-inset-bottom)+4.5rem)] lg:mx-0 lg:min-w-0 lg:max-w-none lg:flex-1 lg:pb-10">
+-        <Topbar />
+-        {children}
+-      </div>
+-      <Suspense fallback={null}>
+-        <BottomNav />
+-      </Suspense>
+-    </div>
+-  );
++  return <Shell>{children}</Shell>;
+ }
+diff --git a/app/settings/layout.tsx b/app/settings/layout.tsx
+new file mode 100644
+index 0000000..293605c
+--- /dev/null
++++ b/app/settings/layout.tsx
+@@ -0,0 +1,5 @@
++import Shell from "@/components/Shell";
++
++export default function SettingsLayout({ children }: { children: React.ReactNode }) {
++  return <Shell>{children}</Shell>;
++}
+diff --git a/app/settings/page.tsx b/app/settings/page.tsx
+new file mode 100644
+index 0000000..e54fdc7
+--- /dev/null
++++ b/app/settings/page.tsx
+@@ -0,0 +1,5 @@
++import SettingsView from "@/components/SettingsView";
++
++export default function Page() {
++  return <SettingsView />;
++}
+diff --git a/components/AddLocationModal.tsx b/components/AddLocationModal.tsx
+new file mode 100644
+index 0000000..6996920
+--- /dev/null
++++ b/components/AddLocationModal.tsx
+@@ -0,0 +1,73 @@
++"use client";
++import { useState } from "react";
++import { rackCodes, rackPrefix } from "@/lib/placement";
++
++const TYPES = ["Shop", "Godown", "Warehouse", "Damaged stock"];
++
++/** Popup like the prototype's "Add stock location": name, type, number of racks, rack prefix. */
++export default function AddLocationModal({ onClose, onDone }: { onClose: () => void; onDone: (name: string) => void }) {
++  const [name, setName] = useState("");
++  const [type, setType] = useState("Godown");
++  const [racks, setRacks] = useState("10");
++  const [prefix, setPrefix] = useState("");
++  const [busy, setBusy] = useState(false);
++  const [error, setError] = useState("");
++
++  const n = parseInt(racks || "0", 10);
++  const pre = prefix.trim() || (name.trim() ? rackPrefix(name.trim()) : "");
++  const preview = pre && n > 0 && n <= 500 ? (() => { const c = rackCodes(pre, n); return n === 1 ? c[0] : c[0] + " to " + c[c.length - 1]; })() : "";
++
++  async function save(e: React.FormEvent) {
++    e.preventDefault();
++    setBusy(true); setError("");
++    const r = await fetch("/api/inventory/locations", {
++      method: "POST", headers: { "Content-Type": "application/json" },
++      body: JSON.stringify({ name, type, racks: n || 0, prefix }),
++    });
++    const j = await r.json().catch(() => ({}));
++    setBusy(false);
++    if (!r.ok) return setError(j.error || "Could not add the location");
++    onDone(j.name);
++  }
++
++  return (
++    <div className="fixed inset-0 z-50 flex items-end bg-black/50 lg:items-center" onClick={onClose}>
++      <form onSubmit={save} onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Add stock location"
++        className="mx-auto max-h-[92dvh] w-full max-w-2xl overflow-auto rounded-t-2xl bg-surface p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] lg:max-w-lg lg:rounded-2xl lg:pb-4">
++        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line lg:hidden" />
++        <div className="mb-3 flex items-center justify-between">
++          <h2 className="text-base font-semibold">Add stock location</h2>
++          <button type="button" className="btn border-0 px-3 text-xl" onClick={onClose} aria-label="Close">×</button>
++        </div>
++
++        <div className="grid grid-cols-2 gap-3">
++          <div className="col-span-2">
++            <label className="label" htmlFor="loc-name">Name</label>
++            <input id="loc-name" className="input" required autoFocus placeholder="e.g. Godown 3" value={name} onChange={(e) => setName(e.target.value)} />
++          </div>
++          <div>
++            <label className="label" htmlFor="loc-type">Type</label>
++            <select id="loc-type" className="input" value={type} onChange={(e) => setType(e.target.value)}>
++              {TYPES.map((t) => <option key={t}>{t}</option>)}
++            </select>
++          </div>
++          <div>
++            <label className="label" htmlFor="loc-racks">Number of racks</label>
++            <input id="loc-racks" className="input" type="number" inputMode="numeric" min={0} max={500} value={racks} onChange={(e) => setRacks(e.target.value)} />
++          </div>
++          <div className="col-span-2">
++            <label className="label" htmlFor="loc-prefix">Rack prefix (optional)</label>
++            <input id="loc-prefix" className="input" maxLength={6} placeholder="auto, e.g. G3-" value={prefix} onChange={(e) => setPrefix(e.target.value)} />
++          </div>
++        </div>
++        <p className="mt-2 text-sm text-muted">Racks are numbered 01, 02, 03…{preview ? " Yours will be " + preview + "." : ""}</p>
++        {error && <p role="alert" className="mt-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
++
++        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end">
++          <button type="button" className="btn" onClick={onClose}>Cancel</button>
++          <button className="btn btn-primary" disabled={busy || !name.trim()}>{busy ? "Adding…" : "Add location"}</button>
++        </div>
++      </form>
++    </div>
++  );
++}
+diff --git a/components/BottomNav.tsx b/components/BottomNav.tsx
+index 8a1e9ce..401547f 100644
+--- a/components/BottomNav.tsx
++++ b/components/BottomNav.tsx
+@@ -9,10 +9,11 @@ export default function BottomNav() {
+     { href: "/inventory", label: "Stock", icon: "▤", on: path === "/inventory" && !filter },
+     { href: "/inventory?filter=low", label: "Low stock", icon: "⚠", on: path === "/inventory" && filter === "low" },
+     { href: "/inventory/new", label: "Add", icon: "＋", on: path === "/inventory/new" },
++    { href: "/settings", label: "Settings", icon: "⚙", on: path.startsWith("/settings") },
+   ];
+   return (
+     <nav className="fixed inset-x-0 bottom-0 z-30 lg:hidden border-t border-line bg-surface pb-[env(safe-area-inset-bottom)]">
+-      <div className="mx-auto grid max-w-2xl grid-cols-3">
++      <div className="mx-auto grid max-w-2xl grid-cols-4">
+         {items.map((i) => (
+           <Link key={i.label} href={i.href} aria-current={i.on ? "page" : undefined}
+             className={"flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs " + (i.on ? "font-semibold text-accent" : "text-muted")}>
+diff --git a/components/InventoryList.tsx b/components/InventoryList.tsx
+index 3988c75..08b87cd 100644
+--- a/components/InventoryList.tsx
++++ b/components/InventoryList.tsx
+@@ -1,22 +1,26 @@
+ "use client";
+ import Link from "next/link";
++import { useRouter } from "next/navigation";
+ import { useCallback, useEffect, useRef, useState } from "react";
++import AddLocationModal from "./AddLocationModal";
+ import AdjustSheet from "./AdjustSheet";
+-import { qty, stockTone, toneClass } from "@/lib/format";
++import Toast from "./Toast";
++import { qty, rs, stockTone, toneClass } from "@/lib/format";
+ 
+ type Loc = { location: string; qty: number; racks: string[] };
+ type Item = {
+   id: string; legacy_no: number | null; name_en: string; code_name: string | null; name_ur: string | null;
+-  scheme: string | null; unit: string; reorder_level: number; list_name: string | null; brand: string | null;
++  scheme: string | null; cp: number; unit: string; reorder_level: number; list_name: string | null; brand: string | null;
+   on_hand: number; racks: string[]; locations: string[]; by_location: Loc[];
+ };
+ type MetaLoc = { id: string; name: string };
+-const FILTERS = [["all", "All"], ["low", "Low stock"], ["out", "Out of stock"], ["norack", "No rack"]] as const;
++const FILTER_LABEL: Record<string, string> = { low: "Low stock", out: "Out of stock", norack: "No rack" };
+ const PAGE = 30;
+ 
+ export default function InventoryList({ initialFilter }: { initialFilter: string }) {
+   const [q, setQ] = useState("");
+-  const [filter, setFilter] = useState(initialFilter);
++  const router = useRouter();
++  const filter = initialFilter;
+   const [list, setList] = useState("");
+   const [lists, setLists] = useState<{ id: string; name: string }[]>([]);
+   const [locs, setLocs] = useState<MetaLoc[]>([]);
+@@ -25,11 +29,14 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
+   const [loading, setLoading] = useState(true);
+   const [error, setError] = useState("");
+   const [restock, setRestock] = useState<Item | null>(null);
++  const [addLoc, setAddLoc] = useState(false);
++  const [toast, setToast] = useState("");
+   const req = useRef(0);
+ 
+-  useEffect(() => {
++  const loadMeta = useCallback(() => {
+     fetch("/api/inventory/meta").then((r) => r.json()).then((m) => { setLists(m.lists ?? []); setLocs(m.locations ?? []); }).catch(() => {});
+   }, []);
++  useEffect(() => { loadMeta(); }, [loadMeta]);
+ 
+   const load = useCallback(async (offset: number) => {
+     const id = ++req.current;
+@@ -60,24 +67,28 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
+   return (
+     <div>
+       <header className="sticky top-0 z-20 border-b border-line bg-bg px-3 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-5 lg:pb-0 lg:pt-4">
+-        <div className="mb-2 flex items-baseline justify-between lg:hidden">
+-          <h1 className="text-lg font-bold">Stock</h1>
+-          <span className="text-xs text-muted">{loading && !items.length ? "Loading…" : total.toLocaleString() + " items"}</span>
++        <div className="mb-2 flex items-center justify-between lg:hidden">
++          <div>
++            <h1 className="text-lg font-bold leading-tight">Stock</h1>
++            <span className="text-xs text-muted">{loading && !items.length ? "Loading…" : total.toLocaleString() + " items"}</span>
++          </div>
++          <button className="btn min-h-9 px-3" onClick={() => setAddLoc(true)}>＋ Location</button>
+         </div>
+-        <div className="lg:flex lg:items-center lg:gap-2">
++        <div className="grid grid-cols-[minmax(0,9.5rem)_1fr] gap-2 lg:flex lg:items-center">
+           <Link href="/inventory/new" className="btn btn-primary hidden lg:inline-flex">Add Product</Link>
++          <button className="btn hidden lg:inline-flex" onClick={() => setAddLoc(true)}>Add location</button>
+           <div className="hidden lg:block lg:flex-1" />
+-          <input className="input lg:w-80" type="search" inputMode="search" placeholder="Find a part: name, Urdu, brand, code or rack" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Find a part" />
+-        </div>
+-        <div className="-mx-3 mt-2 flex gap-2 overflow-x-auto px-3 pb-1 lg:mx-0 lg:mt-3 lg:px-0">
+-          {FILTERS.map(([k, label]) => (
+-            <button key={k} className={"chip " + (filter === k ? "chip-on" : "")} onClick={() => setFilter(k)}>{label}</button>
+-          ))}
+-          <select className="chip" value={list} onChange={(e) => setList(e.target.value)} aria-label="Price list">
++          <select className="input lg:w-56" value={list} onChange={(e) => setList(e.target.value)} aria-label="List">
+             <option value="">All lists</option>
+             {lists.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+           </select>
++          <input className="input lg:w-80" type="search" inputMode="search" placeholder="Find a part: name, Urdu, brand, code or rack" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Find a part" />
+         </div>
++        {filter !== "all" && (
++          <button className="chip chip-on mt-2" onClick={() => router.replace("/inventory")} aria-label={"Clear filter " + FILTER_LABEL[filter]}>
++            {FILTER_LABEL[filter]} ✕
++          </button>
++        )}
+       </header>
+ 
+       {/* ---------- phone: cards ---------- */}
+@@ -100,6 +111,7 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
+                 <div className="shrink-0 text-right">
+                   <span className={"pill text-base " + toneClass[tone]}>{qty(it.on_hand)}</span>
+                   <p className="mt-1 text-xs text-muted">{it.unit}</p>
++                  <p className="mt-1.5 text-sm font-semibold">{rs(it.cp)}</p>
+                 </div>
+               </Link>
+             </li>
+@@ -119,6 +131,7 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
+                   <th key={l.id} className="whitespace-nowrap border-b border-line px-2 py-1.5 text-right font-semibold">{l.name}<br /><span className="text-xs font-normal">qty · racks</span></th>
+                 ))}
+                 <th className="whitespace-nowrap border-b border-line px-2 py-1.5 text-right font-semibold">Total on hand</th>
++                <th className="whitespace-nowrap border-b border-line px-2 py-1.5 text-right font-semibold">Price (CP)</th>
+                 <th className="border-b border-line px-2 py-1.5" />
+               </tr>
+             </thead>
+@@ -144,6 +157,7 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
+                     <td className={"whitespace-nowrap border-b border-line px-2 py-2 text-right align-middle " + (low ? "font-semibold text-red" : "")}>
+                       <b>{qty(it.on_hand)}</b>{low ? " ▼" : ""} <span className="text-xs font-normal text-muted">{it.unit}</span>
+                     </td>
++                    <td className="whitespace-nowrap border-b border-line px-2 py-2 text-right align-middle font-semibold">{rs(it.cp)}</td>
+                     <td className="whitespace-nowrap border-b border-line px-2 py-2 text-right align-middle">
+                       <Link href={"/inventory/" + it.id} className="btn min-h-8 px-2 text-[13px]">Where is it?</Link>{" "}
+                       <button className="btn min-h-8 px-2 text-[13px]" onClick={() => setRestock(it)}>Change stock</button>{" "}
+@@ -171,6 +185,9 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
+       <Link href="/inventory/new" aria-label="Add product"
+         className="fixed bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] right-4 z-20 flex size-14 items-center justify-center rounded-full bg-accent text-3xl text-accent-ink shadow-lg active:opacity-80 lg:hidden">＋</Link>
+ 
++      {addLoc && <AddLocationModal onClose={() => setAddLoc(false)} onDone={(n) => { setAddLoc(false); setToast(n + " added"); loadMeta(); }} />}
++      {toast && <Toast msg={toast} onHide={() => setToast("")} />}
++
+       {restock && (
+         <AdjustSheet productId={restock.id} unit={restock.unit}
+           locations={locs.map((l) => ({ id: l.id, name: l.name, qty: qtyAt(restock, l.name)?.qty ?? 0 }))}
+diff --git a/components/ProductDetail.tsx b/components/ProductDetail.tsx
+index 38d16be..c75b2a4 100644
+--- a/components/ProductDetail.tsx
++++ b/components/ProductDetail.tsx
+@@ -6,7 +6,7 @@ import { qty, rs, stockTone, toneClass } from "@/lib/format";
+ 
+ type Detail = {
+   product: {
+-    id: string; name_en: string; code_name: string | null; name_ur: string | null; scheme: string | null; cost: number;
++    id: string; name_en: string; code_name: string | null; name_ur: string | null; scheme: string | null; cp: number;
+     unit: string; reorder_level: number; legacy_no: number | null;
+     brand: { name: string } | null; company: { name: string } | null; list: { name: string } | null;
+   };
+@@ -57,8 +57,8 @@ export default function ProductDetail({ id }: { id: string }) {
+               <p className={"pill text-3xl " + toneClass[tone]}>{qty(d.onHand)} <span className="ml-1 text-base font-normal">{p.unit}</span></p>
+             </div>
+             <div className="text-right text-sm">
+-              <p className="text-xs text-muted">Cost (CP)</p>
+-              <p className="text-lg font-semibold">{rs(p.cost)}</p>
++              <p className="text-xs text-muted">Counter price (CP)</p>
++              <p className="text-lg font-semibold">{rs(p.cp)}</p>
+             </div>
+           </div>
+           <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+diff --git a/components/ProductForm.tsx b/components/ProductForm.tsx
+index a26cda6..f9fe104 100644
+--- a/components/ProductForm.tsx
++++ b/components/ProductForm.tsx
+@@ -12,7 +12,7 @@ export default function ProductForm({ id }: { id?: string }) {
+   const router = useRouter();
+   const [meta, setMeta] = useState<Meta | null>(null);
+   const [loaded, setLoaded] = useState(!id);
+-  const [f, setF] = useState({ name_en: "", code_name: "", name_ur: "", company: "", brand: "", list: "", scheme: "", cost: "", unit: "pc", reorder_level: "", opening_stock: "" });
++  const [f, setF] = useState({ name_en: "", code_name: "", name_ur: "", company: "", brand: "", list: "", scheme: "", cp: "", unit: "pc", reorder_level: "", opening_stock: "" });
+   const [rows, setRows] = useState<Row[]>([{ location: "", racks: "" }]);
+   const [busy, setBusy] = useState(false);
+   const [error, setError] = useState("");
+@@ -25,7 +25,7 @@ export default function ProductForm({ id }: { id?: string }) {
+       if (d.error) return setError(d.error);
+       const p = d.product;
+       setF((s) => ({ ...s, name_en: p.name_en ?? "", code_name: p.code_name ?? "", name_ur: p.name_ur ?? "", company: p.company?.name ?? "", brand: p.brand?.name ?? "",
+-        list: p.list?.name ?? "", scheme: p.scheme ?? "", cost: String(p.cost ?? ""), unit: p.unit ?? "pc", reorder_level: Number(p.reorder_level) ? String(p.reorder_level) : "" }));
++        list: p.list?.name ?? "", scheme: p.scheme ?? "", cp: String(p.cp ?? ""), unit: p.unit ?? "pc", reorder_level: Number(p.reorder_level) ? String(p.reorder_level) : "" }));
+       setRows(d.locations.length ? d.locations.map((l: { name: string; racks: string[] }) => ({ location: l.name, racks: l.racks.join(", ") })) : [{ location: "", racks: "" }]);
+       setLoaded(true);
+     }).catch(() => setError("Could not load"));
+@@ -72,7 +72,7 @@ export default function ProductForm({ id }: { id?: string }) {
+             <div><label className="label" htmlFor="f-brand">Brand</label><input id="f-brand" className="input" list="dl-brand" value={f.brand} onChange={set("brand")} /></div>
+             <div><label className="label" htmlFor="f-list">List</label><input id="f-list" className="input" list="dl-list" value={f.list} onChange={set("list")} /></div>
+             <div><label className="label" htmlFor="f-scheme">Scheme (e.g. 9+1)</label><input id="f-scheme" className="input" value={f.scheme} onChange={set("scheme")} /></div>
+-            <div><label className="label" htmlFor="f-cost">Cost (CP)</label><input id="f-cost" className="input" type="number" inputMode="decimal" min="0" step="any" value={f.cost} onChange={set("cost")} /></div>
++            <div><label className="label" htmlFor="f-cp">Counter price (CP)</label><input id="f-cp" className="input" type="number" inputMode="decimal" min="0" step="any" value={f.cp} onChange={set("cp")} /></div>
+             <div><label className="label" htmlFor="f-unit">Unit</label><input id="f-unit" className="input" value={f.unit} onChange={set("unit")} /></div>
+             <div><label className="label" htmlFor="f-reorder">Reorder level</label><input id="f-reorder" className="input" type="number" inputMode="decimal" min="0" step="any" value={f.reorder_level} onChange={set("reorder_level")} /></div>
+             {!id && <div><label className="label" htmlFor="f-open">Opening stock</label><input id="f-open" className="input" type="number" inputMode="decimal" min="0" step="any" value={f.opening_stock} onChange={set("opening_stock")} /></div>}
+diff --git a/components/SettingsView.tsx b/components/SettingsView.tsx
+new file mode 100644
+index 0000000..8f6ae8b
+--- /dev/null
++++ b/components/SettingsView.tsx
+@@ -0,0 +1,107 @@
++"use client";
++import { useCallback, useEffect, useState } from "react";
++import AddLocationModal from "./AddLocationModal";
++import Toast from "./Toast";
++
++type ListRow = { id: string; name: string; visible: boolean; products: number };
++type LocRow = { id: string; name: string; type: string; racks: number; active: boolean };
++
++export default function SettingsView() {
++  const [lists, setLists] = useState<ListRow[] | null>(null);
++  const [locs, setLocs] = useState<LocRow[] | null>(null);
++  const [error, setError] = useState("");
++  const [addLoc, setAddLoc] = useState(false);
++  const [toast, setToast] = useState("");
++
++  const loadLists = useCallback(async () => {
++    const r = await fetch("/api/inventory/lists");
++    const j = await r.json();
++    if (!r.ok) return setError(j.error || "Could not load lists");
++    setLists(j.lists);
++  }, []);
++  const loadLocs = useCallback(async () => {
++    const r = await fetch("/api/inventory/locations");
++    const j = await r.json();
++    if (!r.ok) return setError(j.error || "Could not load locations");
++    setLocs(j.locations);
++  }, []);
++  useEffect(() => { loadLists(); loadLocs(); }, [loadLists, loadLocs]);
++
++  async function setVisible(body: { id?: string; all?: boolean; visible: boolean }) {
++    const before = lists;
++    setLists((ls) => ls && ls.map((l) => (body.all || l.id === body.id ? { ...l, visible: body.visible } : l)));
++    const r = await fetch("/api/inventory/lists", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
++    if (!r.ok) {
++      setLists(before);
++      const j = await r.json().catch(() => ({}));
++      setToast(j.error || "Could not save");
++    }
++  }
++
++  const hidden = lists?.filter((l) => !l.visible).length ?? 0;
++
++  return (
++    <div>
++      <header className="sticky top-0 z-20 border-b border-line bg-bg px-3 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:hidden">
++        <h1 className="text-lg font-bold">Settings</h1>
++      </header>
++
++      <div className="space-y-4 p-3 lg:max-w-3xl lg:p-5">
++        {error && <p className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
++
++        <section className="card p-4">
++          <div className="mb-1 flex items-center justify-between gap-2">
++            <h2 className="font-semibold">Price lists</h2>
++            <div className="flex gap-2">
++              <button className="btn min-h-9 px-3" onClick={() => setVisible({ all: true, visible: true })} disabled={!lists || !hidden}>Show all</button>
++              <button className="btn min-h-9 px-3" onClick={() => setVisible({ all: true, visible: false })} disabled={!lists || hidden === lists.length}>Hide all</button>
++            </div>
++          </div>
++          <p className="mb-2 text-sm text-muted">
++            Choose which lists appear on the Stock screen. Hidden lists are only left out of view; nothing is deleted.
++            {lists ? " " + hidden + " of " + lists.length + " hidden." : ""}
++          </p>
++          {!lists && !error && <p className="py-3 text-sm text-muted">Loading…</p>}
++          <ul className="divide-y divide-line">
++            {lists?.map((l) => (
++              <li key={l.id} className="flex min-h-14 items-center gap-3 py-2">
++                <div className="min-w-0 flex-1">
++                  <p className={"break-words font-medium " + (l.visible ? "" : "text-muted")}>{l.name}</p>
++                  <p className="text-xs text-muted">{l.products.toLocaleString()} products</p>
++                </div>
++                <button role="switch" aria-checked={l.visible} aria-label={(l.visible ? "Hide " : "Show ") + l.name}
++                  onClick={() => setVisible({ id: l.id, visible: !l.visible })}
++                  className={"relative h-8 w-14 shrink-0 rounded-full transition-colors " + (l.visible ? "bg-accent" : "bg-line")}>
++                  <span className={"absolute top-1 size-6 rounded-full bg-white shadow transition-all " + (l.visible ? "left-7" : "left-1")} />
++                </button>
++              </li>
++            ))}
++          </ul>
++          {lists && !lists.length && <p className="py-3 text-sm text-muted">No lists yet. They appear after the product import.</p>}
++        </section>
++
++        <section className="card p-4">
++          <div className="mb-2 flex items-center justify-between gap-2">
++            <h2 className="font-semibold">Stock locations</h2>
++            <button className="btn btn-primary min-h-9 px-3" onClick={() => setAddLoc(true)}>Add stock location</button>
++          </div>
++          {!locs && !error && <p className="py-3 text-sm text-muted">Loading…</p>}
++          <ul className="divide-y divide-line">
++            {locs?.map((l) => (
++              <li key={l.id} className="flex items-center gap-3 py-2.5">
++                <div className="min-w-0 flex-1">
++                  <p className="font-medium">{l.name}</p>
++                  <p className="text-xs text-muted">{l.type} · {l.racks} {l.racks === 1 ? "rack" : "racks"}</p>
++                </div>
++              </li>
++            ))}
++          </ul>
++          {locs && !locs.length && <p className="py-3 text-sm text-muted">No locations yet.</p>}
++        </section>
++      </div>
++
++      {addLoc && <AddLocationModal onClose={() => setAddLoc(false)} onDone={(n) => { setAddLoc(false); setToast(n + " added"); loadLocs(); }} />}
++      {toast && <Toast msg={toast} onHide={() => setToast("")} />}
++    </div>
++  );
++}
+diff --git a/components/Shell.tsx b/components/Shell.tsx
+new file mode 100644
+index 0000000..bd01777
+--- /dev/null
++++ b/components/Shell.tsx
+@@ -0,0 +1,20 @@
++import { Suspense } from "react";
++import BottomNav from "./BottomNav";
++import Sidebar from "./Sidebar";
++import Topbar from "./Topbar";
++
++/* Phone/tablet: single column + bottom nav.  Desktop (lg+): dark sidebar + top bar, like the original HTML. */
++export default function Shell({ children }: { children: React.ReactNode }) {
++  return (
++    <div className="lg:flex lg:min-h-dvh">
++      <Sidebar />
++      <div className="mx-auto min-h-dvh w-full max-w-2xl pb-[calc(env(safe-area-inset-bottom)+4.5rem)] lg:mx-0 lg:min-w-0 lg:max-w-none lg:flex-1 lg:pb-10">
++        <Topbar />
++        {children}
++      </div>
++      <Suspense fallback={null}>
++        <BottomNav />
++      </Suspense>
++    </div>
++  );
++}
+diff --git a/components/Sidebar.tsx b/components/Sidebar.tsx
+index 9299347..36979c8 100644
+--- a/components/Sidebar.tsx
++++ b/components/Sidebar.tsx
+@@ -13,10 +13,18 @@ export default function Sidebar() {
+         Irfan Autos
+         <small className="mt-0.5 block text-xs font-normal text-side-ink">Bike &amp; auto spare parts</small>
+       </div>
+-      <Link href="/inventory" aria-current={path.startsWith("/inventory") ? "page" : undefined}
+-        className={"mb-px block rounded-md px-2.5 py-2 text-sm " + (path.startsWith("/inventory") ? "bg-accent font-semibold text-accent-ink" : "hover:bg-white/10")}>
+-        Stock &amp; Racks
+-      </Link>
++      {[
++        { href: "/inventory", label: "Stock & Racks" },
++        { href: "/settings", label: "Settings" },
++      ].map((n) => {
++        const on = path.startsWith(n.href);
++        return (
++          <Link key={n.href} href={n.href} aria-current={on ? "page" : undefined}
++            className={"mb-px block rounded-md px-2.5 py-2 text-sm " + (on ? "bg-accent font-semibold text-accent-ink" : "hover:bg-white/10")}>
++            {n.label}
++          </Link>
++        );
++      })}
+       <hr className="my-2.5 border-white/10" />
+       {SOON.map((x) => (
+         <span key={x} title="Planned, not built yet" className="mb-px block cursor-default rounded-md px-2.5 py-2 text-sm opacity-45">{x}</span>
+diff --git a/components/Toast.tsx b/components/Toast.tsx
+new file mode 100644
+index 0000000..dae5e75
+--- /dev/null
++++ b/components/Toast.tsx
+@@ -0,0 +1,12 @@
++"use client";
++import { useEffect } from "react";
++
++export default function Toast({ msg, onHide }: { msg: string; onHide: () => void }) {
++  // eslint-disable-next-line react-hooks/exhaustive-deps
++  useEffect(() => { const t = setTimeout(onHide, 3500); return () => clearTimeout(t); }, [msg]);
++  return (
++    <div role="status" className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+5rem)] z-[60] mx-auto w-fit max-w-[90vw] rounded-xl bg-ink px-4 py-2 text-sm text-bg shadow-lg lg:bottom-6">
++      {msg}
++    </div>
++  );
++}
+diff --git a/components/Topbar.tsx b/components/Topbar.tsx
+index 7762cd2..09bc6ab 100644
+--- a/components/Topbar.tsx
++++ b/components/Topbar.tsx
+@@ -3,7 +3,7 @@ import { usePathname } from "next/navigation";
+ 
+ export default function Topbar() {
+   const path = usePathname();
+-  const title = path === "/inventory" ? "Stock & Racks" : path === "/inventory/new" ? "Add product" : path.endsWith("/edit") ? "Edit product" : "Product";
++  const title = path.startsWith("/settings") ? "Settings" : path === "/inventory" ? "Stock & Racks" : path === "/inventory/new" ? "Add product" : path.endsWith("/edit") ? "Edit product" : "Product";
+   return (
+     <div className="hidden items-center border-b border-line bg-surface px-5 py-2.5 lg:flex">
+       <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+diff --git a/lib/placement.ts b/lib/placement.ts
+index c23f0d5..2787e4c 100644
+--- a/lib/placement.ts
++++ b/lib/placement.ts
+@@ -44,3 +44,11 @@ export function parseScheme(s: unknown): { buy: number | null; free: number | nu
+   const m = /^\s*(\d+)\s*\+\s*(\d+)\s*$/.exec(String(s ?? ""));
+   return m ? { buy: +m[1], free: +m[2] } : { buy: null, free: null };
+ }
++
++/** "Godown 3" -> "G3-", "Main shop" -> "MS-" (same rule as the original prototype). */
++export const rackPrefix = (name: string) =>
++  (name || "R").split(/\s+/).filter(Boolean).map((w) => (/\d/.test(w) ? w : w[0].toUpperCase())).join("") + "-";
++
++/** rackCodes("G3-", 3) -> ["G3-01","G3-02","G3-03"] */
++export const rackCodes = (prefix: string, count: number, start = 1) =>
++  Array.from({ length: count }, (_, i) => prefix + String(start + i).padStart(2, "0"));
+diff --git a/scripts/import-products.ts b/scripts/import-products.ts
+index 470d894..3203b2d 100644
+--- a/scripts/import-products.ts
++++ b/scripts/import-products.ts
+@@ -80,7 +80,7 @@ async function main() {
+     code_name: txt(g(x.r, "code name")),
+     name_ur: txt(g(x.r, "name (urdu)")),
+     scheme: x.scheme, scheme_buy: x.buy, scheme_free: x.free,
+-    cost: num(g(x.r, "cp")),
++    cp: num(g(x.r, "cp")),
+     list_id: lists.get(txt(g(x.r, "list")) ?? "") ?? null,
+     brand_id: brands.get(txt(g(x.r, "brand")) ?? "") ?? null,
+     company_id: companies.get(txt(g(x.r, "company")) ?? "") ?? null,
+diff --git a/supabase/migrations/0001_inventory.sql b/supabase/migrations/0001_inventory.sql
+index b4266e1..03cac0e 100644
+--- a/supabase/migrations/0001_inventory.sql
++++ b/supabase/migrations/0001_inventory.sql
+@@ -33,7 +33,7 @@ create table products (
+   scheme text,                        -- raw text, e.g. "9+1"
+   scheme_buy int,
+   scheme_free int,
+-  cost numeric(14,2) not null default 0,   -- CP
++  cp numeric(14,2) not null default 0,     -- CP = counter price (selling price)
+   unit text not null default 'pc',
+   reorder_level numeric(14,3) not null default 0,
+   list_id uuid references price_lists(id) on delete set null,
+@@ -83,11 +83,11 @@ create or replace function inventory_list(
+   p_limit int default 30, p_offset int default 0
+ ) returns table (
+   id uuid, legacy_no int, name_en text, code_name text, name_ur text, scheme text,
+-  cost numeric, unit text, reorder_level numeric, list_name text, brand text, company text,
++  cp numeric, unit text, reorder_level numeric, list_name text, brand text, company text,
+   on_hand numeric, racks text[], locations text[], by_location jsonb, total bigint
+ ) language sql stable as $$
+   select p.id, p.legacy_no, p.name_en, p.code_name, p.name_ur, p.scheme,
+-         p.cost, p.unit, p.reorder_level, l.name, b.name, c.name,
++         p.cp, p.unit, p.reorder_level, l.name, b.name, c.name,
+          coalesce(s.on_hand, 0),
+          coalesce(rk.racks, '{}'), coalesce(lc.locs, '{}'), coalesce(bl.by_loc, '[]'::jsonb),
+          count(*) over ()
+diff --git a/supabase/migrations/0002_settings.sql b/supabase/migrations/0002_settings.sql
+new file mode 100644
+index 0000000..205b01e
+--- /dev/null
++++ b/supabase/migrations/0002_settings.sql
+@@ -0,0 +1,81 @@
++-- Settings: choose which price lists show up in Inventory.
++alter table price_lists add column if not exists visible boolean not null default true;
++
++-- CP is the counter (selling) price, not a cost. Rename the column if it was created as "cost".
++do $$ begin
++  if exists (select 1 from information_schema.columns
++             where table_schema = 'public' and table_name = 'products' and column_name = 'cost') then
++    alter table products rename column cost to cp;
++  end if;
++end $$;
++
++-- The returned column changed (cost -> cp), so the function must be dropped and recreated.
++drop function if exists inventory_list(text, uuid, text, int, int);
++
++-- Stock screen: same as before, but products whose list is hidden are left out.
++create or replace function inventory_list(
++  p_q text default null, p_list uuid default null, p_filter text default 'all',
++  p_limit int default 30, p_offset int default 0
++) returns table (
++  id uuid, legacy_no int, name_en text, code_name text, name_ur text, scheme text,
++  cp numeric, unit text, reorder_level numeric, list_name text, brand text, company text,
++  on_hand numeric, racks text[], locations text[], by_location jsonb, total bigint
++) language sql stable as $$
++  select p.id, p.legacy_no, p.name_en, p.code_name, p.name_ur, p.scheme,
++         p.cp, p.unit, p.reorder_level, l.name, b.name, c.name,
++         coalesce(s.on_hand, 0),
++         coalesce(rk.racks, '{}'), coalesce(lc.locs, '{}'), coalesce(bl.by_loc, '[]'::jsonb),
++         count(*) over ()
++  from products p
++  left join price_lists l on l.id = p.list_id
++  left join brands b on b.id = p.brand_id
++  left join companies c on c.id = p.company_id
++  left join lateral (select sum(m.qty) as on_hand from stock_movements m where m.product_id = p.id) s on true
++  left join lateral (select array_agg(r.code order by r.code) as racks
++                     from product_racks pr join racks r on r.id = pr.rack_id
++                     where pr.product_id = p.id) rk on true
++  left join lateral (select array_agg(lo.name order by lo.name) as locs
++                     from product_locations pl join locations lo on lo.id = pl.location_id
++                     where pl.product_id = p.id) lc on true
++  left join lateral (
++    select jsonb_agg(jsonb_build_object('location', x.name, 'qty', x.qty, 'racks', x.racks) order by x.name) as by_loc
++    from (
++      select lo.name, coalesce(sl.qty, 0) as qty,
++             coalesce((select array_agg(r.code order by r.code) from product_racks pr
++                       join racks r on r.id = pr.rack_id
++                       where pr.product_id = p.id and r.location_id = lo.id), '{}') as racks
++      from locations lo
++      left join stock_levels sl on sl.location_id = lo.id and sl.product_id = p.id
++      where lo.active and (sl.qty is not null or exists
++            (select 1 from product_locations pl where pl.product_id = p.id and pl.location_id = lo.id))
++    ) x
++  ) bl on true
++  where p.active
++    and (l.id is null or l.visible)   -- products of hidden lists are left out
++    and (coalesce(p_q, '') = '' or p.name_en ilike '%' || p_q || '%'
++         or p.code_name ilike '%' || p_q || '%' or p.name_ur ilike '%' || p_q || '%'
++         or b.name ilike '%' || p_q || '%'
++         or exists (select 1 from product_racks pr2 join racks r2 on r2.id = pr2.rack_id
++                    where pr2.product_id = p.id and r2.code ilike '%' || p_q || '%'))
++    and (p_list is null or p.list_id = p_list)
++    and (p_filter = 'all'
++         or (p_filter = 'low'    and p.reorder_level > 0 and coalesce(s.on_hand, 0) <= p.reorder_level)
++         or (p_filter = 'out'    and coalesce(s.on_hand, 0) <= 0)
++         or (p_filter = 'norack' and rk.racks is null))
++  order by p.legacy_no nulls last, p.name_en
++  limit p_limit offset p_offset
++$$;
++
++-- Lists with product counts, for the Settings page.
++create or replace function price_list_stats()
++returns table (id uuid, name text, visible boolean, products bigint)
++language sql stable as $$
++  select l.id, l.name, l.visible, count(p.id)
++  from price_lists l
++  left join products p on p.list_id = l.id and p.active
++  group by l.id
++  order by l.name
++$$;
++
++revoke all on function price_list_stats() from public, anon, authenticated;
++revoke all on function inventory_list(text, uuid, text, int, int) from public, anon, authenticated;

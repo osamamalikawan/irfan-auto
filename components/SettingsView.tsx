@@ -1,0 +1,107 @@
+"use client";
+import { useCallback, useEffect, useState } from "react";
+import AddLocationModal from "./AddLocationModal";
+import Toast from "./Toast";
+
+type ListRow = { id: string; name: string; visible: boolean; products: number };
+type LocRow = { id: string; name: string; type: string; racks: number; active: boolean };
+
+export default function SettingsView() {
+  const [lists, setLists] = useState<ListRow[] | null>(null);
+  const [locs, setLocs] = useState<LocRow[] | null>(null);
+  const [error, setError] = useState("");
+  const [addLoc, setAddLoc] = useState(false);
+  const [toast, setToast] = useState("");
+
+  const loadLists = useCallback(async () => {
+    const r = await fetch("/api/inventory/lists");
+    const j = await r.json();
+    if (!r.ok) return setError(j.error || "Could not load lists");
+    setLists(j.lists);
+  }, []);
+  const loadLocs = useCallback(async () => {
+    const r = await fetch("/api/inventory/locations");
+    const j = await r.json();
+    if (!r.ok) return setError(j.error || "Could not load locations");
+    setLocs(j.locations);
+  }, []);
+  useEffect(() => { loadLists(); loadLocs(); }, [loadLists, loadLocs]);
+
+  async function setVisible(body: { id?: string; all?: boolean; visible: boolean }) {
+    const before = lists;
+    setLists((ls) => ls && ls.map((l) => (body.all || l.id === body.id ? { ...l, visible: body.visible } : l)));
+    const r = await fetch("/api/inventory/lists", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (!r.ok) {
+      setLists(before);
+      const j = await r.json().catch(() => ({}));
+      setToast(j.error || "Could not save");
+    }
+  }
+
+  const hidden = lists?.filter((l) => !l.visible).length ?? 0;
+
+  return (
+    <div>
+      <header className="sticky top-0 z-20 border-b border-line bg-bg px-3 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:hidden">
+        <h1 className="text-lg font-bold">Settings</h1>
+      </header>
+
+      <div className="space-y-4 p-3 lg:max-w-3xl lg:p-5">
+        {error && <p className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+
+        <section className="card p-4">
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <h2 className="font-semibold">Price lists</h2>
+            <div className="flex gap-2">
+              <button className="btn min-h-9 px-3" onClick={() => setVisible({ all: true, visible: true })} disabled={!lists || !hidden}>Show all</button>
+              <button className="btn min-h-9 px-3" onClick={() => setVisible({ all: true, visible: false })} disabled={!lists || hidden === lists.length}>Hide all</button>
+            </div>
+          </div>
+          <p className="mb-2 text-sm text-muted">
+            Choose which lists appear on the Stock screen. Hidden lists are only left out of view; nothing is deleted.
+            {lists ? " " + hidden + " of " + lists.length + " hidden." : ""}
+          </p>
+          {!lists && !error && <p className="py-3 text-sm text-muted">Loading…</p>}
+          <ul className="divide-y divide-line">
+            {lists?.map((l) => (
+              <li key={l.id} className="flex min-h-14 items-center gap-3 py-2">
+                <div className="min-w-0 flex-1">
+                  <p className={"break-words font-medium " + (l.visible ? "" : "text-muted")}>{l.name}</p>
+                  <p className="text-xs text-muted">{l.products.toLocaleString()} products</p>
+                </div>
+                <button role="switch" aria-checked={l.visible} aria-label={(l.visible ? "Hide " : "Show ") + l.name}
+                  onClick={() => setVisible({ id: l.id, visible: !l.visible })}
+                  className={"relative h-8 w-14 shrink-0 rounded-full transition-colors " + (l.visible ? "bg-accent" : "bg-line")}>
+                  <span className={"absolute top-1 size-6 rounded-full bg-white shadow transition-all " + (l.visible ? "left-7" : "left-1")} />
+                </button>
+              </li>
+            ))}
+          </ul>
+          {lists && !lists.length && <p className="py-3 text-sm text-muted">No lists yet. They appear after the product import.</p>}
+        </section>
+
+        <section className="card p-4">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h2 className="font-semibold">Stock locations</h2>
+            <button className="btn btn-primary min-h-9 px-3" onClick={() => setAddLoc(true)}>Add stock location</button>
+          </div>
+          {!locs && !error && <p className="py-3 text-sm text-muted">Loading…</p>}
+          <ul className="divide-y divide-line">
+            {locs?.map((l) => (
+              <li key={l.id} className="flex items-center gap-3 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">{l.name}</p>
+                  <p className="text-xs text-muted">{l.type} · {l.racks} {l.racks === 1 ? "rack" : "racks"}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {locs && !locs.length && <p className="py-3 text-sm text-muted">No locations yet.</p>}
+        </section>
+      </div>
+
+      {addLoc && <AddLocationModal onClose={() => setAddLoc(false)} onDone={(n) => { setAddLoc(false); setToast(n + " added"); loadLocs(); }} />}
+      {toast && <Toast msg={toast} onHide={() => setToast("")} />}
+    </div>
+  );
+}

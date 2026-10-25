@@ -1,22 +1,26 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import AddLocationModal from "./AddLocationModal";
 import AdjustSheet from "./AdjustSheet";
-import { qty, stockTone, toneClass } from "@/lib/format";
+import Toast from "./Toast";
+import { qty, rs, stockTone, toneClass } from "@/lib/format";
 
 type Loc = { location: string; qty: number; racks: string[] };
 type Item = {
   id: string; legacy_no: number | null; name_en: string; code_name: string | null; name_ur: string | null;
-  scheme: string | null; unit: string; reorder_level: number; list_name: string | null; brand: string | null;
+  scheme: string | null; cp: number; unit: string; reorder_level: number; list_name: string | null; brand: string | null;
   on_hand: number; racks: string[]; locations: string[]; by_location: Loc[];
 };
 type MetaLoc = { id: string; name: string };
-const FILTERS = [["all", "All"], ["low", "Low stock"], ["out", "Out of stock"], ["norack", "No rack"]] as const;
+const FILTER_LABEL: Record<string, string> = { low: "Low stock", out: "Out of stock", norack: "No rack" };
 const PAGE = 30;
 
 export default function InventoryList({ initialFilter }: { initialFilter: string }) {
   const [q, setQ] = useState("");
-  const [filter, setFilter] = useState(initialFilter);
+  const router = useRouter();
+  const filter = initialFilter;
   const [list, setList] = useState("");
   const [lists, setLists] = useState<{ id: string; name: string }[]>([]);
   const [locs, setLocs] = useState<MetaLoc[]>([]);
@@ -25,11 +29,14 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [restock, setRestock] = useState<Item | null>(null);
+  const [addLoc, setAddLoc] = useState(false);
+  const [toast, setToast] = useState("");
   const req = useRef(0);
 
-  useEffect(() => {
+  const loadMeta = useCallback(() => {
     fetch("/api/inventory/meta").then((r) => r.json()).then((m) => { setLists(m.lists ?? []); setLocs(m.locations ?? []); }).catch(() => {});
   }, []);
+  useEffect(() => { loadMeta(); }, [loadMeta]);
 
   const load = useCallback(async (offset: number) => {
     const id = ++req.current;
@@ -60,24 +67,28 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
   return (
     <div>
       <header className="sticky top-0 z-20 border-b border-line bg-bg px-3 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-5 lg:pb-0 lg:pt-4">
-        <div className="mb-2 flex items-baseline justify-between lg:hidden">
-          <h1 className="text-lg font-bold">Stock</h1>
-          <span className="text-xs text-muted">{loading && !items.length ? "Loading…" : total.toLocaleString() + " items"}</span>
+        <div className="mb-2 flex items-center justify-between lg:hidden">
+          <div>
+            <h1 className="text-lg font-bold leading-tight">Stock</h1>
+            <span className="text-xs text-muted">{loading && !items.length ? "Loading…" : total.toLocaleString() + " items"}</span>
+          </div>
+          <button className="btn min-h-9 px-3" onClick={() => setAddLoc(true)}>＋ Location</button>
         </div>
-        <div className="lg:flex lg:items-center lg:gap-2">
+        <div className="grid grid-cols-[minmax(0,9.5rem)_1fr] gap-2 lg:flex lg:items-center">
           <Link href="/inventory/new" className="btn btn-primary hidden lg:inline-flex">Add Product</Link>
+          <button className="btn hidden lg:inline-flex" onClick={() => setAddLoc(true)}>Add location</button>
           <div className="hidden lg:block lg:flex-1" />
-          <input className="input lg:w-80" type="search" inputMode="search" placeholder="Find a part: name, Urdu, brand, code or rack" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Find a part" />
-        </div>
-        <div className="-mx-3 mt-2 flex gap-2 overflow-x-auto px-3 pb-1 lg:mx-0 lg:mt-3 lg:px-0">
-          {FILTERS.map(([k, label]) => (
-            <button key={k} className={"chip " + (filter === k ? "chip-on" : "")} onClick={() => setFilter(k)}>{label}</button>
-          ))}
-          <select className="chip" value={list} onChange={(e) => setList(e.target.value)} aria-label="Price list">
+          <select className="input lg:w-56" value={list} onChange={(e) => setList(e.target.value)} aria-label="List">
             <option value="">All lists</option>
             {lists.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
           </select>
+          <input className="input lg:w-80" type="search" inputMode="search" placeholder="Find a part: name, Urdu, brand, code or rack" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Find a part" />
         </div>
+        {filter !== "all" && (
+          <button className="chip chip-on mt-2" onClick={() => router.replace("/inventory")} aria-label={"Clear filter " + FILTER_LABEL[filter]}>
+            {FILTER_LABEL[filter]} ✕
+          </button>
+        )}
       </header>
 
       {/* ---------- phone: cards ---------- */}
@@ -100,6 +111,7 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
                 <div className="shrink-0 text-right">
                   <span className={"pill text-base " + toneClass[tone]}>{qty(it.on_hand)}</span>
                   <p className="mt-1 text-xs text-muted">{it.unit}</p>
+                  <p className="mt-1.5 text-sm font-semibold">{rs(it.cp)}</p>
                 </div>
               </Link>
             </li>
@@ -119,6 +131,7 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
                   <th key={l.id} className="whitespace-nowrap border-b border-line px-2 py-1.5 text-right font-semibold">{l.name}<br /><span className="text-xs font-normal">qty · racks</span></th>
                 ))}
                 <th className="whitespace-nowrap border-b border-line px-2 py-1.5 text-right font-semibold">Total on hand</th>
+                <th className="whitespace-nowrap border-b border-line px-2 py-1.5 text-right font-semibold">Price (CP)</th>
                 <th className="border-b border-line px-2 py-1.5" />
               </tr>
             </thead>
@@ -144,6 +157,7 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
                     <td className={"whitespace-nowrap border-b border-line px-2 py-2 text-right align-middle " + (low ? "font-semibold text-red" : "")}>
                       <b>{qty(it.on_hand)}</b>{low ? " ▼" : ""} <span className="text-xs font-normal text-muted">{it.unit}</span>
                     </td>
+                    <td className="whitespace-nowrap border-b border-line px-2 py-2 text-right align-middle font-semibold">{rs(it.cp)}</td>
                     <td className="whitespace-nowrap border-b border-line px-2 py-2 text-right align-middle">
                       <Link href={"/inventory/" + it.id} className="btn min-h-8 px-2 text-[13px]">Where is it?</Link>{" "}
                       <button className="btn min-h-8 px-2 text-[13px]" onClick={() => setRestock(it)}>Change stock</button>{" "}
@@ -170,6 +184,9 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
 
       <Link href="/inventory/new" aria-label="Add product"
         className="fixed bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] right-4 z-20 flex size-14 items-center justify-center rounded-full bg-accent text-3xl text-accent-ink shadow-lg active:opacity-80 lg:hidden">＋</Link>
+
+      {addLoc && <AddLocationModal onClose={() => setAddLoc(false)} onDone={(n) => { setAddLoc(false); setToast(n + " added"); loadMeta(); }} />}
+      {toast && <Toast msg={toast} onHide={() => setToast("")} />}
 
       {restock && (
         <AdjustSheet productId={restock.id} unit={restock.unit}

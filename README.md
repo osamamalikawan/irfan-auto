@@ -4,7 +4,7 @@ Mobile-first stock screens. No users or login yet (that is a later module).
 
 ## 1. Database
 1. Create a Supabase project.
-2. SQL Editor: paste and run `supabase/migrations/0001_inventory.sql`.
+2. SQL Editor: run `supabase/migrations/0001_inventory.sql`, then `0002_settings.sql` (list visibility, CP rename).
 
 ## 2. Run locally
 ```bash
@@ -41,3 +41,11 @@ Turn on Vercel "Deployment Protection" (Settings > Deployment Protection) until 
 ## Layout
 - Phone and tablet (under 1024px): card list, bottom navigation, bottom-sheet stock changes.
 - Desktop (1024px and up): dark side menu, top bar and the stock-by-location table from the original index.html.
+
+## Settings
+`/settings`: switch price lists on or off (hidden lists are left out of the Stock screen; nothing is deleted)
+and add stock locations (name, type, number of racks, optional rack prefix; racks are numbered 01, 02, 03…).
+The setting is shared by everyone until the Users module exists.
+
+## Prices
+CP is the **counter price** (selling price). It is stored in `products.cp` and shown on every stock row.

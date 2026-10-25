@@ -44,3 +44,11 @@ export function parseScheme(s: unknown): { buy: number | null; free: number | nu
   const m = /^\s*(\d+)\s*\+\s*(\d+)\s*$/.exec(String(s ?? ""));
   return m ? { buy: +m[1], free: +m[2] } : { buy: null, free: null };
 }
+
+/** "Godown 3" -> "G3-", "Main shop" -> "MS-" (same rule as the original prototype). */
+export const rackPrefix = (name: string) =>
+  (name || "R").split(/\s+/).filter(Boolean).map((w) => (/\d/.test(w) ? w : w[0].toUpperCase())).join("") + "-";
+
+/** rackCodes("G3-", 3) -> ["G3-01","G3-02","G3-03"] */
+export const rackCodes = (prefix: string, count: number, start = 1) =>
+  Array.from({ length: count }, (_, i) => prefix + String(start + i).padStart(2, "0"));

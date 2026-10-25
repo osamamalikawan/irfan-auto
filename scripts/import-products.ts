@@ -80,7 +80,7 @@ async function main() {
     code_name: txt(g(x.r, "code name")),
     name_ur: txt(g(x.r, "name (urdu)")),
     scheme: x.scheme, scheme_buy: x.buy, scheme_free: x.free,
-    cost: num(g(x.r, "cp")),
+    cp: num(g(x.r, "cp")),
     list_id: lists.get(txt(g(x.r, "list")) ?? "") ?? null,
     brand_id: brands.get(txt(g(x.r, "brand")) ?? "") ?? null,
     company_id: companies.get(txt(g(x.r, "company")) ?? "") ?? null,

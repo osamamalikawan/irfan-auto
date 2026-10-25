@@ -3,10 +3,11 @@ import { db } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
+/** Lists returned here are only the visible ones (Settings > Price lists). */
 export async function GET() {
   const sb = db();
   const [lists, locations, companies, brands] = await Promise.all([
-    sb.from("price_lists").select("id,name").order("name"),
+    sb.from("price_lists").select("id,name").eq("visible", true).order("name"),
     sb.from("locations").select("id,name").eq("active", true).order("name"),
     sb.from("companies").select("name").order("name"),
     sb.from("brands").select("name").order("name"),

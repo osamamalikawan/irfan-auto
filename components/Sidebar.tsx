@@ -13,10 +13,18 @@ export default function Sidebar() {
         Irfan Autos
         <small className="mt-0.5 block text-xs font-normal text-side-ink">Bike &amp; auto spare parts</small>
       </div>
-      <Link href="/inventory" aria-current={path.startsWith("/inventory") ? "page" : undefined}
-        className={"mb-px block rounded-md px-2.5 py-2 text-sm " + (path.startsWith("/inventory") ? "bg-accent font-semibold text-accent-ink" : "hover:bg-white/10")}>
-        Stock &amp; Racks
-      </Link>
+      {[
+        { href: "/inventory", label: "Stock & Racks" },
+        { href: "/settings", label: "Settings" },
+      ].map((n) => {
+        const on = path.startsWith(n.href);
+        return (
+          <Link key={n.href} href={n.href} aria-current={on ? "page" : undefined}
+            className={"mb-px block rounded-md px-2.5 py-2 text-sm " + (on ? "bg-accent font-semibold text-accent-ink" : "hover:bg-white/10")}>
+            {n.label}
+          </Link>
+        );
+      })}
       <hr className="my-2.5 border-white/10" />
       {SOON.map((x) => (
         <span key={x} title="Planned, not built yet" className="mb-px block cursor-default rounded-md px-2.5 py-2 text-sm opacity-45">{x}</span>

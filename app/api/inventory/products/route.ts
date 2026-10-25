@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     ]);
     const { data: p, error } = await sb.from("products").insert({
       name_en: name, code_name: b.code_name?.trim() || null, name_ur: b.name_ur?.trim() || null,
-      scheme: b.scheme?.trim() || null, cost: Number(b.cost) || 0, unit: b.unit?.trim() || "pc",
+      scheme: b.scheme?.trim() || null, cp: Number(b.cp) || 0, unit: b.unit?.trim() || "pc",
       reorder_level: Number(b.reorder_level) || 0, list_id, brand_id, company_id,
     }).select("id").single();
     if (error) throw new Error(error.message);

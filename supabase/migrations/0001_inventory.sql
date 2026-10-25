@@ -33,7 +33,7 @@ create table products (
   scheme text,                        -- raw text, e.g. "9+1"
   scheme_buy int,
   scheme_free int,
-  cost numeric(14,2) not null default 0,   -- CP
+  cp numeric(14,2) not null default 0,     -- CP = counter price (selling price)
   unit text not null default 'pc',
   reorder_level numeric(14,3) not null default 0,
   list_id uuid references price_lists(id) on delete set null,
@@ -83,11 +83,11 @@ create or replace function inventory_list(
   p_limit int default 30, p_offset int default 0
 ) returns table (
   id uuid, legacy_no int, name_en text, code_name text, name_ur text, scheme text,
-  cost numeric, unit text, reorder_level numeric, list_name text, brand text, company text,
+  cp numeric, unit text, reorder_level numeric, list_name text, brand text, company text,
   on_hand numeric, racks text[], locations text[], by_location jsonb, total bigint
 ) language sql stable as $$
   select p.id, p.legacy_no, p.name_en, p.code_name, p.name_ur, p.scheme,
-         p.cost, p.unit, p.reorder_level, l.name, b.name, c.name,
+         p.cp, p.unit, p.reorder_level, l.name, b.name, c.name,
          coalesce(s.on_hand, 0),
          coalesce(rk.racks, '{}'), coalesce(lc.locs, '{}'), coalesce(bl.by_loc, '[]'::jsonb),
          count(*) over ()
