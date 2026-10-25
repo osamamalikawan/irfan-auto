@@ -23,7 +23,7 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
   const byLoc = new Map<string, { id: string; name: string; qty: number; racks: string[] }>();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const r of (pls.data ?? []) as any[]) if (r.location) byLoc.set(r.location.id, { ...r.location, qty: 0, racks: [] });
-  const qtyOf = new Map((levels.data ?? []).map((l) => [l.location_id as string, Number(l.qty)]));
+  const qtyOf = new Map<string, number>((levels.data ?? []).map((l): [string, number] => [l.location_id as string, Number(l.qty)]));
   for (const [lid, q] of qtyOf) {
     if (!byLoc.has(lid)) {
       const n = await sb.from("locations").select("name").eq("id", lid).single();

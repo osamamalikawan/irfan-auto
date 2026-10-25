@@ -31,7 +31,7 @@ async function fetchAll<T>(table: string, select: string): Promise<T[]> {
   for (let from = 0; ; from += 1000) {
     const { data, error } = await sb.from(table).select(select).range(from, from + 999);
     check(table, error);
-    out.push(...((data ?? []) as T[]));
+    out.push(...((data ?? []) as unknown as T[]));
     if (!data || data.length < 1000) break;
   }
   return out;

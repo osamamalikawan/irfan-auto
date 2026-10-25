@@ -1,25 +1,28 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { db } from "./supabase";
 import { DEFAULT_LOCATION, type Placement } from "./placement";
 
-function must<T>(r: { data: T | null; error: { message: string } | null }): T {
+type SB = ReturnType<typeof db>;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function must<T = any>(r: { data: unknown; error: { message: string } | null }): T {
   if (r.error) throw new Error(r.error.message);
   return r.data as T;
 }
 
-export async function ensureNamed(sb: SupabaseClient, table: "companies" | "brands" | "price_lists", name?: string | null) {
+export async function ensureNamed(sb: SB, table: "companies" | "brands" | "price_lists", name?: string | null) {
   const n = (name ?? "").trim();
   if (!n) return null;
-  const row = must(await sb.from(table).upsert({ name: n }, { onConflict: "name" }).select("id").single());
-  return (row as { id: string }).id;
+  const row = must<{ id: string }>(await sb.from(table).upsert({ name: n }, { onConflict: "name" }).select("id").single());
+  return row.id;
 }
 
-export async function ensureLocation(sb: SupabaseClient, name: string) {
-  const row = must(await sb.from("locations").upsert({ name: name.trim() }, { onConflict: "name" }).select("id").single());
-  return (row as { id: string }).id;
+export async function ensureLocation(sb: SB, name: string) {
+  const row = must<{ id: string }>(await sb.from("locations").upsert({ name: name.trim() }, { onConflict: "name" }).select("id").single());
+  return row.id;
 }
 
 /** Replaces where a product lives: its locations and racks. Creates missing locations/racks. */
-export async function applyPlacement(sb: SupabaseClient, productId: string, placement: Placement) {
+export async function applyPlacement(sb: SB, productId: string, placement: Placement) {
   must(await sb.from("product_locations").delete().eq("product_id", productId));
   must(await sb.from("product_racks").delete().eq("product_id", productId));
   let first: string | null = null;
@@ -29,9 +32,9 @@ export async function applyPlacement(sb: SupabaseClient, productId: string, plac
     first ??= locId;
     must(await sb.from("product_locations").upsert({ product_id: productId, location_id: locId }, { onConflict: "product_id,location_id" }));
     if (racks.length) {
-      const rows = must(
+      const rows = must<{ id: string }[]>(
         await sb.from("racks").upsert(racks.map((code) => ({ location_id: locId, code })), { onConflict: "location_id,code" }).select("id")
-      ) as { id: string }[];
+      );
       must(await sb.from("product_racks").upsert(rows.map((r) => ({ product_id: productId, rack_id: r.id })), { onConflict: "product_id,rack_id" }));
     }
   }
