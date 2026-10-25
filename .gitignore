@@ -1,0 +1,6 @@
+node_modules
+.next
+.env*.local
+.env
+import-report.txt
+next-env.d.ts

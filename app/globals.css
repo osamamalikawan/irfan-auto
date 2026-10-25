@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root{--bg:#eceff3;--surface:#fff;--ink:#17212b;--muted:#5b6876;--line:#d9dfe6;--accent:#0e6b66;--accent-ink:#fff;
+--red:#a8211a;--red-bg:#fbe4e2;--amber:#7a4e00;--amber-bg:#fdf0d2;--green:#175c32;--green-bg:#dcf1e3}
+@media (prefers-color-scheme: dark){:root{--bg:#0e151c;--surface:#17212b;--ink:#e6ebf0;--muted:#93a1af;--line:#2a3744;--accent:#3cb5ad;--accent-ink:#08201e;
+--red:#ff9d94;--red-bg:#3a1c1a;--amber:#f2c35b;--amber-bg:#3a2d10;--green:#7fd9a0;--green-bg:#133224}}
+html{color-scheme:light dark}
+body{background:var(--bg);color:var(--ink);-webkit-tap-highlight-color:transparent;font-variant-numeric:tabular-nums}
+
+@layer components{
+  .ur{font-family:var(--font-urdu),serif;direction:rtl;text-align:right;line-height:2}
+  .card{@apply rounded-xl border border-line bg-surface}
+  .btn{@apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 text-sm font-medium active:opacity-70 disabled:opacity-50}
+  .btn-primary{@apply border-accent bg-accent text-accent-ink font-semibold}
+  .input{@apply min-h-11 w-full rounded-xl border border-line bg-surface px-3 text-base outline-none focus:border-accent}
+  .label{@apply mb-1 block text-xs font-medium text-muted}
+  .chip{@apply inline-flex min-h-9 shrink-0 items-center rounded-full border border-line bg-surface px-3 text-sm active:opacity-70}
+  .chip-on{@apply border-accent bg-accent text-accent-ink font-medium}
+  .pill{@apply inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium}
+}
