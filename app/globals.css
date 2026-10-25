@@ -3,9 +3,9 @@
 @tailwind utilities;
 
 :root{--bg:#eceff3;--surface:#fff;--ink:#17212b;--muted:#5b6876;--line:#d9dfe6;--accent:#0e6b66;--accent-ink:#fff;
---red:#a8211a;--red-bg:#fbe4e2;--amber:#7a4e00;--amber-bg:#fdf0d2;--green:#175c32;--green-bg:#dcf1e3}
+--red:#a8211a;--red-bg:#fbe4e2;--amber:#7a4e00;--amber-bg:#fdf0d2;--green:#175c32;--green-bg:#dcf1e3;--side:#14212b;--side-ink:#c8d3dd}
 @media (prefers-color-scheme: dark){:root{--bg:#0e151c;--surface:#17212b;--ink:#e6ebf0;--muted:#93a1af;--line:#2a3744;--accent:#3cb5ad;--accent-ink:#08201e;
---red:#ff9d94;--red-bg:#3a1c1a;--amber:#f2c35b;--amber-bg:#3a2d10;--green:#7fd9a0;--green-bg:#133224}}
+--red:#ff9d94;--red-bg:#3a1c1a;--amber:#f2c35b;--amber-bg:#3a2d10;--green:#7fd9a0;--green-bg:#133224;--side:#0a1117;--side-ink:#aab7c3}}
 html{color-scheme:light dark}
 body{background:var(--bg);color:var(--ink);-webkit-tap-highlight-color:transparent;font-variant-numeric:tabular-nums}
 

@@ -50,14 +50,14 @@ export default function ProductForm({ id }: { id?: string }) {
   const upd = (i: number, patch: Partial<Row>) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
 
   return (
-    <form onSubmit={save}>
-      <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-line bg-bg px-2 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)]">
+    <form onSubmit={save} className="lg:max-w-3xl">
+      <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-line bg-bg px-2 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-4 lg:pt-4">
         <Link href={id ? "/inventory/" + id : "/inventory"} className="btn border-0 bg-transparent px-3 text-xl" aria-label="Cancel">←</Link>
         <h1 className="flex-1 text-base font-bold">{id ? "Edit product" : "New product"}</h1>
         <button className="btn btn-primary" disabled={busy || !loaded || !f.name_en.trim()}>{busy ? "Saving…" : "Save"}</button>
       </header>
 
-      <div className="space-y-4 p-3">
+      <div className="space-y-4 p-3 lg:px-5">
         {error && <p className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
 
         <section className="card space-y-3 p-4">

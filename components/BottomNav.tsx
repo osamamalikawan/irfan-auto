@@ -11,7 +11,7 @@ export default function BottomNav() {
     { href: "/inventory/new", label: "Add", icon: "＋", on: path === "/inventory/new" },
   ];
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)]">
+    <nav className="fixed inset-x-0 bottom-0 z-30 lg:hidden border-t border-line bg-surface pb-[env(safe-area-inset-bottom)]">
       <div className="mx-auto grid max-w-2xl grid-cols-3">
         {items.map((i) => (
           <Link key={i.label} href={i.href} aria-current={i.on ? "page" : undefined}

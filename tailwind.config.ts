@@ -18,6 +18,8 @@ const config: Config = {
         "amber-bg": "var(--amber-bg)",
         green: "var(--green)",
         "green-bg": "var(--green-bg)",
+        side: "var(--side)",
+        "side-ink": "var(--side-ink)",
       },
     },
   },

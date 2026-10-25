@@ -41,13 +41,14 @@ export default function ProductDetail({ id }: { id: string }) {
 
   return (
     <div>
-      <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-line bg-bg px-2 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)]">
+      <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-line bg-bg px-2 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-4 lg:pt-4">
         <Link href="/inventory" className="btn border-0 bg-transparent px-3 text-xl" aria-label="Back">←</Link>
         <h1 className="min-w-0 flex-1 truncate text-base font-bold">{p.name_en}</h1>
         <Link href={"/inventory/" + id + "/edit"} className="btn">Edit</Link>
       </header>
 
-      <div className="space-y-3 p-3">
+      <div className="space-y-3 p-3 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0 lg:px-5">
+        <div className="space-y-3">
         <section className="card p-4">
           {p.name_ur && <p className="ur mb-2 text-lg">{p.name_ur}</p>}
           <div className="flex items-end justify-between">
@@ -88,6 +89,7 @@ export default function ProductDetail({ id }: { id: string }) {
           </ul>
         </section>
 
+        </div>
         <section className="card p-4">
           <h2 className="mb-2 font-semibold">History</h2>
           {!d.movements.length && <p className="text-sm text-muted">No stock movements yet.</p>}

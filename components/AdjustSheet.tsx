@@ -35,9 +35,9 @@ export default function AdjustSheet({ productId, unit, locations, initialLocatio
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/50" onClick={onClose}>
-      <div className="mx-auto w-full max-w-2xl rounded-t-2xl bg-surface p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Change stock">
-        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line" />
+    <div className="fixed inset-0 z-50 flex items-end bg-black/50 lg:items-center" onClick={onClose}>
+      <div className="mx-auto w-full max-w-2xl rounded-t-2xl bg-surface p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] lg:max-w-md lg:rounded-2xl lg:pb-4" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Change stock">
+        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line lg:hidden" />
         <div className="mb-3 grid grid-cols-3 gap-2">
           {MODES.map(([k, label]) => (
             <button key={k} className={"chip justify-center " + (mode === k ? "chip-on" : "")} onClick={() => setMode(k)}>{label}</button>

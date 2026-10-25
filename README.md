@@ -37,3 +37,7 @@ Turn on Vercel "Deployment Protection" (Settings > Deployment Protection) until 
 | GET / PATCH | `/api/inventory/products/:id` | detail with per-location stock, racks, history / edit |
 | POST | `/api/inventory/products/:id/adjust` | `{location_id, type: receive\|issue\|adjust, qty, note}` |
 | GET | `/api/inventory/meta` | lists, locations, companies, brands |
+
+## Layout
+- Phone and tablet (under 1024px): card list, bottom navigation, bottom-sheet stock changes.
+- Desktop (1024px and up): dark side menu, top bar and the stock-by-location table from the original index.html.
