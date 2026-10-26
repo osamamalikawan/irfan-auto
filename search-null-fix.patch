@@ -1,0 +1,26 @@
+diff --git a/supabase/migrations/0003_search.sql b/supabase/migrations/0003_search.sql
+index a00a594..2b8afa5 100644
+--- a/supabase/migrations/0003_search.sql
++++ b/supabase/migrations/0003_search.sql
+@@ -39,14 +39,15 @@ create or replace function inventory_list(
+   where p.active
+     and (l.id is null or l.visible)   -- products of hidden lists are left out
+     and (coalesce(trim(p_q), '') = '' or not exists (
+-           -- every word typed or spoken must match somewhere (any order); "cd70" also matches "CD 70"
++           -- every word typed or spoken must match somewhere (any order); "cd70" also matches "CD 70".
++           -- coalesce() matters: a NULL field (no brand, no Urdu name) must count as "no match", not "unknown".
+            select 1 from unnest(regexp_split_to_array(trim(p_q), '\s+')) as t(w)
+            where t.w <> '' and not (
+-                 p.name_en ilike '%' || t.w || '%'
+-              or p.code_name ilike '%' || t.w || '%'
+-              or p.name_ur ilike '%' || t.w || '%'
+-              or b.name ilike '%' || t.w || '%'
+-              or replace(p.name_en, ' ', '') ilike '%' || t.w || '%'
++                 coalesce(p.name_en, '')   ilike '%' || t.w || '%'
++              or coalesce(p.code_name, '') ilike '%' || t.w || '%'
++              or coalesce(p.name_ur, '')   ilike '%' || t.w || '%'
++              or coalesce(b.name, '')      ilike '%' || t.w || '%'
++              or replace(coalesce(p.name_en, ''), ' ', '')   ilike '%' || t.w || '%'
+               or replace(coalesce(p.code_name, ''), ' ', '') ilike '%' || t.w || '%'
+               or exists (select 1 from product_racks pr2 join racks r2 on r2.id = pr2.rack_id
+                          where pr2.product_id = p.id and r2.code ilike '%' || t.w || '%')
