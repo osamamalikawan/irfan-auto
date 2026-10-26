@@ -2,9 +2,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import AddLocationModal from "./AddLocationModal";
 import AdjustSheet from "./AdjustSheet";
-import Toast from "./Toast";
 import { qty, rs, stockTone, toneClass } from "@/lib/format";
 import { normalizeQuery } from "@/lib/voice";
 import { useVoiceSearch, type VoiceLang } from "@/lib/useVoiceSearch";
@@ -19,6 +17,14 @@ type MetaLoc = { id: string; name: string };
 const FILTER_LABEL: Record<string, string> = { low: "Low stock", out: "Out of stock", norack: "No rack" };
 const PAGE = 30;
 
+const svg = { width: 22, height: 22, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true } as const;
+const MicIcon = () => (
+  <svg {...svg}><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" x2="12" y1="19" y2="22" /></svg>
+);
+const StopIcon = () => (
+  <svg {...svg} className="animate-pulse"><circle cx="12" cy="12" r="9" /><rect x="9" y="9" width="6" height="6" rx="1" fill="currentColor" stroke="none" /></svg>
+);
+
 export default function InventoryList({ initialFilter }: { initialFilter: string }) {
   const [q, setQ] = useState("");
   const router = useRouter();
@@ -31,8 +37,6 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [restock, setRestock] = useState<Item | null>(null);
-  const [addLoc, setAddLoc] = useState(false);
-  const [toast, setToast] = useState("");
   const req = useRef(0);
   const [vlang, setVlang] = useState<VoiceLang>("ur-PK");
   const voice = useVoiceSearch((t) => setQ(normalizeQuery(t)));
@@ -79,22 +83,13 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
   return (
     <div>
       <header className="sticky top-0 z-20 border-b border-line bg-bg px-3 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-5 lg:pb-0 lg:pt-4">
-        <div className="mb-2 flex items-center justify-between lg:hidden">
-          <div>
-            <h1 className="text-lg font-bold leading-tight">Stock</h1>
-            <span className="text-xs text-muted">{loading && !items.length ? "Loading…" : total.toLocaleString() + " items"}</span>
-          </div>
-          <button className="btn min-h-9 px-3" onClick={() => setAddLoc(true)}>＋ Location</button>
+        <div className="mb-2 flex items-baseline justify-between lg:hidden">
+          <h1 className="text-lg font-bold leading-tight">Stock</h1>
+          <span className="text-xs text-muted">{loading && !items.length ? "Loading…" : total.toLocaleString() + " items"}</span>
         </div>
-        <div className="grid grid-cols-[minmax(0,9.5rem)_1fr] gap-2 lg:flex lg:items-center">
-          <Link href="/inventory/new" className="btn btn-primary hidden lg:inline-flex">Add Product</Link>
-          <button className="btn hidden lg:inline-flex" onClick={() => setAddLoc(true)}>Add location</button>
-          <div className="hidden lg:block lg:flex-1" />
-          <select className="input lg:w-56" value={list} onChange={(e) => setList(e.target.value)} aria-label="List">
-            <option value="">All lists</option>
-            {lists.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-          </select>
-          <div className="relative lg:w-80">
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+          <Link href="/inventory/new" className="btn btn-primary hidden lg:order-1 lg:inline-flex">Add Product</Link>
+          <div className="relative order-1 w-full lg:order-3 lg:flex-1">
             <input className={"input " + (voice.supported ? "pr-28" : "pr-10")} type="text" inputMode="search" enterKeyHint="search"
               placeholder={voice.listening ? "Listening…" : "Find a part: name, Urdu, brand, code or rack"}
               value={q} onChange={(e) => setQ(e.target.value)} aria-label="Find a part" />
@@ -103,14 +98,18 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
               {voice.supported && (
                 <>
                   <button type="button" className="btn min-h-9 border-0 bg-transparent px-2 text-xs" onClick={flipLang} aria-label="Voice language">{vlang === "ur-PK" ? "اردو" : "EN"}</button>
-                  <button type="button" className={"btn min-h-9 border-0 bg-transparent px-2 text-lg " + (voice.listening ? "text-red" : "")}
+                  <button type="button" className={"btn min-h-9 border-0 bg-transparent px-2 " + (voice.listening ? "text-red" : "text-accent")}
                     onClick={() => (voice.listening ? voice.stop() : voice.start(vlang))} aria-label={voice.listening ? "Stop listening" : "Search by voice"}>
-                    {voice.listening ? "⏹" : "🎤"}
+                    {voice.listening ? <StopIcon /> : <MicIcon />}
                   </button>
                 </>
               )}
             </div>
           </div>
+          <select className="input order-2 w-full lg:w-56" value={list} onChange={(e) => setList(e.target.value)} aria-label="List">
+            <option value="">All lists</option>
+            {lists.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </select>
         </div>
         {voice.error && <p role="alert" className="mt-1 text-sm text-red">{voice.error}</p>}
         {filter !== "all" && (
@@ -213,9 +212,6 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
 
       <Link href="/inventory/new" aria-label="Add product"
         className="fixed bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] right-4 z-20 flex size-14 items-center justify-center rounded-full bg-accent text-3xl text-accent-ink shadow-lg active:opacity-80 lg:hidden">＋</Link>
-
-      {addLoc && <AddLocationModal onClose={() => setAddLoc(false)} onDone={(n) => { setAddLoc(false); setToast(n + " added"); loadMeta(); }} />}
-      {toast && <Toast msg={toast} onHide={() => setToast("")} />}
 
       {restock && (
         <AdjustSheet productId={restock.id} unit={restock.unit}

@@ -12,6 +12,9 @@ export function normalizeQuery(input: string): string {
     .normalize("NFKC")
     .toLowerCase()
     .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, "") // Urdu/Arabic diacritics
+    .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06f0)) // Urdu digits ۷۰ -> 70
+    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660)) // Arabic-Indic digits
+    .replace(/[\u200e\u200f\u202a-\u202e]/g, "")           // invisible direction marks
     .replace(/[يى]/g, "ی")
     .replace(/ك/g, "ک")
     .replace(/[أإ]/g, "ا")
