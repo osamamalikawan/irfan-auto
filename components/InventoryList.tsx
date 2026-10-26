@@ -6,6 +6,8 @@ import AddLocationModal from "./AddLocationModal";
 import AdjustSheet from "./AdjustSheet";
 import Toast from "./Toast";
 import { qty, rs, stockTone, toneClass } from "@/lib/format";
+import { normalizeQuery } from "@/lib/voice";
+import { useVoiceSearch, type VoiceLang } from "@/lib/useVoiceSearch";
 
 type Loc = { location: string; qty: number; racks: string[] };
 type Item = {
@@ -32,6 +34,16 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
   const [addLoc, setAddLoc] = useState(false);
   const [toast, setToast] = useState("");
   const req = useRef(0);
+  const [vlang, setVlang] = useState<VoiceLang>("ur-PK");
+  const voice = useVoiceSearch((t) => setQ(normalizeQuery(t)));
+  useEffect(() => {
+    try { const v = localStorage.getItem("voiceLang"); if (v === "en-IN" || v === "ur-PK") setVlang(v); } catch { /* ignore */ }
+  }, []);
+  const flipLang = () => {
+    const n: VoiceLang = vlang === "ur-PK" ? "en-IN" : "ur-PK";
+    setVlang(n);
+    try { localStorage.setItem("voiceLang", n); } catch { /* ignore */ }
+  };
 
   const loadMeta = useCallback(() => {
     fetch("/api/inventory/meta").then((r) => r.json()).then((m) => { setLists(m.lists ?? []); setLocs(m.locations ?? []); }).catch(() => {});
@@ -82,8 +94,25 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
             <option value="">All lists</option>
             {lists.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
           </select>
-          <input className="input lg:w-80" type="search" inputMode="search" placeholder="Find a part: name, Urdu, brand, code or rack" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Find a part" />
+          <div className="relative lg:w-80">
+            <input className={"input " + (voice.supported ? "pr-28" : "pr-10")} type="text" inputMode="search" enterKeyHint="search"
+              placeholder={voice.listening ? "Listening…" : "Find a part: name, Urdu, brand, code or rack"}
+              value={q} onChange={(e) => setQ(e.target.value)} aria-label="Find a part" />
+            <div className="absolute inset-y-0 right-1 flex items-center">
+              {q && <button type="button" className="btn min-h-9 border-0 bg-transparent px-2" onClick={() => setQ("")} aria-label="Clear search">✕</button>}
+              {voice.supported && (
+                <>
+                  <button type="button" className="btn min-h-9 border-0 bg-transparent px-2 text-xs" onClick={flipLang} aria-label="Voice language">{vlang === "ur-PK" ? "اردو" : "EN"}</button>
+                  <button type="button" className={"btn min-h-9 border-0 bg-transparent px-2 text-lg " + (voice.listening ? "text-red" : "")}
+                    onClick={() => (voice.listening ? voice.stop() : voice.start(vlang))} aria-label={voice.listening ? "Stop listening" : "Search by voice"}>
+                    {voice.listening ? "⏹" : "🎤"}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
         </div>
+        {voice.error && <p role="alert" className="mt-1 text-sm text-red">{voice.error}</p>}
         {filter !== "all" && (
           <button className="chip chip-on mt-2" onClick={() => router.replace("/inventory")} aria-label={"Clear filter " + FILTER_LABEL[filter]}>
             {FILTER_LABEL[filter]} ✕
