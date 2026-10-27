@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase";
+import { authorize } from "@/lib/auth";
 import { applyPlacement, ensureLocation, ensureNamed } from "@/lib/placement-db";
 import type { Placement } from "@/lib/placement";
 
@@ -8,6 +9,8 @@ export const dynamic = "force-dynamic";
 const FILTERS = ["all", "low", "out", "norack"];
 
 export async function GET(req: NextRequest) {
+  const a = await authorize("stock.view", "sales.create");
+  if (a.error) return a.error;
   const sp = req.nextUrl.searchParams;
   const filter = sp.get("filter") ?? "all";
   const limit = Math.min(Math.max(Number(sp.get("limit")) || 30, 1), 100);
@@ -25,6 +28,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const a = await authorize("stock.manage");
+  if (a.error) return a.error;
   const b = await req.json().catch(() => null);
   const name = String(b?.name_en ?? "").trim();
   if (!name) return NextResponse.json({ error: "Name is required" }, { status: 400 });

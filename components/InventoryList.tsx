@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import AdjustSheet from "./AdjustSheet";
+import { useMe } from "./Me";
 import { qty, rs, stockTone, toneClass } from "@/lib/format";
 import { normalizeQuery } from "@/lib/voice";
 import { useVoiceSearch, type VoiceLang } from "@/lib/useVoiceSearch";
@@ -28,6 +29,8 @@ const StopIcon = () => (
 export default function InventoryList({ initialFilter }: { initialFilter: string }) {
   const [q, setQ] = useState("");
   const router = useRouter();
+  const { can, canAny } = useMe();
+  const canStock = canAny(["stock.restock", "stock.adjust", "stock.manage"]);
   const filter = initialFilter;
   const [list, setList] = useState("");
   const [lists, setLists] = useState<{ id: string; name: string }[]>([]);
@@ -88,7 +91,7 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
           <span className="text-xs text-muted">{loading && !items.length ? "Loading…" : total.toLocaleString() + " items"}</span>
         </div>
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-          <Link href="/inventory/new" className="btn btn-primary hidden lg:order-1 lg:inline-flex">Add Product</Link>
+          {can("stock.manage") && <Link href="/inventory/new" className="btn btn-primary hidden lg:order-1 lg:inline-flex">Add Product</Link>}
           <div className="relative order-1 w-full lg:order-3 lg:flex-1">
             <input className={"input " + (voice.supported ? "pr-28" : "pr-10")} type="text" inputMode="search" enterKeyHint="search"
               placeholder={voice.listening ? "Listening…" : "Find a part: name, Urdu, brand, code or rack"}
@@ -188,8 +191,8 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
                     <td className="whitespace-nowrap border-b border-line px-2 py-2 text-right align-middle font-semibold">{rs(it.cp)}</td>
                     <td className="whitespace-nowrap border-b border-line px-2 py-2 text-right align-middle">
                       <Link href={"/inventory/" + it.id} className="btn min-h-8 px-2 text-[13px]">Where is it?</Link>{" "}
-                      <button className="btn min-h-8 px-2 text-[13px]" onClick={() => setRestock(it)}>Change stock</button>{" "}
-                      <Link href={"/inventory/" + it.id + "/edit"} className="btn min-h-8 px-2 text-[13px]">Edit</Link>
+                      {canStock && <><button className="btn min-h-8 px-2 text-[13px]" onClick={() => setRestock(it)}>Change stock</button>{" "}</>}
+                      {can("stock.manage") && <Link href={"/inventory/" + it.id + "/edit"} className="btn min-h-8 px-2 text-[13px]">Edit</Link>}
                     </td>
                   </tr>
                 );
@@ -210,8 +213,10 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
         )}
       </div>
 
-      <Link href="/inventory/new" aria-label="Add product"
+      {can("stock.manage") && (
+              <Link href="/inventory/new" aria-label="Add product"
         className="fixed bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] right-4 z-20 flex size-14 items-center justify-center rounded-full bg-accent text-3xl text-accent-ink shadow-lg active:opacity-80 lg:hidden">＋</Link>
+      )}
 
       {restock && (
         <AdjustSheet productId={restock.id} unit={restock.unit}

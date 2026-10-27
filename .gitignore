@@ -4,3 +4,5 @@ node_modules
 .env
 import-report.txt
 next-env.d.ts
+oracle-import-report.txt
+oracle-import-preview.json

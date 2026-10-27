@@ -1,12 +1,15 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import AddLocationModal from "./AddLocationModal";
+import { useMe } from "./Me";
 import Toast from "./Toast";
 
 type ListRow = { id: string; name: string; visible: boolean; products: number };
 type LocRow = { id: string; name: string; type: string; racks: number; active: boolean };
 
 export default function SettingsView() {
+  const { can } = useMe();
   const [lists, setLists] = useState<ListRow[] | null>(null);
   const [locs, setLocs] = useState<LocRow[] | null>(null);
   const [error, setError] = useState("");
@@ -49,6 +52,13 @@ export default function SettingsView() {
       <div className="space-y-4 p-3 lg:max-w-3xl lg:p-5">
         {error && <p className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
 
+        {can("users.manage") && (
+          <Link href="/users" className="card flex items-center justify-between p-4 active:opacity-70">
+            <span><span className="block font-semibold">Users &amp; Roles</span><span className="text-sm text-muted">Who can sign in and what they can do</span></span>
+            <span aria-hidden>›</span>
+          </Link>
+        )}
+
         <section className="card p-4">
           <div className="mb-1 flex items-center justify-between gap-2">
             <h2 className="font-semibold">Price lists</h2>
@@ -83,7 +93,7 @@ export default function SettingsView() {
         <section className="card p-4">
           <div className="mb-2 flex items-center justify-between gap-2">
             <h2 className="font-semibold">Stock locations</h2>
-            <button className="btn btn-primary min-h-9 px-3" onClick={() => setAddLoc(true)}>Add stock location</button>
+            {can("stock.manage") && <button className="btn btn-primary min-h-9 px-3" onClick={() => setAddLoc(true)}>Add stock location</button>}
           </div>
           {!locs && !error && <p className="py-3 text-sm text-muted">Loading…</p>}
           <ul className="divide-y divide-line">

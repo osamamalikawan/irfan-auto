@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase";
+import { authorize } from "@/lib/auth";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -12,6 +13,9 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   if (!b?.location_id || !Number.isFinite(q) || q === 0) return NextResponse.json({ error: "Choose a location and enter a quantity" }, { status: 400 });
   const type = b.type;
   if (!["receive", "issue", "adjust"].includes(type)) return NextResponse.json({ error: "Bad type" }, { status: 400 });
+  const a = await authorize(...(type === "receive" ? ["stock.restock", "stock.manage"] : ["stock.adjust", "stock.manage"]));
+  if (a.error) return a.error;
+  if (a.user.locationIds && !a.user.locationIds.includes(b.location_id)) return NextResponse.json({ error: "You cannot change stock at that location." }, { status: 403 });
   const signed = type === "receive" ? Math.abs(q) : type === "issue" ? -Math.abs(q) : q;
   const { data, error } = await db().rpc("adjust_stock", {
     p_product: id, p_location: b.location_id, p_qty: signed, p_type: type, p_note: String(b.note ?? "").slice(0, 200),

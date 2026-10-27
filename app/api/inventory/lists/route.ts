@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase";
+import { authorize } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 /** All price lists with product counts and visibility. */
 export async function GET() {
+  const a = await authorize("stock.view", "settings.edit");
+  if (a.error) return a.error;
   const { data, error } = await db().rpc("price_list_stats");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ lists: (data ?? []).map((l: { products: number }) => ({ ...l, products: Number(l.products) })) });
@@ -12,6 +15,8 @@ export async function GET() {
 
 /** Body: { id, visible }  or  { all: true, visible }  */
 export async function PATCH(req: NextRequest) {
+  const a = await authorize("settings.edit");
+  if (a.error) return a.error;
   const b = await req.json().catch(() => null);
   if (typeof b?.visible !== "boolean") return NextResponse.json({ error: "visible must be true or false" }, { status: 400 });
   const base = db().from("price_lists").update({ visible: b.visible });

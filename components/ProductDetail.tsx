@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import AdjustSheet from "./AdjustSheet";
+import { useMe } from "./Me";
 import { qty, rs, stockTone, toneClass } from "@/lib/format";
 
 type Detail = {
@@ -17,6 +18,8 @@ type Detail = {
 const TYPE: Record<string, string> = { opening: "Opening", receive: "Received", issue: "Issued", adjust: "Adjusted" };
 
 export default function ProductDetail({ id }: { id: string }) {
+  const { can, canAny } = useMe();
+  const canStock = canAny(["stock.restock", "stock.adjust", "stock.manage"]);
   const [d, setD] = useState<Detail | null>(null);
   const [error, setError] = useState("");
   const [sheet, setSheet] = useState<{ loc?: string } | null>(null);
@@ -44,7 +47,7 @@ export default function ProductDetail({ id }: { id: string }) {
       <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-line bg-bg px-2 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-4 lg:pt-4">
         <Link href="/inventory" className="btn border-0 bg-transparent px-3 text-xl" aria-label="Back">←</Link>
         <h1 className="min-w-0 flex-1 truncate text-base font-bold">{p.name_en}</h1>
-        <Link href={"/inventory/" + id + "/edit"} className="btn">Edit</Link>
+        {can("stock.manage") && <Link href={"/inventory/" + id + "/edit"} className="btn">Edit</Link>}
       </header>
 
       <div className="space-y-3 p-3 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0 lg:px-5">
@@ -72,7 +75,7 @@ export default function ProductDetail({ id }: { id: string }) {
         <section className="card p-4">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="font-semibold">Where it is</h2>
-            <button className="btn btn-primary min-h-9" onClick={() => setSheet({})}>Change stock</button>
+            {canStock && <button className="btn btn-primary min-h-9" onClick={() => setSheet({})}>Change stock</button>}
           </div>
           {!d.locations.length && <p className="text-sm text-muted">No location yet. Tap Edit to add one.</p>}
           <ul className="divide-y divide-line">
@@ -83,7 +86,7 @@ export default function ProductDetail({ id }: { id: string }) {
                   <p className="text-sm text-muted">{l.racks.length ? "Rack " + l.racks.join(", ") : "No rack assigned"}</p>
                 </div>
                 <span className="text-lg font-semibold">{qty(l.qty)}</span>
-                <button className="btn min-h-9 px-3" onClick={() => setSheet({ loc: l.id })} aria-label={"Change stock at " + l.name}>±</button>
+                {canStock && <button className="btn min-h-9 px-3" onClick={() => setSheet({ loc: l.id })} aria-label={"Change stock at " + l.name}>±</button>}
               </li>
             ))}
           </ul>

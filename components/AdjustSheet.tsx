@@ -1,16 +1,20 @@
 "use client";
 import { useState } from "react";
 import { qty as fmt } from "@/lib/format";
+import { useMe } from "./Me";
 
 type Loc = { id: string; name: string; qty: number };
 type Mode = "receive" | "issue" | "count";
 const MODES: [Mode, string][] = [["receive", "Receive +"], ["issue", "Issue −"], ["count", "Set count"]];
 
-export default function AdjustSheet({ productId, unit, locations, initialLocation, onClose, onDone }: {
+export default function AdjustSheet({ productId, unit, locations: allLocations, initialLocation, onClose, onDone }: {
   productId: string; unit: string; locations: Loc[]; initialLocation?: string; onClose: () => void; onDone: () => void;
 }) {
-  const [mode, setMode] = useState<Mode>("receive");
-  const [loc, setLoc] = useState(initialLocation ?? locations[0]?.id ?? "");
+  const { user, can } = useMe();
+  const locations = allLocations.filter((l) => !user.locationIds || user.locationIds.includes(l.id));
+  const modes = MODES.filter(([k]) => (k === "receive" ? can("stock.restock") || can("stock.manage") : can("stock.adjust") || can("stock.manage")));
+  const [mode, setMode] = useState<Mode>(modes[0]?.[0] ?? "receive");
+  const [loc, setLoc] = useState(initialLocation && locations.some((l) => l.id === initialLocation) ? initialLocation : locations[0]?.id ?? "");
   const [value, setValue] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -38,8 +42,8 @@ export default function AdjustSheet({ productId, unit, locations, initialLocatio
     <div className="fixed inset-0 z-50 flex items-end bg-black/50 lg:items-center" onClick={onClose}>
       <div className="mx-auto w-full max-w-2xl rounded-t-2xl bg-surface p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] lg:max-w-md lg:rounded-2xl lg:pb-4" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Change stock">
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line lg:hidden" />
-        <div className="mb-3 grid grid-cols-3 gap-2">
-          {MODES.map(([k, label]) => (
+        <div className="mb-3 grid grid-flow-col auto-cols-fr gap-2">
+          {modes.map(([k, label]) => (
             <button key={k} className={"chip justify-center " + (mode === k ? "chip-on" : "")} onClick={() => setMode(k)}>{label}</button>
           ))}
         </div>

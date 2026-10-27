@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase";
+import { authorize } from "@/lib/auth";
 import { rackCodes, rackPrefix } from "@/lib/placement";
 
 export const dynamic = "force-dynamic";
 const LOCATION_TYPES = ["Shop", "Godown", "Warehouse", "Damaged stock"];
 
 export async function GET() {
+  const a = await authorize("stock.view", "stock.manage", "users.manage", "settings.edit");
+  if (a.error) return a.error;
   const { data, error } = await db().from("locations").select("id,name,type,active,racks(count)").order("name");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -14,6 +17,8 @@ export async function GET() {
 
 /** Body: { name, type, racks (0-500), prefix? }  Same fields as the prototype's "Add stock location". */
 export async function POST(req: NextRequest) {
+  const a = await authorize("stock.manage");
+  if (a.error) return a.error;
   const b = await req.json().catch(() => null);
   const name = String(b?.name ?? "").trim().replace(/\s+/g, " ");
   if (!name) return NextResponse.json({ error: "Location name is required." }, { status: 400 });

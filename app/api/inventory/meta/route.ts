@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/supabase";
+import { authorize } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 /** Lists returned here are only the visible ones (Settings > Price lists). */
 export async function GET() {
+  const a = await authorize("stock.view", "stock.manage", "sales.create");
+  if (a.error) return a.error;
   const sb = db();
   const [lists, locations, companies, brands] = await Promise.all([
     sb.from("price_lists").select("id,name").eq("visible", true).order("name"),

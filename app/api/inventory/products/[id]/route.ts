@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase";
+import { authorize } from "@/lib/auth";
 import { applyPlacement, ensureNamed } from "@/lib/placement-db";
 import type { Placement } from "@/lib/placement";
 
@@ -7,6 +8,8 @@ export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(_req: NextRequest, { params }: Ctx) {
+  const a = await authorize("stock.view", "sales.create");
+  if (a.error) return a.error;
   const { id } = await params;
   const sb = db();
   const [prod, levels, pls, prs, moves] = await Promise.all([
@@ -42,6 +45,8 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
 }
 
 export async function PATCH(req: NextRequest, { params }: Ctx) {
+  const a = await authorize("stock.manage");
+  if (a.error) return a.error;
   const { id } = await params;
   const b = await req.json().catch(() => null);
   if (!b) return NextResponse.json({ error: "Bad request" }, { status: 400 });
