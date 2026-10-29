@@ -4,7 +4,7 @@ Mobile-first stock screens. No users or login yet (that is a later module).
 
 ## 1. Database
 1. Create a Supabase project.
-2. SQL Editor: run, in order, `0001_inventory.sql`, `0002_settings.sql` (list visibility, CP rename), `0003_search.sql` (word-by-word search) and `0004_users_roles.sql` (users, roles, PIN login).
+2. SQL Editor: run, in order, `0001_inventory.sql`, `0002_settings.sql` (list visibility, CP rename), `0003_search.sql` (word-by-word search) and `0004_users_roles.sql` (users, roles, PIN login) `0006_customers_routes.sql` (customers, cities, areas, routes) `0007_sales.sql` (invoices, payments, customer balances) and `0008_returns_money.sql` (returns, expenses, vouchers, dispatch). `0005_legacy_ids.sql` is only needed for the old-system import.
 
 ## 2. Run locally
 ```bash
@@ -58,7 +58,7 @@ Roles are lists of permissions (see `lib/permissions.ts`). Every API route check
 what a person may not use. A user can also be limited to certain locations.
 
 ## Build order for the rest of index.html
-1. Inventory (done)  2. Users & Roles + sign-in (done)  3. Customers, Routes & Areas  4. Sales, Returns, Dispatch vouchers
+1. Inventory (done)  2. Users & Roles + sign-in (done)  3. Customers, Routes & Areas (done)  4. Sales and payments (done), then Returns, Dispatch vouchers
 5. Payment vouchers, Expenses, Market purchases, Purchases & Suppliers, Accounts  6. Weekly planner, Route plans, Sales team, Dashboard
 7. Synchronization and the remaining Settings
 
@@ -68,3 +68,24 @@ See `docs/LEGACY_MAPPING.md`. Run `0005_legacy_ids.sql` first, then:
 npm run import:oracle -- path/to/dump.sql            # preview only
 npm run import:oracle -- path/to/dump.sql --apply    # write to the database
 ```
+
+## Customers and routes
+`/customers` (search, route and area filters, remarks, archive, move to another route) and `/routes` (routes with salesman,
+visit days, areas and targets; cities and areas). A salesman whose role is "own customers only" sees just the customers on
+his own routes. Opening balance and credit limit are stored now; the customer statement arrives with Sales.
+
+## Sales
+`/sales` lists invoices (today, week, month, all) and collects payments. `/sales/new` builds an invoice: pick a customer
+(or the walk-in cash customer), add parts by name, code, Urdu name or rack, and save. Saving is one database step
+(`create_sale`): stock is taken from the location sold from first (Settings > Stock locations), buy+free schemes add
+free pieces, brand and customer discounts apply by default, and the customer's balance and payment are recorded
+together. A cancelled invoice puts the stock back and reverses the ledger. Changing prices or discounts needs the
+`sales.discount` permission; cancelling needs `sales.cancel`.
+
+## Returns, dispatch, expenses and vouchers
+- `/returns`: find an invoice, choose the quantities that come back. The customer is credited, goods go back to the location
+  they came from (unless marked damaged), and the walk-in cash customer is refunded as an expense. An invoice with returns
+  cannot be cancelled.
+- `/dispatch`: warehouse pick vouchers (no prices) for the thermal roll or A4 sheets; remembers what was printed.
+- `/expenses`: money paid out by category; remove a wrong entry. Refunds from returns appear here automatically.
+- `/vouchers`: received vouchers (RV-, customer payments) and paid vouchers (PV-, expenses), each printable.

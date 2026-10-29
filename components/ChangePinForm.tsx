@@ -22,7 +22,7 @@ export default function ChangePinForm({ forced }: { forced?: boolean }) {
     const j = await r.json().catch(() => ({}));
     setBusy(false);
     if (!r.ok) return setError(j.error || "Could not change the PIN");
-    if (forced) return window.location.replace("/inventory");
+    if (forced) return window.location.replace("/");
     setDone(true); setCurrent(""); setNext(""); setAgain("");
   }
 

@@ -15,6 +15,26 @@ export default function SettingsView() {
   const [error, setError] = useState("");
   const [addLoc, setAddLoc] = useState(false);
   const [toast, setToast] = useState("");
+  const [negStock, setNegStock] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/settings").then((r) => r.json()).then((j) => setNegStock(!!j.settings?.allow_negative_stock)).catch(() => {});
+  }, []);
+  async function toggleNeg(v: boolean) {
+    setNegStock(v);
+    const r = await fetch("/api/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ allow_negative_stock: v }) });
+    if (!r.ok) { setNegStock(!v); const j = await r.json().catch(() => ({})); setToast(j.error || "Could not save"); }
+  }
+  async function move(i: number, dir: -1 | 1) {
+    if (!locs) return;
+    const k = i + dir;
+    if (k < 0 || k >= locs.length) return;
+    const next = [...locs];
+    [next[i], next[k]] = [next[k], next[i]];
+    setLocs(next);
+    const r = await fetch("/api/inventory/locations/priority", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: next.map((l) => l.id) }) });
+    if (!r.ok) { setToast("Could not save the order"); loadLocs(); }
+  }
 
   const loadLists = useCallback(async () => {
     const r = await fetch("/api/inventory/lists");
@@ -91,18 +111,29 @@ export default function SettingsView() {
         </section>
 
         <section className="card p-4">
+          <h2 className="mb-1 font-semibold">Selling</h2>
+          <label className="flex min-h-12 items-center gap-3">
+            <input type="checkbox" className="size-5" checked={negStock} onChange={(e) => toggleNeg(e.target.checked)} />
+            <span><span className="block">Allow selling more than is in stock</span><span className="block text-xs text-muted">Stock can go below zero. Leave off to refuse such invoices.</span></span>
+          </label>
+        </section>
+
+        <section className="card p-4">
           <div className="mb-2 flex items-center justify-between gap-2">
             <h2 className="font-semibold">Stock locations</h2>
             {can("stock.manage") && <button className="btn btn-primary min-h-9 px-3" onClick={() => setAddLoc(true)}>Add stock location</button>}
           </div>
+          <p className="mb-1 text-sm text-muted">Invoices take stock from the top location first, then the next. Use the arrows to change the order.</p>
           {!locs && !error && <p className="py-3 text-sm text-muted">Loading…</p>}
           <ul className="divide-y divide-line">
-            {locs?.map((l) => (
+            {locs?.map((l, i) => (
               <li key={l.id} className="flex items-center gap-3 py-2.5">
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{l.name}</p>
                   <p className="text-xs text-muted">{l.type} · {l.racks} {l.racks === 1 ? "rack" : "racks"}</p>
                 </div>
+                <button className="btn size-10 min-h-10 px-0" disabled={i === 0} onClick={() => move(i, -1)} aria-label={"Sell from " + l.name + " earlier"}>↑</button>
+                <button className="btn size-10 min-h-10 px-0" disabled={i === (locs?.length ?? 0) - 1} onClick={() => move(i, 1)} aria-label={"Sell from " + l.name + " later"}>↓</button>
               </li>
             ))}
           </ul>

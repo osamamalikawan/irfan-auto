@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMe } from "./Me";
 
-const SOON = ["Sales", "Customers", "Purchases", "Suppliers", "Accounts"];
+const SOON = ["Purchases", "Suppliers", "Accounts"];
 
 /** Desktop only (lg and up). Mirrors the original prototype's dark side menu. */
 export default function Sidebar() {
@@ -11,6 +11,13 @@ export default function Sidebar() {
   const { user, can, canAny } = useMe();
   const items = [
     { href: "/inventory", label: "Stock & Racks", show: canAny(["stock.view", "stock.transfer", "stock.adjust"]) },
+    { href: "/sales", label: "Sales", show: canAny(["sales.create", "payments.receive"]) },
+    { href: "/returns", label: "Returns", show: canAny(["sales.return", "reports.view"]) },
+    { href: "/dispatch", label: "Dispatch vouchers", show: canAny(["sales.create", "stock.view", "stock.transfer"]) },
+    { href: "/customers", label: "Customers", show: canAny(["customers.view", "customers.edit", "sales.create"]) },
+    { href: "/routes", label: "Routes & Areas", show: can("routes.manage") },
+    { href: "/expenses", label: "Expenses", show: canAny(["accounts.edit", "reports.view"]) },
+    { href: "/vouchers", label: "Payment vouchers", show: canAny(["payments.receive", "accounts.edit", "reports.view"]) },
     { href: "/users", label: "Users & Roles", show: can("users.manage") },
     { href: "/settings", label: "Settings", show: can("settings.edit") },
   ].filter((i) => i.show);

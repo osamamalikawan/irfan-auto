@@ -20,3 +20,10 @@ body{background:var(--bg);color:var(--ink);-webkit-tap-highlight-color:transpare
   .chip-on{@apply border-accent bg-accent text-accent-ink font-medium}
   .pill{@apply inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium}
 }
+
+@media print {
+  aside, nav, [data-noprint] { display: none !important; }
+  body { background: #fff !important; color: #000 !important; }
+  .card { border: 0 !important; box-shadow: none !important; }
+  header.sticky { position: static !important; }
+}

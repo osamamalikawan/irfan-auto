@@ -24,9 +24,9 @@ export default function LoginForm() {
     const j = await r.json().catch(() => ({}));
     if (!r.ok) { setBusy(false); setPin(""); return setError(j.error || "Could not sign in"); }
     try { localStorage.setItem("lastUser", userId); } catch { /* ignore */ }
-    const next = new URLSearchParams(window.location.search).get("next") || "/inventory";
+    const next = new URLSearchParams(window.location.search).get("next") || "/";
     // full navigation so the new cookie is used everywhere
-    window.location.replace(j.mustChangePin ? "/change-pin" : next.startsWith("/") && !next.startsWith("//") ? next : "/inventory");
+    window.location.replace(j.mustChangePin ? "/change-pin" : next.startsWith("/") && !next.startsWith("//") ? next : "/");
   }
 
   return (

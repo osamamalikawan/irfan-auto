@@ -9,10 +9,10 @@ const LOCATION_TYPES = ["Shop", "Godown", "Warehouse", "Damaged stock"];
 export async function GET() {
   const a = await authorize("stock.view", "stock.manage", "users.manage", "settings.edit");
   if (a.error) return a.error;
-  const { data, error } = await db().from("locations").select("id,name,type,active,racks(count)").order("name");
+  const { data, error } = await db().from("locations").select("id,name,type,active,sell_priority,racks(count)").order("sell_priority").order("name");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return NextResponse.json({ locations: (data ?? []).map((l: any) => ({ id: l.id, name: l.name, type: l.type, active: l.active, racks: l.racks?.[0]?.count ?? 0 })) });
+  return NextResponse.json({ locations: (data ?? []).map((l: any) => ({ id: l.id, name: l.name, type: l.type, active: l.active, racks: l.racks?.[0]?.count ?? 0, sell_priority: l.sell_priority })) });
 }
 
 /** Body: { name, type, racks (0-500), prefix? }  Same fields as the prototype's "Add stock location". */
