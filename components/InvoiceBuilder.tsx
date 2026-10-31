@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { qty as fmtQty, rs } from "@/lib/format";
 import CustomerPicker, { type PickedCustomer } from "./CustomerPicker";
 import { useMe } from "./Me";
+import { Loading, LoadingBar, Spinner } from "./Loading";
 
 export type Prod = { id: string; name_en: string; code_name: string | null; name_ur: string | null; unit: string; cp: number; scheme: string | null; on_hand: number; racks: string[] };
 type Line = { key: string; p: Prod; qty: string; price: string; disc: string };
@@ -96,7 +97,7 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
       <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-line bg-bg px-2 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-4 lg:pt-4">
         <Link href="/sales" className="btn border-0 bg-transparent px-3 text-xl" aria-label="Back">←</Link>
         <div className="min-w-0 flex-1"><h1 className="text-base font-bold leading-tight">New invoice</h1><p className="text-xs text-muted">Total {rs(total)}</p></div>
-        <button className="btn btn-primary" disabled={!ready} onClick={save}>{busy ? "Saving…" : "Save invoice"}</button>
+        <button className="btn btn-primary" disabled={!ready} onClick={save}>{busy ? <><Spinner /> Saving…</> : "Save invoice"}</button>
       </header>
 
       <div className="space-y-3 p-3 lg:max-w-3xl lg:px-5">
@@ -229,6 +230,7 @@ export function ProductPicker({ onAdd, inInvoice, onClose, allowNoPrice }: { onA
           <input className="input" autoFocus type="text" inputMode="search" placeholder="Name, code, Urdu name or rack" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search parts" />
           <button className="btn btn-primary shrink-0 px-4" onClick={onClose}>Done</button>
         </div>
+        <LoadingBar active={loading} className="mb-2" />
         <ul className="min-h-0 flex-1 divide-y divide-line overflow-auto">
           {rows.map((p) => {
             const n = inInvoice[p.id];
@@ -250,6 +252,7 @@ export function ProductPicker({ onAdd, inInvoice, onClose, allowNoPrice }: { onA
             );
           })}
         </ul>
+        {loading && !rows.length && !error && <Loading label={q.trim() ? "Searching…" : "Loading…"} />}
         {error && <p role="alert" className="mt-2 text-sm text-red">{error}</p>}
         {!loading && !error && !rows.length && <p className="py-4 text-center text-sm text-muted">No part matches.</p>}
       </div>

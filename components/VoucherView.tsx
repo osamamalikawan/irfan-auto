@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { niceDate } from "@/lib/dates";
 import { rs } from "@/lib/format";
+import { PageLoading } from "./Loading";
 
 type V = { no: string; type: string; title: string; date: string; party: string; code: string; amount: number; reversed: boolean; details: string; route?: string; balance_after: number | null; balance_label?: string; by: string };
 
@@ -13,7 +14,7 @@ export default function VoucherView({ type, id }: { type: string; id: string }) 
     fetch("/api/vouchers/" + type + "/" + id).then((r) => r.json()).then((j) => (j.error ? setError(j.error) : setV(j.voucher))).catch(() => setError("Could not load the voucher"));
   }, [type, id]);
   if (error) return <p className="p-4 text-red">{error} <Link href="/vouchers" className="underline">Back</Link></p>;
-  if (!v) return <p className="p-4 text-muted">Loading…</p>;
+  if (!v) return <PageLoading />;
   return (
     <div>
       <header data-noprint className="sticky top-0 z-20 flex items-center gap-2 border-b border-line bg-bg px-2 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-4 lg:pt-4">

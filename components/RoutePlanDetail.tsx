@@ -8,6 +8,7 @@ import { FREQ_LABEL, VISIT_OUTCOMES, addDays, weekdayName, type Freq } from "@/l
 import { useMe } from "./Me";
 import { CompleteModal } from "./RoutePlansView";
 import Toast from "./Toast";
+import { PageLoading, Spinner } from "./Loading";
 
 type Resp = { outcome: string; notes: string | null; promise_date: string | null; promise_amount: number | null; visit_date?: string };
 type Cust = { id: string; code: string; name: string; name_ur: string | null; owner: string | null; phone: string | null; address: string | null; area: string; balance: number; response: Resp | null; previous: Resp | null };
@@ -35,7 +36,7 @@ export default function RoutePlanDetail({ routeId, date }: { routeId: string; da
   useEffect(() => { load(); }, [load]);
 
   if (error) return <p className="p-4 text-red">{error} <Link href="/route-plans" className="underline">Back</Link></p>;
-  if (!d) return <p className="p-4 text-muted">Loading…</p>;
+  if (!d) return <PageLoading />;
   const canRespond = can("visits.record") && date <= today && date >= addDays(today, -31);
   const canComplete = (can("routes.manage") || can("visits.record")) && d.status !== "completed" && date <= today;
   const responded = d.customers.filter((c) => c.response).length;
@@ -142,7 +143,7 @@ function ResponseForm({ customerId, date, onDone }: { customerId: string; date: 
         <div><label className="label" htmlFor={"pa" + customerId}>Promised amount (Rs)</label><input id={"pa" + customerId} className="input" type="number" inputMode="decimal" min="0" value={pAmt} onChange={(e) => setPAmt(e.target.value)} /></div>
       </div>
       {error && <p role="alert" className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
-      <button className="btn btn-primary w-full" disabled={busy}>{busy ? "Saving…" : "Save response"}</button>
+      <button className="btn btn-primary w-full" disabled={busy}>{busy ? <><Spinner /> Saving…</> : "Save response"}</button>
     </form>
   );
 }

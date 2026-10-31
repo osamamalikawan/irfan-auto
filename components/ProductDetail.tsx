@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import AdjustSheet from "./AdjustSheet";
 import { useMe } from "./Me";
 import { qty, rs, stockTone, toneClass } from "@/lib/format";
+import { PageLoading } from "./Loading";
 
 type Detail = {
   product: {
@@ -36,7 +37,7 @@ export default function ProductDetail({ id }: { id: string }) {
   useEffect(() => { fetch("/api/inventory/meta").then((r) => r.json()).then((m) => setAllLocs(m.locations ?? [])).catch(() => {}); }, []);
 
   if (error) return <p className="p-4 text-red">{error} <Link href="/inventory" className="underline">Back</Link></p>;
-  if (!d) return <p className="p-4 text-muted">Loading…</p>;
+  if (!d) return <PageLoading />;
   const p = d.product;
   const tone = stockTone(d.onHand, Number(p.reorder_level));
   // locations the sheet can pick: the product's own, plus any other location (to receive stock somewhere new)

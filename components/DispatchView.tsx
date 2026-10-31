@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { monthStart, niceDate, todayPk, weekStart } from "@/lib/dates";
+import { Loading } from "./Loading";
 
 type D = { id: string; no: string; sale_date: string; customer_id: string; customer_name: string; dispatch_count: number; place: string; items: number; pieces: number };
 const RANGES = [["today", "Today"], ["week", "This week"], ["month", "This month"], ["all", "All"]] as const;
@@ -48,7 +49,7 @@ export default function DispatchView() {
       <div className="p-3 lg:px-5">
         <p className="mb-2 text-sm text-muted">Print a single voucher for the thermal printer, or tick several and print them on A4 sheets. Choose the right printer in the print window.</p>
         {error && <p className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
-        {!items && !error && <p className="text-sm text-muted">Loading…</p>}
+        {!items && !error && <Loading />}
         {items && !items.length && <p className="text-sm text-muted">No invoices match. Change the dates or the filter.</p>}
         <ul className="grid gap-2 lg:grid-cols-2">
           {items?.map((s) => (

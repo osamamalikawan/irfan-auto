@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { monthStart, niceDate, todayPk, weekStart } from "@/lib/dates";
 import { rs } from "@/lib/format";
+import { Loading } from "./Loading";
 
 type V = { key: string; no: string; type: "received" | "paid"; date: string; party: string; amount: number; reversed: boolean; details: string };
 const RANGES = [["today", "Today"], ["week", "This week"], ["month", "This month"], ["all", "All"]] as const;
@@ -48,7 +49,7 @@ export default function VouchersView() {
           ))}
         </div>
         {error && <p className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
-        {!items && !error && <p className="text-sm text-muted">Loading…</p>}
+        {!items && !error && <Loading />}
         {items && !items.length && <p className="text-sm text-muted">No vouchers for these dates.</p>}
         <ul className="grid gap-2 lg:grid-cols-2">
           {items?.map((v) => (

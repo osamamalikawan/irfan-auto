@@ -1,0 +1,1213 @@
+diff --git a/app/account/loading.tsx b/app/account/loading.tsx
+new file mode 100644
+index 0000000..72e73ab
+--- /dev/null
++++ b/app/account/loading.tsx
+@@ -0,0 +1 @@
++export { PageLoading as default } from "@/components/Loading";
+diff --git a/app/accounts/loading.tsx b/app/accounts/loading.tsx
+new file mode 100644
+index 0000000..72e73ab
+--- /dev/null
++++ b/app/accounts/loading.tsx
+@@ -0,0 +1 @@
++export { PageLoading as default } from "@/components/Loading";
+diff --git a/app/customers/loading.tsx b/app/customers/loading.tsx
+new file mode 100644
+index 0000000..72e73ab
+--- /dev/null
++++ b/app/customers/loading.tsx
+@@ -0,0 +1 @@
++export { PageLoading as default } from "@/components/Loading";
+diff --git a/app/dispatch/loading.tsx b/app/dispatch/loading.tsx
+new file mode 100644
+index 0000000..72e73ab
+--- /dev/null
++++ b/app/dispatch/loading.tsx
+@@ -0,0 +1 @@
++export { PageLoading as default } from "@/components/Loading";
+diff --git a/app/expenses/loading.tsx b/app/expenses/loading.tsx
+new file mode 100644
+index 0000000..72e73ab
+--- /dev/null
++++ b/app/expenses/loading.tsx
+@@ -0,0 +1 @@
++export { PageLoading as default } from "@/components/Loading";
+diff --git a/app/globals.css b/app/globals.css
+index 223bf5a..80325ab 100644
+--- a/app/globals.css
++++ b/app/globals.css
+@@ -19,10 +19,16 @@ body{background:var(--bg);color:var(--ink);-webkit-tap-highlight-color:transpare
+   .chip{@apply inline-flex min-h-9 shrink-0 items-center rounded-full border border-line bg-surface px-3 text-sm active:opacity-70}
+   .chip-on{@apply border-accent bg-accent text-accent-ink font-medium}
+   .pill{@apply inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium}
++  .spinner{@apply inline-block size-4 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent align-[-0.15em]}
++  .loadbar{@apply relative h-0.5 overflow-hidden rounded-full}
++  .loadbar-on{@apply bg-line}
++  .loadbar-on::after{content:"";position:absolute;top:0;bottom:0;width:40%;background:var(--accent);animation:ia-bar 1s ease-in-out infinite}
+ }
++@keyframes ia-bar{0%{left:-40%}100%{left:100%}}
++@media (prefers-reduced-motion: reduce){.spinner{animation-duration:2s}.loadbar-on::after{animation-duration:2.5s}}
+ 
+ @media print {
+-  aside, nav, [data-noprint] { display: none !important; }
++  aside, nav, [data-noprint], .loadbar { display: none !important; }
+   body { background: #fff !important; color: #000 !important; }
+   .card { border: 0 !important; box-shadow: none !important; }
+   header.sticky { position: static !important; }
+diff --git a/app/inventory/loading.tsx b/app/inventory/loading.tsx
+new file mode 100644
+index 0000000..72e73ab
+--- /dev/null
++++ b/app/inventory/loading.tsx
+@@ -0,0 +1 @@
++export { PageLoading as default } from "@/components/Loading";
+diff --git a/app/planner/loading.tsx b/app/planner/loading.tsx
+new file mode 100644
+index 0000000..72e73ab
+--- /dev/null
++++ b/app/planner/loading.tsx
+@@ -0,0 +1 @@
++export { PageLoading as default } from "@/components/Loading";
+diff --git a/app/purchases/loading.tsx b/app/purchases/loading.tsx
+new file mode 100644
+index 0000000..72e73ab
+--- /dev/null
++++ b/app/purchases/loading.tsx
+@@ -0,0 +1 @@
++export { PageLoading as default } from "@/components/Loading";
+diff --git a/app/returns/loading.tsx b/app/returns/loading.tsx
+new file mode 100644
+index 0000000..72e73ab
+--- /dev/null
++++ b/app/returns/loading.tsx
+@@ -0,0 +1 @@
++export { PageLoading as default } from "@/components/Loading";
+diff --git a/app/route-plans/loading.tsx b/app/route-plans/loading.tsx
+new file mode 100644
+index 0000000..72e73ab
+--- /dev/null
++++ b/app/route-plans/loading.tsx
+@@ -0,0 +1 @@
++export { PageLoading as default } from "@/components/Loading";
+diff --git a/app/routes/loading.tsx b/app/routes/loading.tsx
+new file mode 100644
+index 0000000..72e73ab
+--- /dev/null
++++ b/app/routes/loading.tsx
+@@ -0,0 +1 @@
++export { PageLoading as default } from "@/components/Loading";
+diff --git a/app/sales/loading.tsx b/app/sales/loading.tsx
+new file mode 100644
+index 0000000..72e73ab
+--- /dev/null
++++ b/app/sales/loading.tsx
+@@ -0,0 +1 @@
++export { PageLoading as default } from "@/components/Loading";
+diff --git a/app/settings/loading.tsx b/app/settings/loading.tsx
+new file mode 100644
+index 0000000..72e73ab
+--- /dev/null
++++ b/app/settings/loading.tsx
+@@ -0,0 +1 @@
++export { PageLoading as default } from "@/components/Loading";
+diff --git a/app/suppliers/loading.tsx b/app/suppliers/loading.tsx
+new file mode 100644
+index 0000000..72e73ab
+--- /dev/null
++++ b/app/suppliers/loading.tsx
+@@ -0,0 +1 @@
++export { PageLoading as default } from "@/components/Loading";
+diff --git a/app/users/loading.tsx b/app/users/loading.tsx
+new file mode 100644
+index 0000000..72e73ab
+--- /dev/null
++++ b/app/users/loading.tsx
+@@ -0,0 +1 @@
++export { PageLoading as default } from "@/components/Loading";
+diff --git a/app/vouchers/loading.tsx b/app/vouchers/loading.tsx
+new file mode 100644
+index 0000000..72e73ab
+--- /dev/null
++++ b/app/vouchers/loading.tsx
+@@ -0,0 +1 @@
++export { PageLoading as default } from "@/components/Loading";
+diff --git a/components/AccountsView.tsx b/components/AccountsView.tsx
+index 7886ec6..a2cf2c2 100644
+--- a/components/AccountsView.tsx
++++ b/components/AccountsView.tsx
+@@ -3,6 +3,7 @@ import Link from "next/link";
+ import { useCallback, useEffect, useState } from "react";
+ import { monthStart, niceDate, todayPk, weekStart } from "@/lib/dates";
+ import { rs } from "@/lib/format";
++import { Loading } from "./Loading";
+ 
+ type Data = {
+   summary: { sales: number; returns: number; collected: number; purchases: number; supplier_paid: number; expenses: number; receivable: number; payable: number };
+@@ -55,7 +56,7 @@ export default function AccountsView() {
+       </header>
+       <div className="space-y-3 p-3 lg:px-5">
+         {error && <p className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+-        {!d && !error && <p className="text-sm text-muted">Loading…</p>}
++        {!d && !error && <Loading />}
+         {s && (
+           <>
+             <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+diff --git a/components/AddLocationModal.tsx b/components/AddLocationModal.tsx
+index 6996920..b85b992 100644
+--- a/components/AddLocationModal.tsx
++++ b/components/AddLocationModal.tsx
+@@ -1,6 +1,7 @@
+ "use client";
+ import { useState } from "react";
+ import { rackCodes, rackPrefix } from "@/lib/placement";
++import { Spinner } from "./Loading";
+ 
+ const TYPES = ["Shop", "Godown", "Warehouse", "Damaged stock"];
+ 
+@@ -65,7 +66,7 @@ export default function AddLocationModal({ onClose, onDone }: { onClose: () => v
+ 
+         <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end">
+           <button type="button" className="btn" onClick={onClose}>Cancel</button>
+-          <button className="btn btn-primary" disabled={busy || !name.trim()}>{busy ? "Adding…" : "Add location"}</button>
++          <button className="btn btn-primary" disabled={busy || !name.trim()}>{busy ? <><Spinner /> Adding…</> : "Add location"}</button>
+         </div>
+       </form>
+     </div>
+diff --git a/components/AdjustSheet.tsx b/components/AdjustSheet.tsx
+index 57d5262..a79545e 100644
+--- a/components/AdjustSheet.tsx
++++ b/components/AdjustSheet.tsx
+@@ -2,6 +2,7 @@
+ import { useState } from "react";
+ import { qty as fmt } from "@/lib/format";
+ import { useMe } from "./Me";
++import { Spinner } from "./Loading";
+ 
+ type Loc = { id: string; name: string; qty: number };
+ type Mode = "receive" | "issue" | "count";
+@@ -60,7 +61,7 @@ export default function AdjustSheet({ productId, unit, locations: allLocations,
+         {error && <p className="mb-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+         <div className="grid grid-cols-2 gap-2">
+           <button className="btn" onClick={onClose}>Cancel</button>
+-          <button className="btn btn-primary" disabled={!valid || busy} onClick={save}>{busy ? "Saving…" : "Save"}</button>
++          <button className="btn btn-primary" disabled={!valid || busy} onClick={save}>{busy ? <><Spinner /> Saving…</> : "Save"}</button>
+         </div>
+       </div>
+     </div>
+diff --git a/components/ChangePinForm.tsx b/components/ChangePinForm.tsx
+index 185b095..ef40c88 100644
+--- a/components/ChangePinForm.tsx
++++ b/components/ChangePinForm.tsx
+@@ -1,6 +1,7 @@
+ "use client";
+ import { useState } from "react";
+ import { pinError } from "@/lib/pin";
++import { Spinner } from "./Loading";
+ 
+ export default function ChangePinForm({ forced }: { forced?: boolean }) {
+   const [current, setCurrent] = useState("");
+@@ -35,7 +36,7 @@ export default function ChangePinForm({ forced }: { forced?: boolean }) {
+       <div><label className="label" htmlFor="cp-again">New PIN again</label><input id="cp-again" className={field} type="password" inputMode="numeric" maxLength={8} required value={again} onChange={digits(setAgain)} /></div>
+       {error && <p role="alert" className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+       {done && <p role="status" className="rounded-lg bg-green-bg p-2 text-sm text-green">PIN changed.</p>}
+-      <button className="btn btn-primary w-full" disabled={busy || current.length < 4 || next.length < 4}>{busy ? "Saving…" : "Change PIN"}</button>
++      <button className="btn btn-primary w-full" disabled={busy || current.length < 4 || next.length < 4}>{busy ? <><Spinner /> Saving…</> : "Change PIN"}</button>
+     </form>
+   );
+ }
+diff --git a/components/CollectModal.tsx b/components/CollectModal.tsx
+index c12b49b..4b1512b 100644
+--- a/components/CollectModal.tsx
++++ b/components/CollectModal.tsx
+@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
+ import { spreadPayment } from "@/lib/bills";
+ import { rs } from "@/lib/format";
+ import CustomerPicker, { type PickedCustomer } from "./CustomerPicker";
++import { Loading, Spinner } from "./Loading";
+ 
+ type Ledger = { balance: number; unpaid: { no: string; due: number }[] };
+ 
+@@ -41,7 +42,7 @@ export default function CollectModal({ customer: given, onClose, onDone }: { cus
+         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line lg:hidden" />
+         <h2 className="text-base font-semibold">Collect payment</h2>
+         <p className="mb-3 text-sm text-muted">{customer.name}{!given && <button className="ml-2 underline" onClick={() => setCustomer(null)}>change</button>}</p>
+-        {!led && !error && <p className="text-sm text-muted">Loading…</p>}
++        {!led && !error && <Loading />}
+         {led && (
+           <>
+             <p className="text-sm text-muted">Outstanding balance</p>
+@@ -64,7 +65,7 @@ export default function CollectModal({ customer: given, onClose, onDone }: { cus
+         {error && <p role="alert" className="mt-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+         <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end">
+           <button className="btn" onClick={onClose}>Cancel</button>
+-          <button className="btn btn-primary" disabled={!valid || busy} onClick={save}>{busy ? "Saving…" : "Receive"}</button>
++          <button className="btn btn-primary" disabled={!valid || busy} onClick={save}>{busy ? <><Spinner /> Saving…</> : "Receive"}</button>
+         </div>
+       </div>
+     </div>
+diff --git a/components/CustomerDetail.tsx b/components/CustomerDetail.tsx
+index c08c34b..61fa801 100644
+--- a/components/CustomerDetail.tsx
++++ b/components/CustomerDetail.tsx
+@@ -8,6 +8,7 @@ import VisitHistory from "./VisitHistory";
+ import { MoveModal } from "./CustomersList";
+ import { useMe } from "./Me";
+ import Toast from "./Toast";
++import { PageLoading, Spinner } from "./Loading";
+ 
+ type Detail = {
+   customer: {
+@@ -63,7 +64,7 @@ export default function CustomerDetail({ id }: { id: string }) {
+   }
+ 
+   if (error) return <p className="p-4 text-red">{error} <Link href="/customers" className="underline">Back</Link></p>;
+-  if (!d) return <p className="p-4 text-muted">Loading…</p>;
++  if (!d) return <PageLoading />;
+   const c = d.customer;
+   const place = [c.area?.name, c.area?.city?.name].filter(Boolean).join(", ");
+   const phones = [c.phone, c.phone2].filter(Boolean) as string[];
+@@ -128,7 +129,7 @@ export default function CustomerDetail({ id }: { id: string }) {
+           {canRemark && (
+             <form onSubmit={addRemark} className="mb-3 space-y-2">
+               <textarea className="input min-h-20 py-2" rows={2} maxLength={500} placeholder="e.g. pays on Fridays, call before visiting" value={text} onChange={(e) => setText(e.target.value)} aria-label="New remark" />
+-              <button className="btn btn-primary w-full" disabled={busy || !text.trim()}>{busy ? "Saving…" : "Add remark"}</button>
++              <button className="btn btn-primary w-full" disabled={busy || !text.trim()}>{busy ? <><Spinner /> Saving…</> : "Add remark"}</button>
+             </form>
+           )}
+           {!d.remarks.length && <p className="text-sm text-muted">No remarks yet.</p>}
+diff --git a/components/CustomerForm.tsx b/components/CustomerForm.tsx
+index 3c267f9..68d08c7 100644
+--- a/components/CustomerForm.tsx
++++ b/components/CustomerForm.tsx
+@@ -3,6 +3,7 @@ import Link from "next/link";
+ import { useRouter } from "next/navigation";
+ import { useEffect, useState } from "react";
+ import { useMe } from "./Me";
++import { Loading, Spinner } from "./Loading";
+ 
+ type City = { id: string; name: string; areas: { id: string; name: string }[] };
+ 
+@@ -52,10 +53,11 @@ export default function CustomerForm({ id }: { id?: string }) {
+       <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-line bg-bg px-2 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-4 lg:pt-4">
+         <Link href={id ? "/customers/" + id : "/customers"} className="btn border-0 bg-transparent px-3 text-xl" aria-label="Cancel">←</Link>
+         <h1 className="flex-1 text-base font-bold">{id ? "Edit customer" : "New customer"}</h1>
+-        <button className="btn btn-primary" disabled={busy || !loaded || !f.name.trim() || (!id && !full && !f.route_id)}>{busy ? "Saving…" : "Save"}</button>
++        <button className="btn btn-primary" disabled={busy || !loaded || !f.name.trim() || (!id && !full && !f.route_id)}>{busy ? <><Spinner /> Saving…</> : "Save"}</button>
+       </header>
+ 
+       <div className="space-y-4 p-3 lg:px-5">
++        {!loaded && !error && <Loading />}
+         {error && <p role="alert" className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+         <section className="card space-y-3 p-4">
+           {L("Business name *", "c-name", <input id="c-name" className="input" required value={f.name} onChange={set("name")} />)}
+diff --git a/components/CustomerPicker.tsx b/components/CustomerPicker.tsx
+index 5c8b84e..aeb39c4 100644
+--- a/components/CustomerPicker.tsx
++++ b/components/CustomerPicker.tsx
+@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
+ import { rs } from "@/lib/format";
+ import { canAddCustomer, hasPerm } from "@/lib/permissions";
+ import { useMe } from "./Me";
++import { Loading, LoadingBar, Spinner } from "./Loading";
+ 
+ export type PickedCustomer = { id: string; name: string; is_walk_in?: boolean };
+ type Row = { id: string; code: string; name: string; owner: string | null; phone: string | null; balance: number; route: { name: string } | null };
+@@ -51,6 +52,7 @@ export default function CustomerPicker({ onPick, onClose, allowWalkIn, allowAdd,
+           <input className="input" autoFocus type="text" inputMode="search" placeholder="Search name, phone or code" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search customers" />
+           <button className="btn px-3" onClick={onClose} aria-label="Close">✕</button>
+         </div>
++        <LoadingBar active={loading} className="mb-2" />
+         {allowAdd && canAddCustomer(user) && (
+           <button className="btn mb-2 w-full justify-start gap-2" onClick={() => setAdding(true)}>＋ Add new customer{q.trim() ? ": " + q.trim() : ""}</button>
+         )}
+@@ -72,6 +74,7 @@ export default function CustomerPicker({ onPick, onClose, allowWalkIn, allowAdd,
+             </li>
+           ))}
+         </ul>
++        {loading && !rows.length && !error && <Loading label={q.trim() ? "Searching…" : "Loading…"} />}
+         {error && <p role="alert" className="mt-2 text-sm text-red">{error}</p>}
+         {!loading && !error && !rows.length && <p className="py-4 text-center text-sm text-muted">{onlyWithBalance ? "No customer with a balance matches." : "No customer matches."}</p>}
+       </div>
+@@ -146,7 +149,7 @@ function QuickAdd({ startName, mustPickRoute, onBack, onClose, onCreated }: {
+         {error && <p role="alert" className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+         <div className="grid grid-cols-2 gap-2 lg:flex lg:justify-end">
+           <button type="button" className="btn" onClick={onBack}>Cancel</button>
+-          <button className="btn btn-primary" disabled={busy || !name.trim() || (mustPickRoute && !routeId)}>{busy ? "Saving…" : "Save and use"}</button>
++          <button className="btn btn-primary" disabled={busy || !name.trim() || (mustPickRoute && !routeId)}>{busy ? <><Spinner /> Saving…</> : "Save and use"}</button>
+         </div>
+       </form>
+     </div>
+diff --git a/components/CustomersList.tsx b/components/CustomersList.tsx
+index d5fba81..25e7536 100644
+--- a/components/CustomersList.tsx
++++ b/components/CustomersList.tsx
+@@ -6,6 +6,7 @@ import { telLink } from "@/lib/phone";
+ import { canAddCustomer } from "@/lib/permissions";
+ import { useMe } from "./Me";
+ import Toast from "./Toast";
++import { ListSkeleton, LoadingBar, Spinner } from "./Loading";
+ 
+ type Customer = {
+   id: string; code: string; name: string; name_ur: string | null; owner: string | null; phone: string | null; credit_limit: number; balance: number; last_remark: string | null;
+@@ -74,7 +75,7 @@ export default function CustomersList() {
+       <header className="sticky top-0 z-20 border-b border-line bg-bg px-3 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-5 lg:pb-0 lg:pt-4">
+         <div className="mb-2 flex items-baseline justify-between lg:hidden">
+           <h1 className="text-lg font-bold leading-tight">Customers</h1>
+-          <span className="text-xs text-muted">{loading && !items.length ? "Loading…" : total.toLocaleString() + (status === "archived" ? " archived" : " customers")}</span>
++          <span className="text-xs text-muted">{loading && !items.length ? <><Spinner /> Loading…</> : total.toLocaleString() + (status === "archived" ? " archived" : " customers")}</span>
+         </div>
+         <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+           {canAddCustomer(user) && status === "active" && <Link href="/customers/new" className="btn btn-primary hidden lg:order-1 lg:inline-flex">Add customer</Link>}
+@@ -98,7 +99,9 @@ export default function CustomersList() {
+           <button className={"chip " + (status === "active" ? "chip-on" : "")} onClick={() => setStatus("active")}>Active</button>
+           <button className={"chip " + (status === "archived" ? "chip-on" : "")} onClick={() => setStatus("archived")}>Archived</button>
+         </div>
++        <LoadingBar active={loading} className="mt-2" />
+       </header>
++      {loading && !items.length && !error && <ListSkeleton />}
+ 
+       {status === "archived" && <p className="mx-3 mt-2 rounded-lg bg-amber-bg p-2 text-sm text-amber lg:mx-5">Archived customers keep their history. They stay out of invoices and route plans until made active again.</p>}
+ 
+@@ -178,7 +181,7 @@ export default function CustomersList() {
+         {!loading && !error && !items.length && <p>No customers match these filters.</p>}
+         {items.length < total && (
+           <button className="btn w-full lg:w-auto" disabled={loading} onClick={() => load(items.length)}>
+-            {loading ? "Loading…" : "Load more (" + (total - items.length).toLocaleString() + " left)"}
++            {loading ? <><Spinner /> Loading…</> : "Load more (" + (total - items.length).toLocaleString() + " left)"}
+           </button>
+         )}
+       </div>
+@@ -221,7 +224,7 @@ export function MoveModal({ ids, routes, onClose, onDone }: { ids: string[]; rou
+         {error && <p role="alert" className="mt-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+         <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end">
+           <button className="btn" onClick={onClose}>Cancel</button>
+-          <button className="btn btn-primary" disabled={busy || !routeId} onClick={go}>{busy ? "Moving…" : "Move"}</button>
++          <button className="btn btn-primary" disabled={busy || !routeId} onClick={go}>{busy ? <><Spinner /> Moving…</> : "Move"}</button>
+         </div>
+       </div>
+     </div>
+diff --git a/components/DispatchView.tsx b/components/DispatchView.tsx
+index 8f93e9e..b1abb9c 100644
+--- a/components/DispatchView.tsx
++++ b/components/DispatchView.tsx
+@@ -2,6 +2,7 @@
+ import Link from "next/link";
+ import { useCallback, useEffect, useState } from "react";
+ import { monthStart, niceDate, todayPk, weekStart } from "@/lib/dates";
++import { Loading } from "./Loading";
+ 
+ type D = { id: string; no: string; sale_date: string; customer_id: string; customer_name: string; dispatch_count: number; place: string; items: number; pieces: number };
+ const RANGES = [["today", "Today"], ["week", "This week"], ["month", "This month"], ["all", "All"]] as const;
+@@ -48,7 +49,7 @@ export default function DispatchView() {
+       <div className="p-3 lg:px-5">
+         <p className="mb-2 text-sm text-muted">Print a single voucher for the thermal printer, or tick several and print them on A4 sheets. Choose the right printer in the print window.</p>
+         {error && <p className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+-        {!items && !error && <p className="text-sm text-muted">Loading…</p>}
++        {!items && !error && <Loading />}
+         {items && !items.length && <p className="text-sm text-muted">No invoices match. Change the dates or the filter.</p>}
+         <ul className="grid gap-2 lg:grid-cols-2">
+           {items?.map((s) => (
+diff --git a/components/ExpensesView.tsx b/components/ExpensesView.tsx
+index b684dfc..8de1950 100644
+--- a/components/ExpensesView.tsx
++++ b/components/ExpensesView.tsx
+@@ -5,6 +5,7 @@ import { EXPENSE_CATEGORIES } from "@/lib/expense";
+ import { rs } from "@/lib/format";
+ import { useMe } from "./Me";
+ import Toast from "./Toast";
++import { Loading, Spinner } from "./Loading";
+ 
+ type Exp = { id: string; no: number; expense_date: string; amount: number; category: string; note: string | null; ref_type: string | null; route: string };
+ const RANGES = [["today", "Today"], ["week", "This week"], ["month", "This month"], ["all", "All"]] as const;
+@@ -66,7 +67,7 @@ export default function ExpensesView() {
+           ))}
+         </div>
+         {error && <p className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+-        {!items && !error && <p className="text-sm text-muted">Loading…</p>}
++        {!items && !error && <Loading />}
+         {items && !items.length && <p className="text-sm text-muted">No expenses for these dates.</p>}
+         <ul className="grid gap-2 lg:grid-cols-2">
+           {items?.map((e) => (
+@@ -119,7 +120,7 @@ function AddExpense({ onClose, onDone }: { onClose: () => void; onDone: () => vo
+           <div><label className="label" htmlFor="ex-note">Details</label><input id="ex-note" className="input" maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} /></div>
+         </div>
+         {error && <p role="alert" className="mt-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+-        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end"><button type="button" className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={busy || !(Number(amount) > 0)}>{busy ? "Saving…" : "Add"}</button></div>
++        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end"><button type="button" className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={busy || !(Number(amount) > 0)}>{busy ? <><Spinner /> Saving…</> : "Add"}</button></div>
+       </form>
+     </div>
+   );
+diff --git a/components/InventoryList.tsx b/components/InventoryList.tsx
+index fde8bf1..5a0ac6e 100644
+--- a/components/InventoryList.tsx
++++ b/components/InventoryList.tsx
+@@ -7,6 +7,7 @@ import { useMe } from "./Me";
+ import { qty, rs, stockTone, toneClass } from "@/lib/format";
+ import { normalizeQuery } from "@/lib/voice";
+ import { useVoiceSearch, type VoiceLang } from "@/lib/useVoiceSearch";
++import { ListSkeleton, LoadingBar, Spinner } from "./Loading";
+ 
+ type Loc = { location: string; qty: number; racks: string[] };
+ type Item = {
+@@ -88,7 +89,7 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
+       <header className="sticky top-0 z-20 border-b border-line bg-bg px-3 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-5 lg:pb-0 lg:pt-4">
+         <div className="mb-2 flex items-baseline justify-between lg:hidden">
+           <h1 className="text-lg font-bold leading-tight">Stock</h1>
+-          <span className="text-xs text-muted">{loading && !items.length ? "Loading…" : total.toLocaleString() + " items"}</span>
++          <span className="text-xs text-muted">{loading && !items.length ? <><Spinner /> Loading…</> : total.toLocaleString() + " items"}</span>
+         </div>
+         <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+           {can("stock.manage") && <Link href="/inventory/new" className="btn btn-primary hidden lg:order-1 lg:inline-flex">Add Product</Link>}
+@@ -120,7 +121,9 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
+             {FILTER_LABEL[filter]} ✕
+           </button>
+         )}
++        <LoadingBar active={loading} className="mt-2" />
+       </header>
++      {loading && !items.length && !error && <ListSkeleton />}
+ 
+       {/* ---------- phone: cards ---------- */}
+       <ul className="space-y-2 p-3 lg:hidden">
+@@ -208,7 +211,7 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
+         {!loading && !error && !items.length && <p>No part matches. Try a name, Urdu name, brand, code or rack number.</p>}
+         {items.length < total && (
+           <button className="btn w-full lg:w-auto" disabled={loading} onClick={() => load(items.length)}>
+-            {loading ? "Loading…" : "Load more (" + (total - items.length).toLocaleString() + " left)"}
++            {loading ? <><Spinner /> Loading…</> : "Load more (" + (total - items.length).toLocaleString() + " left)"}
+           </button>
+         )}
+       </div>
+diff --git a/components/InvoiceBuilder.tsx b/components/InvoiceBuilder.tsx
+index 3580bfd..c98d9db 100644
+--- a/components/InvoiceBuilder.tsx
++++ b/components/InvoiceBuilder.tsx
+@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
+ import { qty as fmtQty, rs } from "@/lib/format";
+ import CustomerPicker, { type PickedCustomer } from "./CustomerPicker";
+ import { useMe } from "./Me";
++import { Loading, LoadingBar, Spinner } from "./Loading";
+ 
+ export type Prod = { id: string; name_en: string; code_name: string | null; name_ur: string | null; unit: string; cp: number; scheme: string | null; on_hand: number; racks: string[] };
+ type Line = { key: string; p: Prod; qty: string; price: string; disc: string };
+@@ -96,7 +97,7 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string })
+       <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-line bg-bg px-2 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-4 lg:pt-4">
+         <Link href="/sales" className="btn border-0 bg-transparent px-3 text-xl" aria-label="Back">←</Link>
+         <div className="min-w-0 flex-1"><h1 className="text-base font-bold leading-tight">New invoice</h1><p className="text-xs text-muted">Total {rs(total)}</p></div>
+-        <button className="btn btn-primary" disabled={!ready} onClick={save}>{busy ? "Saving…" : "Save invoice"}</button>
++        <button className="btn btn-primary" disabled={!ready} onClick={save}>{busy ? <><Spinner /> Saving…</> : "Save invoice"}</button>
+       </header>
+ 
+       <div className="space-y-3 p-3 lg:max-w-3xl lg:px-5">
+@@ -229,6 +230,7 @@ export function ProductPicker({ onAdd, inInvoice, onClose, allowNoPrice }: { onA
+           <input className="input" autoFocus type="text" inputMode="search" placeholder="Name, code, Urdu name or rack" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search parts" />
+           <button className="btn btn-primary shrink-0 px-4" onClick={onClose}>Done</button>
+         </div>
++        <LoadingBar active={loading} className="mb-2" />
+         <ul className="min-h-0 flex-1 divide-y divide-line overflow-auto">
+           {rows.map((p) => {
+             const n = inInvoice[p.id];
+@@ -250,6 +252,7 @@ export function ProductPicker({ onAdd, inInvoice, onClose, allowNoPrice }: { onA
+             );
+           })}
+         </ul>
++        {loading && !rows.length && !error && <Loading label={q.trim() ? "Searching…" : "Loading…"} />}
+         {error && <p role="alert" className="mt-2 text-sm text-red">{error}</p>}
+         {!loading && !error && !rows.length && <p className="py-4 text-center text-sm text-muted">No part matches.</p>}
+       </div>
+diff --git a/components/InvoiceView.tsx b/components/InvoiceView.tsx
+index c23017f..3444ad9 100644
+--- a/components/InvoiceView.tsx
++++ b/components/InvoiceView.tsx
+@@ -7,6 +7,7 @@ import CollectModal from "./CollectModal";
+ import { useMe } from "./Me";
+ import { saleState } from "./SalesList";
+ import Toast from "./Toast";
++import { PageLoading } from "./Loading";
+ 
+ type Item = {
+   id: string; name: string; code_name: string | null; name_ur: string | null; unit: string; qty: number; free: number; price: number; disc_pct: number; line_disc: number;
+@@ -45,7 +46,7 @@ export default function InvoiceView({ id }: { id: string }) {
+   }
+ 
+   if (error) return <p className="p-4 text-red">{error} <Link href="/sales" className="underline">Back</Link></p>;
+-  if (!d) return <p className="p-4 text-muted">Loading…</p>;
++  if (!d) return <PageLoading />;
+   const { sale: s, customer: c } = d;
+   const st = saleState(s);
+   const due = s.status === "confirmed" ? Number(s.total) - Number(s.paid) : 0;
+diff --git a/components/Loading.tsx b/components/Loading.tsx
+new file mode 100644
+index 0000000..8d583df
+--- /dev/null
++++ b/components/Loading.tsx
+@@ -0,0 +1,45 @@
++/* Shared loading indicators: spinner, inline "Loading…" row, thin progress bar, list skeleton and a full page placeholder. */
++
++export function Spinner({ className = "" }: { className?: string }) {
++  return <span aria-hidden className={"spinner " + className} />;
++}
++
++/** Spinner with a label, for a panel or section that is waiting for data. */
++export function Loading({ label = "Loading…", className = "" }: { label?: string; className?: string }) {
++  return (
++    <div role="status" aria-live="polite" className={"flex items-center justify-center gap-2 py-6 text-sm text-muted " + className}>
++      <Spinner />{label}
++    </div>
++  );
++}
++
++/** Thin animated line. Always takes its 2px of space so the layout does not jump when it turns on. */
++export function LoadingBar({ active, className = "" }: { active: boolean; className?: string }) {
++  return <div className={"loadbar " + (active ? "loadbar-on " : "") + className} role={active ? "progressbar" : undefined} aria-label={active ? "Loading" : undefined} aria-hidden={active ? undefined : true} />;
++}
++
++/** Grey placeholder cards shown while the first page of a list loads. */
++export function ListSkeleton({ rows = 6 }: { rows?: number }) {
++  return (
++    <ul className="space-y-2 p-3 lg:px-5" role="status" aria-busy="true" aria-label="Loading">
++      {Array.from({ length: rows }, (_, i) => (
++        <li key={i} className="card animate-pulse p-3">
++          <div className="h-4 w-2/3 rounded bg-line" />
++          <div className="mt-2 h-3 w-1/2 rounded bg-line" />
++          <div className="mt-2 h-3 w-1/3 rounded bg-line" />
++        </li>
++      ))}
++    </ul>
++  );
++}
++
++/** Whole page placeholder: used by the route loading.tsx files and by detail screens waiting for their data. */
++export function PageLoading() {
++  return (
++    <div role="status" aria-busy="true" aria-label="Loading">
++      <div className="px-3 pt-4 lg:px-5"><div className="h-6 w-40 animate-pulse rounded bg-line" /></div>
++      <ListSkeleton rows={5} />
++      <Loading />
++    </div>
++  );
++}
+diff --git a/components/LoginForm.tsx b/components/LoginForm.tsx
+index c4d861e..cf43caf 100644
+--- a/components/LoginForm.tsx
++++ b/components/LoginForm.tsx
+@@ -1,5 +1,6 @@
+ "use client";
+ import { useEffect, useState } from "react";
++import { Spinner } from "./Loading";
+ 
+ export default function LoginForm() {
+   const [users, setUsers] = useState<{ id: string; name: string }[] | null>(null);
+@@ -50,7 +51,7 @@ export default function LoginForm() {
+             pattern="[0-9]*" maxLength={8} required value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} />
+         </div>
+         {error && <p role="alert" className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+-        <button className="btn btn-primary w-full" disabled={busy || !userId || pin.length < 4}>{busy ? "Signing in…" : "Sign in"}</button>
++        <button className="btn btn-primary w-full" disabled={busy || !userId || pin.length < 4}>{busy ? <><Spinner /> Signing in…</> : "Sign in"}</button>
+       </form>
+     </main>
+   );
+diff --git a/components/NavProgress.tsx b/components/NavProgress.tsx
+new file mode 100644
+index 0000000..ed7221f
+--- /dev/null
++++ b/components/NavProgress.tsx
+@@ -0,0 +1,36 @@
++"use client";
++import { usePathname, useSearchParams } from "next/navigation";
++import { useEffect, useState } from "react";
++
++/** Thin bar across the top that starts the moment an in-app link is tapped and stops when the new page arrives. */
++export default function NavProgress() {
++  const path = usePathname();
++  const search = useSearchParams().toString();
++  const [busy, setBusy] = useState(false);
++
++  useEffect(() => { setBusy(false); }, [path, search]);
++
++  useEffect(() => {
++    function onClick(e: MouseEvent) {
++      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
++      const a = (e.target as Element | null)?.closest?.("a");
++      if (!(a instanceof HTMLAnchorElement)) return;
++      if ((a.target && a.target !== "_self") || a.hasAttribute("download")) return;
++      const u = new URL(a.href, location.href);
++      if (u.origin !== location.origin) return;
++      if (u.pathname === location.pathname && u.search === location.search) return;
++      setBusy(true);
++    }
++    document.addEventListener("click", onClick);
++    return () => document.removeEventListener("click", onClick);
++  }, []);
++
++  useEffect(() => {
++    if (!busy) return;
++    const t = setTimeout(() => setBusy(false), 15000); // never leave the bar stuck
++    return () => clearTimeout(t);
++  }, [busy]);
++
++  if (!busy) return null;
++  return <div data-noprint className="loadbar loadbar-on fixed inset-x-0 top-0 z-[60]" role="progressbar" aria-label="Loading page" />;
++}
+diff --git a/components/PaySupplierModal.tsx b/components/PaySupplierModal.tsx
+index d5c189c..8940cea 100644
+--- a/components/PaySupplierModal.tsx
++++ b/components/PaySupplierModal.tsx
+@@ -1,6 +1,7 @@
+ "use client";
+ import { useState } from "react";
+ import { rs } from "@/lib/format";
++import { Spinner } from "./Loading";
+ 
+ const METHODS = [["cash", "Cash"], ["bank", "Bank"], ["cheque", "Cheque"]] as const;
+ 
+@@ -40,7 +41,7 @@ export default function PaySupplierModal({ supplier, balance, onClose, onDone }:
+         {method !== "cash" && <input className="input mt-2" placeholder={method === "cheque" ? "Cheque number" : "Bank reference"} maxLength={60} value={ref} onChange={(e) => setRef(e.target.value)} aria-label="Reference" />}
+         <input className="input mt-2" placeholder="Note (optional)" maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} aria-label="Note" />
+         {error && <p role="alert" className="mt-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+-        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end"><button className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={!(n > 0) || busy} onClick={save}>{busy ? "Saving…" : "Pay"}</button></div>
++        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end"><button className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={!(n > 0) || busy} onClick={save}>{busy ? <><Spinner /> Saving…</> : "Pay"}</button></div>
+       </div>
+     </div>
+   );
+diff --git a/components/PlannerView.tsx b/components/PlannerView.tsx
+index a66d219..12d582b 100644
+--- a/components/PlannerView.tsx
++++ b/components/PlannerView.tsx
+@@ -6,6 +6,7 @@ import { DAYS } from "@/lib/days";
+ import { FREQ_LABEL, MONTH_WEEKS, VISIT_OUTCOMES, describeSchedule, isVisitDate, monthDates, monthGrid, monthLabel, shiftMonth, weekdayName, type Freq, type Sched } from "@/lib/schedule";
+ import { useMe } from "./Me";
+ import Toast from "./Toast";
++import { Loading, Spinner } from "./Loading";
+ 
+ type PRoute = Sched & { id: string; name: string; code: string | null; salesman: { id: string; name: string } | null; customers: number };
+ type Coverage = { areasNoRoute: { id: string; name: string; city: string; customers: number }[]; customersNoRoute: { total: number; sample: { id: string; name: string }[] } } | null;
+@@ -95,7 +96,7 @@ export default function PlannerView() {
+         <section className="card p-4">
+           <h2 className="font-semibold">{weekdayName(sel)} {niceDate(sel)}{sel === today ? " · today" : ""}</h2>
+           {day && <p className="mb-2 text-sm text-muted">{day.length ? day.length + " route" + (day.length === 1 ? "" : "s") + " · " + done + " of " + total + " customers visited" : "No route is planned for this day."}</p>}
+-          {!day && !error && <p className="text-sm text-muted">Loading…</p>}
++          {!day && !error && <Loading />}
+           {sel > today && day && day.length > 0 && <p className="mb-2 rounded-lg bg-bg p-2 text-xs text-muted">This day is in the future. Visits can be recorded on the day itself.</p>}
+           <div className="space-y-4">
+             {day?.map((r) => (
+@@ -120,7 +121,7 @@ export default function PlannerView() {
+ 
+         <section className="card p-4 lg:col-span-2">
+           <div className="mb-2 flex items-center gap-2"><h2 className="flex-1 font-semibold">Route schedules</h2>{can("routes.manage") && <Link href="/routes" className="btn min-h-9 px-3">Manage routes</Link>}</div>
+-          {!routes && !error && <p className="text-sm text-muted">Loading…</p>}
++          {!routes && !error && <Loading />}
+           {routes && !routes.length && <p className="text-sm text-muted">No routes yet. Add routes in Routes &amp; Areas.</p>}
+           <ul className="grid gap-2 lg:grid-cols-2">
+             {routes?.map((r) => {
+@@ -190,7 +191,7 @@ function VisitModal({ customer, onClose, onDone }: { customer: { id: string; nam
+         <label className="label mt-3" htmlFor="vs-notes">Notes (optional)</label>
+         <textarea id="vs-notes" className="input min-h-16 py-2" rows={2} maxLength={300} value={notes} onChange={(e) => setNotes(e.target.value)} />
+         {error && <p role="alert" className="mt-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+-        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end"><button type="button" className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={busy}>{busy ? "Saving…" : "Save visit"}</button></div>
++        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end"><button type="button" className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={busy}>{busy ? <><Spinner /> Saving…</> : "Save visit"}</button></div>
+       </form>
+     </div>
+   );
+@@ -236,7 +237,7 @@ function ScheduleModal({ route, ym, onClose, onSaved }: { route: PRoute; ym: str
+         )}
+         <p className="mt-3 rounded-lg bg-bg p-2 text-sm">{days.length ? (dates.length ? monthLabel(ym).split(" ")[0] + " visits: " + dates.map((d) => weekdayName(d) + " " + +d.slice(8, 10)).join(", ") : "No visits in " + monthLabel(ym) + ".") : "Choose at least one visit day."}</p>
+         {error && <p role="alert" className="mt-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+-        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end"><button className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={busy || (freq === "fortnightly" && !cycle)} onClick={save}>{busy ? "Saving…" : "Save schedule"}</button></div>
++        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end"><button className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={busy || (freq === "fortnightly" && !cycle)} onClick={save}>{busy ? <><Spinner /> Saving…</> : "Save schedule"}</button></div>
+       </div>
+     </div>
+   );
+diff --git a/components/ProductDetail.tsx b/components/ProductDetail.tsx
+index 2549ff2..501039c 100644
+--- a/components/ProductDetail.tsx
++++ b/components/ProductDetail.tsx
+@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
+ import AdjustSheet from "./AdjustSheet";
+ import { useMe } from "./Me";
+ import { qty, rs, stockTone, toneClass } from "@/lib/format";
++import { PageLoading } from "./Loading";
+ 
+ type Detail = {
+   product: {
+@@ -36,7 +37,7 @@ export default function ProductDetail({ id }: { id: string }) {
+   useEffect(() => { fetch("/api/inventory/meta").then((r) => r.json()).then((m) => setAllLocs(m.locations ?? [])).catch(() => {}); }, []);
+ 
+   if (error) return <p className="p-4 text-red">{error} <Link href="/inventory" className="underline">Back</Link></p>;
+-  if (!d) return <p className="p-4 text-muted">Loading…</p>;
++  if (!d) return <PageLoading />;
+   const p = d.product;
+   const tone = stockTone(d.onHand, Number(p.reorder_level));
+   // locations the sheet can pick: the product's own, plus any other location (to receive stock somewhere new)
+diff --git a/components/ProductForm.tsx b/components/ProductForm.tsx
+index f9fe104..b9a59b0 100644
+--- a/components/ProductForm.tsx
++++ b/components/ProductForm.tsx
+@@ -2,6 +2,7 @@
+ import Link from "next/link";
+ import { useRouter } from "next/navigation";
+ import { useEffect, useState } from "react";
++import { Loading, Spinner } from "./Loading";
+ 
+ type Row = { location: string; racks: string };
+ type Meta = { lists: { id: string; name: string }[]; locations: { id: string; name: string }[]; companies: string[]; brands: string[] };
+@@ -54,10 +55,11 @@ export default function ProductForm({ id }: { id?: string }) {
+       <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-line bg-bg px-2 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-4 lg:pt-4">
+         <Link href={id ? "/inventory/" + id : "/inventory"} className="btn border-0 bg-transparent px-3 text-xl" aria-label="Cancel">←</Link>
+         <h1 className="flex-1 text-base font-bold">{id ? "Edit product" : "New product"}</h1>
+-        <button className="btn btn-primary" disabled={busy || !loaded || !f.name_en.trim()}>{busy ? "Saving…" : "Save"}</button>
++        <button className="btn btn-primary" disabled={busy || !loaded || !f.name_en.trim()}>{busy ? <><Spinner /> Saving…</> : "Save"}</button>
+       </header>
+ 
+       <div className="space-y-4 p-3 lg:px-5">
++        {!loaded && !error && <Loading />}
+         {error && <p className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+ 
+         <section className="card space-y-3 p-4">
+diff --git a/components/PurchaseBuilder.tsx b/components/PurchaseBuilder.tsx
+index bb727f4..55daf87 100644
+--- a/components/PurchaseBuilder.tsx
++++ b/components/PurchaseBuilder.tsx
+@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
+ import { rs } from "@/lib/format";
+ import { todayPk } from "@/lib/dates";
+ import { ProductPicker, type Prod } from "./InvoiceBuilder";
++import { Spinner } from "./Loading";
+ 
+ type Line = { key: string; p: Prod; qty: string; free: string; cost: string; disc: string };
+ type Sup = { id: string; name: string; balance: number };
+@@ -89,7 +90,7 @@ export default function PurchaseBuilder({ supplierId }: { supplierId?: string })
+       <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-line bg-bg px-2 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-4 lg:pt-4">
+         <Link href="/purchases" className="btn border-0 bg-transparent px-3 text-xl" aria-label="Back">←</Link>
+         <div className="min-w-0 flex-1"><h1 className="text-base font-bold leading-tight">New purchase</h1><p className="text-xs text-muted">Total {rs(total)}</p></div>
+-        <button className="btn btn-primary" disabled={!ready} onClick={save}>{busy ? "Saving…" : "Save purchase"}</button>
++        <button className="btn btn-primary" disabled={!ready} onClick={save}>{busy ? <><Spinner /> Saving…</> : "Save purchase"}</button>
+       </header>
+       <div className="space-y-3 p-3 lg:max-w-3xl lg:px-5">
+         {error && <p role="alert" className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+diff --git a/components/PurchaseView.tsx b/components/PurchaseView.tsx
+index 4280194..805b3d6 100644
+--- a/components/PurchaseView.tsx
++++ b/components/PurchaseView.tsx
+@@ -6,6 +6,7 @@ import { qty as fmtQty, rs } from "@/lib/format";
+ import { useMe } from "./Me";
+ import PaySupplierModal from "./PaySupplierModal";
+ import Toast from "./Toast";
++import { PageLoading } from "./Loading";
+ 
+ type Detail = {
+   purchase: { id: string; no: string; purchase_date: string; supplier_id: string; supplier_name: string; supplier_inv_no: string | null; supplier_inv_date: string | null; discount: number; line_discount: number; freight: number; total: number; paid: number; remarks: string | null; status: string };
+@@ -47,7 +48,7 @@ export default function PurchaseView({ id }: { id: string }) {
+   }
+ 
+   if (error) return <p className="p-4 text-red">{error} <Link href="/purchases" className="underline">Back</Link></p>;
+-  if (!d) return <p className="p-4 text-muted">Loading…</p>;
++  if (!d) return <PageLoading />;
+   const { purchase: p } = d;
+   const due = p.status === "confirmed" ? Number(p.total) - Number(p.paid) : 0;
+ 
+diff --git a/components/PurchasesList.tsx b/components/PurchasesList.tsx
+index 9f32582..0fdf404 100644
+--- a/components/PurchasesList.tsx
++++ b/components/PurchasesList.tsx
+@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
+ import { monthStart, niceDate, todayPk, weekStart } from "@/lib/dates";
+ import { rs } from "@/lib/format";
+ import { useMe } from "./Me";
++import { ListSkeleton, LoadingBar, Spinner } from "./Loading";
+ 
+ type P = { id: string; no: string; purchase_date: string; supplier_name: string; supplier_inv_no: string | null; total: number; paid: number; status: string; items: number };
+ const RANGES = [["today", "Today"], ["week", "This week"], ["month", "This month"], ["all", "All"]] as const;
+@@ -52,7 +53,9 @@ export default function PurchasesList() {
+         <div className="-mx-3 mt-2 flex gap-2 overflow-x-auto px-3 pb-1 lg:mx-0 lg:mt-3 lg:px-0">
+           {RANGES.map(([k, label]) => <button key={k} className={"chip " + (range === k ? "chip-on" : "")} onClick={() => setRange(k)}>{label}</button>)}
+         </div>
++        <LoadingBar active={loading} className="mt-2" />
+       </header>
++      {loading && !items.length && !error && <ListSkeleton />}
+       <div className="p-3 lg:px-5">
+         {items.length > 0 && <p className="mb-2 text-sm text-muted">Shown: <b className="text-ink">{rs(sum)}</b> in confirmed purchases</p>}
+         <ul className="grid gap-2 lg:grid-cols-2">
+@@ -69,7 +72,7 @@ export default function PurchasesList() {
+         </ul>
+         {error && <p className="mt-2 text-center text-red">{error} <button className="underline" onClick={() => load(0)}>Retry</button></p>}
+         {!loading && !error && !items.length && <p className="py-4 text-center text-sm text-muted">No purchases in this period.</p>}
+-        {items.length < total && <div className="mt-3 text-center"><button className="btn" disabled={loading} onClick={() => load(items.length)}>{loading ? "Loading…" : "Load more"}</button></div>}
++        {items.length < total && <div className="mt-3 text-center"><button className="btn" disabled={loading} onClick={() => load(items.length)}>{loading ? <><Spinner /> Loading…</> : "Load more"}</button></div>}
+       </div>
+     </div>
+   );
+diff --git a/components/ReturnsView.tsx b/components/ReturnsView.tsx
+index ab6b03e..a6c1487 100644
+--- a/components/ReturnsView.tsx
++++ b/components/ReturnsView.tsx
+@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
+ import { niceDate } from "@/lib/dates";
+ import { qty as fmtQty, rs } from "@/lib/format";
+ import Toast from "./Toast";
++import { Spinner } from "./Loading";
+ 
+ type Found = { id: string; no: string; customer_name: string; total: number; sale_date: string };
+ type Item = { id: string; name: string; sold: number; returned: number; remaining: number; net_unit: number };
+@@ -107,7 +108,7 @@ export default function ReturnsView() {
+               <p className="mt-3 text-lg font-bold">Credit to customer: {rs(credit)}</p>
+               {tooMuch && <p className="text-sm text-red">A quantity is more than is left to return.</p>}
+               {error && <p role="alert" className="mt-2 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+-              <button className="btn btn-primary mt-3 w-full" disabled={busy || !lines.length || tooMuch} onClick={save}>{busy ? "Saving…" : "Record return"}</button>
++              <button className="btn btn-primary mt-3 w-full" disabled={busy || !lines.length || tooMuch} onClick={save}>{busy ? <><Spinner /> Saving…</> : "Record return"}</button>
+             </>
+           )}
+           {!sale && error && <p role="alert" className="mt-2 text-sm text-red">{error}</p>}
+diff --git a/components/RoutePlanDetail.tsx b/components/RoutePlanDetail.tsx
+index 363d3c0..a0137f5 100644
+--- a/components/RoutePlanDetail.tsx
++++ b/components/RoutePlanDetail.tsx
+@@ -8,6 +8,7 @@ import { FREQ_LABEL, VISIT_OUTCOMES, addDays, weekdayName, type Freq } from "@/l
+ import { useMe } from "./Me";
+ import { CompleteModal } from "./RoutePlansView";
+ import Toast from "./Toast";
++import { PageLoading, Spinner } from "./Loading";
+ 
+ type Resp = { outcome: string; notes: string | null; promise_date: string | null; promise_amount: number | null; visit_date?: string };
+ type Cust = { id: string; code: string; name: string; name_ur: string | null; owner: string | null; phone: string | null; address: string | null; area: string; balance: number; response: Resp | null; previous: Resp | null };
+@@ -35,7 +36,7 @@ export default function RoutePlanDetail({ routeId, date }: { routeId: string; da
+   useEffect(() => { load(); }, [load]);
+ 
+   if (error) return <p className="p-4 text-red">{error} <Link href="/route-plans" className="underline">Back</Link></p>;
+-  if (!d) return <p className="p-4 text-muted">Loading…</p>;
++  if (!d) return <PageLoading />;
+   const canRespond = can("visits.record") && date <= today && date >= addDays(today, -31);
+   const canComplete = (can("routes.manage") || can("visits.record")) && d.status !== "completed" && date <= today;
+   const responded = d.customers.filter((c) => c.response).length;
+@@ -142,7 +143,7 @@ function ResponseForm({ customerId, date, onDone }: { customerId: string; date:
+         <div><label className="label" htmlFor={"pa" + customerId}>Promised amount (Rs)</label><input id={"pa" + customerId} className="input" type="number" inputMode="decimal" min="0" value={pAmt} onChange={(e) => setPAmt(e.target.value)} /></div>
+       </div>
+       {error && <p role="alert" className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+-      <button className="btn btn-primary w-full" disabled={busy}>{busy ? "Saving…" : "Save response"}</button>
++      <button className="btn btn-primary w-full" disabled={busy}>{busy ? <><Spinner /> Saving…</> : "Save response"}</button>
+     </form>
+   );
+ }
+diff --git a/components/RoutePlansView.tsx b/components/RoutePlansView.tsx
+index 2b14449..b47f91a 100644
+--- a/components/RoutePlansView.tsx
++++ b/components/RoutePlansView.tsx
+@@ -6,6 +6,7 @@ import { rs } from "@/lib/format";
+ import { FREQ_LABEL, addDays, daysInMonth, weekdayName, type Freq } from "@/lib/schedule";
+ import { useMe } from "./Me";
+ import Toast from "./Toast";
++import { Loading, Spinner } from "./Loading";
+ 
+ type Entry = { key: string; date: string; route_id: string; name: string; code: string | null; frequency: Freq; salesman: string; planned: number; fuel_cost: number; areas: string[]; status: "planned" | "overdue" | "completed"; run_id: string | null };
+ type Run = { id: string; route_id: string; date: string; route: string; code: string; salesman: string; planned: number; visited: number; productive: number; sales: number; collections: number; fuel: number; note: string | null };
+@@ -85,7 +86,7 @@ export default function RoutePlansView() {
+               {tile("Routes still to do", String(todo.length))}{tile("Overdue", String(over), over > 0)}
+               {tile("Customers to visit", String(todo.reduce((x, e) => x + e.planned, 0)))}{tile("Estimated fuel", rs(todo.reduce((x, e) => x + e.fuel_cost, 0)))}
+             </div>
+-            {!entries && !error && <p className="text-sm text-muted">Loading…</p>}
++            {!entries && !error && <Loading />}
+             {entries && !todo.length && <p className="text-sm text-muted">No planned routes in these dates, or all are completed. Routes follow their schedule in the Monthly planner.</p>}
+             <ul className="grid gap-2 lg:grid-cols-2">
+               {todo.map((e) => (
+@@ -113,7 +114,7 @@ export default function RoutePlansView() {
+             <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
+               {tile("Routes completed", String(runs?.length ?? 0))}{tile("Customers visited", String(sum("visited")))}{tile("Sales", rs(sum("sales")))}{tile("Collections", rs(sum("collections")))}{tile("Fuel cost", rs(sum("fuel")))}
+             </div>
+-            {!runs && !error && <p className="text-sm text-muted">Loading…</p>}
++            {!runs && !error && <Loading />}
+             {runs && !runs.length && <p className="text-sm text-muted">No completed routes in these dates.</p>}
+             <ul className="grid gap-2 lg:grid-cols-2">
+               {runs?.map((r) => (
+@@ -174,7 +175,7 @@ export function CompleteModal({ routeId, name, date, fuel, onClose, onDone }: {
+         <label className="label mt-3" htmlFor="cr-note">Note (optional)</label>
+         <input id="cr-note" className="input" maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} />
+         {error && <p role="alert" className="mt-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+-        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end"><button className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={busy} onClick={save}>{busy ? "Saving…" : "Complete route"}</button></div>
++        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end"><button className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={busy} onClick={save}>{busy ? <><Spinner /> Saving…</> : "Complete route"}</button></div>
+       </div>
+     </div>
+   );
+diff --git a/components/RoutesView.tsx b/components/RoutesView.tsx
+index 94ce8cd..26d518d 100644
+--- a/components/RoutesView.tsx
++++ b/components/RoutesView.tsx
+@@ -5,6 +5,7 @@ import { todayPk } from "@/lib/dates";
+ import { rs } from "@/lib/format";
+ import { FREQ_LABEL, MONTH_WEEKS, describeSchedule, type Freq } from "@/lib/schedule";
+ import Toast from "./Toast";
++import { Loading, Spinner } from "./Loading";
+ 
+ type Area = { id: string; name: string; customers: number; route_ids: string[] };
+ type City = { id: string; name: string; areas: Area[] };
+@@ -72,7 +73,7 @@ export default function RoutesView() {
+ 
+       <div className="p-3 lg:p-5">
+         {error && <p className="mb-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+-        {!routes && !error && <p className="text-sm text-muted">Loading…</p>}
++        {!routes && !error && <Loading />}
+ 
+         {tab === "routes" && routes && (
+           <>
+@@ -171,7 +172,7 @@ function NameModal({ title, label, cities, onClose, onSave, onDone }: {
+         {error && <p role="alert" className="mt-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+         <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end">
+           <button type="button" className="btn" onClick={onClose}>Cancel</button>
+-          <button className="btn btn-primary" disabled={busy || !name.trim() || (!!cities && !cityId)}>{busy ? "Saving…" : "Add"}</button>
++          <button className="btn btn-primary" disabled={busy || !name.trim() || (!!cities && !cityId)}>{busy ? <><Spinner /> Saving…</> : "Add"}</button>
+         </div>
+       </form>
+     </div>
+@@ -281,7 +282,7 @@ function RouteForm({ route, salesmen, cities, lists, onClose, onSaved }: {
+         {error && <p role="alert" className="mt-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+         <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end">
+           <button type="button" className="btn" onClick={onClose}>Cancel</button>
+-          <button className="btn btn-primary" disabled={busy || !name.trim()}>{busy ? "Saving…" : "Save"}</button>
++          <button className="btn btn-primary" disabled={busy || !name.trim()}>{busy ? <><Spinner /> Saving…</> : "Save"}</button>
+         </div>
+       </form>
+     </div>
+diff --git a/components/SalesList.tsx b/components/SalesList.tsx
+index 350eeed..0bf07d1 100644
+--- a/components/SalesList.tsx
++++ b/components/SalesList.tsx
+@@ -6,6 +6,7 @@ import { rs } from "@/lib/format";
+ import CollectModal from "./CollectModal";
+ import { useMe } from "./Me";
+ import Toast from "./Toast";
++import { ListSkeleton, LoadingBar, Spinner } from "./Loading";
+ 
+ type Sale = { id: string; no: string; sale_date: string; customer_name: string; total: number; paid: number; status: string; items: number };
+ const RANGES = [["today", "Today"], ["week", "This week"], ["month", "This month"], ["all", "All"]] as const;
+@@ -58,7 +59,7 @@ export default function SalesList() {
+       <header className="sticky top-0 z-20 border-b border-line bg-bg px-3 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-5 lg:pb-0 lg:pt-4">
+         <div className="mb-2 flex items-baseline justify-between lg:hidden">
+           <h1 className="text-lg font-bold leading-tight">Sales</h1>
+-          <span className="text-xs text-muted">{loading && !items.length ? "Loading…" : total.toLocaleString() + " invoices"}</span>
++          <span className="text-xs text-muted">{loading && !items.length ? <><Spinner /> Loading…</> : total.toLocaleString() + " invoices"}</span>
+         </div>
+         <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+           <div className="flex gap-2 lg:order-1">
+@@ -73,7 +74,9 @@ export default function SalesList() {
+         <div className="-mx-3 mt-2 flex gap-2 overflow-x-auto px-3 pb-1 lg:mx-0 lg:mt-3 lg:px-0">
+           {RANGES.map(([k, label]) => <button key={k} className={"chip " + (range === k ? "chip-on" : "")} onClick={() => setRange(k)}>{label}</button>)}
+         </div>
++        <LoadingBar active={loading} className="mt-2" />
+       </header>
++      {loading && !items.length && !error && <ListSkeleton />}
+ 
+       {items.length > 0 && <p className="px-3 pt-2 text-sm text-muted lg:px-5">Shown: <b className="text-ink">{rs(sum)}</b> in {items.filter((s) => s.status === "confirmed").length} confirmed invoices</p>}
+ 
+@@ -127,7 +130,7 @@ export default function SalesList() {
+       <div className="px-3 pb-6 text-center text-sm text-muted lg:px-5 lg:pt-3">
+         {error && <p className="mb-2 text-red">{error} <button className="underline" onClick={() => load(0)}>Retry</button></p>}
+         {!loading && !error && !items.length && <p>No invoices in this period.</p>}
+-        {items.length < total && <button className="btn w-full lg:w-auto" disabled={loading} onClick={() => load(items.length)}>{loading ? "Loading…" : "Load more (" + (total - items.length) + " left)"}</button>}
++        {items.length < total && <button className="btn w-full lg:w-auto" disabled={loading} onClick={() => load(items.length)}>{loading ? <><Spinner /> Loading…</> : "Load more (" + (total - items.length) + " left)"}</button>}
+       </div>
+ 
+       {collect && <CollectModal onClose={() => setCollect(false)} onDone={(m) => { setCollect(false); setToast(m); load(0); }} />}
+diff --git a/components/SettingsView.tsx b/components/SettingsView.tsx
+index 1c0534e..ec7ec23 100644
+--- a/components/SettingsView.tsx
++++ b/components/SettingsView.tsx
+@@ -4,6 +4,7 @@ import Link from "next/link";
+ import AddLocationModal from "./AddLocationModal";
+ import { useMe } from "./Me";
+ import Toast from "./Toast";
++import { Loading } from "./Loading";
+ 
+ type ListRow = { id: string; name: string; visible: boolean; products: number };
+ type LocRow = { id: string; name: string; type: string; racks: number; active: boolean };
+@@ -91,7 +92,7 @@ export default function SettingsView() {
+             Choose which lists appear on the Stock screen. Hidden lists are only left out of view; nothing is deleted.
+             {lists ? " " + hidden + " of " + lists.length + " hidden." : ""}
+           </p>
+-          {!lists && !error && <p className="py-3 text-sm text-muted">Loading…</p>}
++          {!lists && !error && <Loading />}
+           <ul className="divide-y divide-line">
+             {lists?.map((l) => (
+               <li key={l.id} className="flex min-h-14 items-center gap-3 py-2">
+@@ -124,7 +125,7 @@ export default function SettingsView() {
+             {can("stock.manage") && <button className="btn btn-primary min-h-9 px-3" onClick={() => setAddLoc(true)}>Add stock location</button>}
+           </div>
+           <p className="mb-1 text-sm text-muted">Invoices take stock from the top location first, then the next. Use the arrows to change the order.</p>
+-          {!locs && !error && <p className="py-3 text-sm text-muted">Loading…</p>}
++          {!locs && !error && <Loading />}
+           <ul className="divide-y divide-line">
+             {locs?.map((l, i) => (
+               <li key={l.id} className="flex items-center gap-3 py-2.5">
+diff --git a/components/Shell.tsx b/components/Shell.tsx
+index a77ad53..1ffa69e 100644
+--- a/components/Shell.tsx
++++ b/components/Shell.tsx
+@@ -3,6 +3,7 @@ import { getUser } from "@/lib/auth";
+ import BottomNav from "./BottomNav";
+ import { MeProvider } from "./Me";
+ import Sidebar from "./Sidebar";
++import NavProgress from "./NavProgress";
+ import Topbar from "./Topbar";
+ import { Suspense } from "react";
+ 
+@@ -14,6 +15,9 @@ export default async function Shell({ children }: { children: React.ReactNode })
+   return (
+     <MeProvider user={user}>
+       <div className="lg:flex lg:min-h-dvh">
++        <Suspense fallback={null}>
++          <NavProgress />
++        </Suspense>
+         <Sidebar />
+         <div className="mx-auto min-h-dvh w-full max-w-2xl pb-[calc(env(safe-area-inset-bottom)+4.5rem)] lg:mx-0 lg:min-w-0 lg:max-w-none lg:flex-1 lg:pb-10">
+           <Topbar />
+diff --git a/components/SupplierDetail.tsx b/components/SupplierDetail.tsx
+index 294f383..fd8f8e5 100644
+--- a/components/SupplierDetail.tsx
++++ b/components/SupplierDetail.tsx
+@@ -9,6 +9,7 @@ import PaySupplierModal from "./PaySupplierModal";
+ import StatementTable, { type Statement } from "./StatementTable";
+ import SupplierForm, { type SupplierRow } from "./SupplierForm";
+ import Toast from "./Toast";
++import { PageLoading } from "./Loading";
+ 
+ type Detail = { supplier: SupplierRow & { code: string; status: string; balance: number }; purchases: { id: string; no: string; purchase_date: string; total: number; paid: number; status: string; supplier_inv_no: string | null }[] };
+ 
+@@ -48,7 +49,7 @@ export default function SupplierDetail({ id }: { id: string }) {
+   }
+ 
+   if (error) return <p className="p-4 text-red">{error} <Link href="/suppliers" className="underline">Back</Link></p>;
+-  if (!d) return <p className="p-4 text-muted">Loading…</p>;
++  if (!d) return <PageLoading />;
+   const s = d.supplier;
+   const phones = [s.phone, s.phone2].filter(Boolean) as string[];
+ 
+diff --git a/components/SupplierForm.tsx b/components/SupplierForm.tsx
+index ae0a762..46583ff 100644
+--- a/components/SupplierForm.tsx
++++ b/components/SupplierForm.tsx
+@@ -1,5 +1,6 @@
+ "use client";
+ import { useState } from "react";
++import { Spinner } from "./Loading";
+ 
+ export type SupplierRow = { id: string; name: string; name_ur: string | null; contact: string | null; phone: string | null; phone2: string | null; address: string | null; city: string | null; ntn: string | null; email: string | null; notes: string | null; credit_days: number };
+ 
+@@ -50,7 +51,7 @@ export default function SupplierForm({ supplier, onClose, onSaved }: { supplier:
+           {L("Notes", "sp-notes", <textarea id="sp-notes" className="input min-h-16 py-2" rows={2} value={f.notes} onChange={set("notes")} />)}
+         </div>
+         {error && <p role="alert" className="mt-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+-        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end"><button type="button" className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={busy || !f.name.trim()}>{busy ? "Saving…" : "Save"}</button></div>
++        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end"><button type="button" className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={busy || !f.name.trim()}>{busy ? <><Spinner /> Saving…</> : "Save"}</button></div>
+       </form>
+     </div>
+   );
+diff --git a/components/SuppliersList.tsx b/components/SuppliersList.tsx
+index 2ef9b61..5d07a15 100644
+--- a/components/SuppliersList.tsx
++++ b/components/SuppliersList.tsx
+@@ -7,6 +7,7 @@ import { telLink } from "@/lib/phone";
+ import { useMe } from "./Me";
+ import SupplierForm from "./SupplierForm";
+ import Toast from "./Toast";
++import { ListSkeleton, LoadingBar, Spinner } from "./Loading";
+ 
+ type S = { id: string; code: string; name: string; name_ur: string | null; contact: string | null; phone: string | null; city: string | null; balance: number };
+ 
+@@ -54,7 +55,9 @@ export default function SuppliersList() {
+           <button className={"chip " + (status === "active" ? "chip-on" : "")} onClick={() => setStatus("active")}>Active</button>
+           <button className={"chip " + (status === "archived" ? "chip-on" : "")} onClick={() => setStatus("archived")}>Archived</button>
+         </div>
++        <LoadingBar active={loading} className="mt-2" />
+       </header>
++      {loading && !items.length && !error && <ListSkeleton />}
+       <div className="p-3 lg:px-5">
+         {owed > 0 && <p className="mb-2 text-sm text-muted">We owe the suppliers shown: <b className="text-ink">{rs(owed)}</b></p>}
+         <ul className="grid gap-2 lg:grid-cols-2">
+@@ -72,7 +75,7 @@ export default function SuppliersList() {
+         </ul>
+         {error && <p className="mt-2 text-center text-red">{error} <button className="underline" onClick={() => load(0)}>Retry</button></p>}
+         {!loading && !error && !items.length && <p className="py-4 text-center text-sm text-muted">No suppliers {q ? "match" : "yet"}.</p>}
+-        {items.length < total && <div className="mt-3 text-center"><button className="btn" disabled={loading} onClick={() => load(items.length)}>{loading ? "Loading…" : "Load more"}</button></div>}
++        {items.length < total && <div className="mt-3 text-center"><button className="btn" disabled={loading} onClick={() => load(items.length)}>{loading ? <><Spinner /> Loading…</> : "Load more"}</button></div>}
+       </div>
+       {adding && <SupplierForm supplier={null} onClose={() => setAdding(false)} onSaved={(m, id) => { setAdding(false); setToast(m); if (id) router.push("/suppliers/" + id); else load(0); }} />}
+       {toast && <Toast msg={toast} onHide={() => setToast("")} />}
+diff --git a/components/UsersView.tsx b/components/UsersView.tsx
+index f014371..067c845 100644
+--- a/components/UsersView.tsx
++++ b/components/UsersView.tsx
+@@ -2,6 +2,7 @@
+ import { useCallback, useEffect, useState } from "react";
+ import { PERM_GROUPS } from "@/lib/permissions";
+ import Toast from "./Toast";
++import { Loading, Spinner } from "./Loading";
+ 
+ type Role = { id: string; name: string; perms: string[]; own_only: boolean; system: boolean };
+ type User = {
+@@ -55,7 +56,7 @@ export default function UsersView() {
+ 
+       <div className="p-3 lg:p-5">
+         {error && <p className="mb-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+-        {!users && !error && <p className="text-sm text-muted">Loading…</p>}
++        {!users && !error && <Loading />}
+ 
+         {tab === "users" && users && (
+           <ul className="grid gap-2 lg:grid-cols-2">
+@@ -189,7 +190,7 @@ function UserForm({ user, roles, locs, onClose, onSaved }: { user: User | null;
+         <div className="mt-4 flex flex-wrap gap-2 lg:justify-end">
+           {user?.locked && <button type="button" className="btn" onClick={unlock}>Unlock</button>}
+           <button type="button" className="btn flex-1 lg:flex-none" onClick={onClose}>Cancel</button>
+-          <button className="btn btn-primary flex-1 lg:flex-none" disabled={busy || !name.trim()}>{busy ? "Saving…" : "Save"}</button>
++          <button className="btn btn-primary flex-1 lg:flex-none" disabled={busy || !name.trim()}>{busy ? <><Spinner /> Saving…</> : "Save"}</button>
+         </div>
+       </form>
+     </div>
+@@ -236,7 +237,7 @@ function RoleForm({ role, onClose, onSaved }: { role: Role | null; onClose: () =
+         {error && <p role="alert" className="mt-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+         <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end">
+           <button type="button" className="btn" onClick={onClose}>Cancel</button>
+-          <button className="btn btn-primary" disabled={busy || !name.trim()}>{busy ? "Saving…" : "Save"}</button>
++          <button className="btn btn-primary" disabled={busy || !name.trim()}>{busy ? <><Spinner /> Saving…</> : "Save"}</button>
+         </div>
+       </form>
+     </div>
+diff --git a/components/VoucherView.tsx b/components/VoucherView.tsx
+index a0c4dd6..a8023cd 100644
+--- a/components/VoucherView.tsx
++++ b/components/VoucherView.tsx
+@@ -3,6 +3,7 @@ import Link from "next/link";
+ import { useEffect, useState } from "react";
+ import { niceDate } from "@/lib/dates";
+ import { rs } from "@/lib/format";
++import { PageLoading } from "./Loading";
+ 
+ type V = { no: string; type: string; title: string; date: string; party: string; code: string; amount: number; reversed: boolean; details: string; route?: string; balance_after: number | null; balance_label?: string; by: string };
+ 
+@@ -13,7 +14,7 @@ export default function VoucherView({ type, id }: { type: string; id: string })
+     fetch("/api/vouchers/" + type + "/" + id).then((r) => r.json()).then((j) => (j.error ? setError(j.error) : setV(j.voucher))).catch(() => setError("Could not load the voucher"));
+   }, [type, id]);
+   if (error) return <p className="p-4 text-red">{error} <Link href="/vouchers" className="underline">Back</Link></p>;
+-  if (!v) return <p className="p-4 text-muted">Loading…</p>;
++  if (!v) return <PageLoading />;
+   return (
+     <div>
+       <header data-noprint className="sticky top-0 z-20 flex items-center gap-2 border-b border-line bg-bg px-2 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-4 lg:pt-4">
+diff --git a/components/VouchersView.tsx b/components/VouchersView.tsx
+index 829d7e0..26f876f 100644
+--- a/components/VouchersView.tsx
++++ b/components/VouchersView.tsx
+@@ -3,6 +3,7 @@ import Link from "next/link";
+ import { useCallback, useEffect, useState } from "react";
+ import { monthStart, niceDate, todayPk, weekStart } from "@/lib/dates";
+ import { rs } from "@/lib/format";
++import { Loading } from "./Loading";
+ 
+ type V = { key: string; no: string; type: "received" | "paid"; date: string; party: string; amount: number; reversed: boolean; details: string };
+ const RANGES = [["today", "Today"], ["week", "This week"], ["month", "This month"], ["all", "All"]] as const;
+@@ -48,7 +49,7 @@ export default function VouchersView() {
+           ))}
+         </div>
+         {error && <p className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+-        {!items && !error && <p className="text-sm text-muted">Loading…</p>}
++        {!items && !error && <Loading />}
+         {items && !items.length && <p className="text-sm text-muted">No vouchers for these dates.</p>}
+         <ul className="grid gap-2 lg:grid-cols-2">
+           {items?.map((v) => (

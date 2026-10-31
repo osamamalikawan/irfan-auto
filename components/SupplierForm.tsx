@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { Spinner } from "./Loading";
 
 export type SupplierRow = { id: string; name: string; name_ur: string | null; contact: string | null; phone: string | null; phone2: string | null; address: string | null; city: string | null; ntn: string | null; email: string | null; notes: string | null; credit_days: number };
 
@@ -50,7 +51,7 @@ export default function SupplierForm({ supplier, onClose, onSaved }: { supplier:
           {L("Notes", "sp-notes", <textarea id="sp-notes" className="input min-h-16 py-2" rows={2} value={f.notes} onChange={set("notes")} />)}
         </div>
         {error && <p role="alert" className="mt-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
-        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end"><button type="button" className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={busy || !f.name.trim()}>{busy ? "Saving…" : "Save"}</button></div>
+        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end"><button type="button" className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={busy || !f.name.trim()}>{busy ? <><Spinner /> Saving…</> : "Save"}</button></div>
       </form>
     </div>
   );

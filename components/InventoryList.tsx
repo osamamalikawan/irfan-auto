@@ -7,6 +7,7 @@ import { useMe } from "./Me";
 import { qty, rs, stockTone, toneClass } from "@/lib/format";
 import { normalizeQuery } from "@/lib/voice";
 import { useVoiceSearch, type VoiceLang } from "@/lib/useVoiceSearch";
+import { ListSkeleton, LoadingBar, Spinner } from "./Loading";
 
 type Loc = { location: string; qty: number; racks: string[] };
 type Item = {
@@ -88,7 +89,7 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
       <header className="sticky top-0 z-20 border-b border-line bg-bg px-3 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-5 lg:pb-0 lg:pt-4">
         <div className="mb-2 flex items-baseline justify-between lg:hidden">
           <h1 className="text-lg font-bold leading-tight">Stock</h1>
-          <span className="text-xs text-muted">{loading && !items.length ? "Loading…" : total.toLocaleString() + " items"}</span>
+          <span className="text-xs text-muted">{loading && !items.length ? <><Spinner /> Loading…</> : total.toLocaleString() + " items"}</span>
         </div>
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
           {can("stock.manage") && <Link href="/inventory/new" className="btn btn-primary hidden lg:order-1 lg:inline-flex">Add Product</Link>}
@@ -120,7 +121,9 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
             {FILTER_LABEL[filter]} ✕
           </button>
         )}
+        <LoadingBar active={loading} className="mt-2" />
       </header>
+      {loading && !items.length && !error && <ListSkeleton />}
 
       {/* ---------- phone: cards ---------- */}
       <ul className="space-y-2 p-3 lg:hidden">
@@ -208,7 +211,7 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
         {!loading && !error && !items.length && <p>No part matches. Try a name, Urdu name, brand, code or rack number.</p>}
         {items.length < total && (
           <button className="btn w-full lg:w-auto" disabled={loading} onClick={() => load(items.length)}>
-            {loading ? "Loading…" : "Load more (" + (total - items.length).toLocaleString() + " left)"}
+            {loading ? <><Spinner /> Loading…</> : "Load more (" + (total - items.length).toLocaleString() + " left)"}
           </button>
         )}
       </div>

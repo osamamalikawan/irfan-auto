@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { qty as fmt } from "@/lib/format";
 import { useMe } from "./Me";
+import { Spinner } from "./Loading";
 
 type Loc = { id: string; name: string; qty: number };
 type Mode = "receive" | "issue" | "count";
@@ -60,7 +61,7 @@ export default function AdjustSheet({ productId, unit, locations: allLocations, 
         {error && <p className="mb-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
         <div className="grid grid-cols-2 gap-2">
           <button className="btn" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" disabled={!valid || busy} onClick={save}>{busy ? "Saving…" : "Save"}</button>
+          <button className="btn btn-primary" disabled={!valid || busy} onClick={save}>{busy ? <><Spinner /> Saving…</> : "Save"}</button>
         </div>
       </div>
     </div>

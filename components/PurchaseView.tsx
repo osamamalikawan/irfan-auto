@@ -6,6 +6,7 @@ import { qty as fmtQty, rs } from "@/lib/format";
 import { useMe } from "./Me";
 import PaySupplierModal from "./PaySupplierModal";
 import Toast from "./Toast";
+import { PageLoading } from "./Loading";
 
 type Detail = {
   purchase: { id: string; no: string; purchase_date: string; supplier_id: string; supplier_name: string; supplier_inv_no: string | null; supplier_inv_date: string | null; discount: number; line_discount: number; freight: number; total: number; paid: number; remarks: string | null; status: string };
@@ -47,7 +48,7 @@ export default function PurchaseView({ id }: { id: string }) {
   }
 
   if (error) return <p className="p-4 text-red">{error} <Link href="/purchases" className="underline">Back</Link></p>;
-  if (!d) return <p className="p-4 text-muted">Loading…</p>;
+  if (!d) return <PageLoading />;
   const { purchase: p } = d;
   const due = p.status === "confirmed" ? Number(p.total) - Number(p.paid) : 0;
 

@@ -19,10 +19,16 @@ body{background:var(--bg);color:var(--ink);-webkit-tap-highlight-color:transpare
   .chip{@apply inline-flex min-h-9 shrink-0 items-center rounded-full border border-line bg-surface px-3 text-sm active:opacity-70}
   .chip-on{@apply border-accent bg-accent text-accent-ink font-medium}
   .pill{@apply inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium}
+  .spinner{@apply inline-block size-4 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent align-[-0.15em]}
+  .loadbar{@apply relative h-0.5 overflow-hidden rounded-full}
+  .loadbar-on{@apply bg-line}
+  .loadbar-on::after{content:"";position:absolute;top:0;bottom:0;width:40%;background:var(--accent);animation:ia-bar 1s ease-in-out infinite}
 }
+@keyframes ia-bar{0%{left:-40%}100%{left:100%}}
+@media (prefers-reduced-motion: reduce){.spinner{animation-duration:2s}.loadbar-on::after{animation-duration:2.5s}}
 
 @media print {
-  aside, nav, [data-noprint] { display: none !important; }
+  aside, nav, [data-noprint], .loadbar { display: none !important; }
   body { background: #fff !important; color: #000 !important; }
   .card { border: 0 !important; box-shadow: none !important; }
   header.sticky { position: static !important; }

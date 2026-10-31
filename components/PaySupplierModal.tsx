@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { rs } from "@/lib/format";
+import { Spinner } from "./Loading";
 
 const METHODS = [["cash", "Cash"], ["bank", "Bank"], ["cheque", "Cheque"]] as const;
 
@@ -40,7 +41,7 @@ export default function PaySupplierModal({ supplier, balance, onClose, onDone }:
         {method !== "cash" && <input className="input mt-2" placeholder={method === "cheque" ? "Cheque number" : "Bank reference"} maxLength={60} value={ref} onChange={(e) => setRef(e.target.value)} aria-label="Reference" />}
         <input className="input mt-2" placeholder="Note (optional)" maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} aria-label="Note" />
         {error && <p role="alert" className="mt-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
-        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end"><button className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={!(n > 0) || busy} onClick={save}>{busy ? "Saving…" : "Pay"}</button></div>
+        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end"><button className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={!(n > 0) || busy} onClick={save}>{busy ? <><Spinner /> Saving…</> : "Pay"}</button></div>
       </div>
     </div>
   );

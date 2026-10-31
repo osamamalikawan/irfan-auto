@@ -4,6 +4,7 @@ import Link from "next/link";
 import AddLocationModal from "./AddLocationModal";
 import { useMe } from "./Me";
 import Toast from "./Toast";
+import { Loading } from "./Loading";
 
 type ListRow = { id: string; name: string; visible: boolean; products: number };
 type LocRow = { id: string; name: string; type: string; racks: number; active: boolean };
@@ -91,7 +92,7 @@ export default function SettingsView() {
             Choose which lists appear on the Stock screen. Hidden lists are only left out of view; nothing is deleted.
             {lists ? " " + hidden + " of " + lists.length + " hidden." : ""}
           </p>
-          {!lists && !error && <p className="py-3 text-sm text-muted">Loading…</p>}
+          {!lists && !error && <Loading />}
           <ul className="divide-y divide-line">
             {lists?.map((l) => (
               <li key={l.id} className="flex min-h-14 items-center gap-3 py-2">
@@ -124,7 +125,7 @@ export default function SettingsView() {
             {can("stock.manage") && <button className="btn btn-primary min-h-9 px-3" onClick={() => setAddLoc(true)}>Add stock location</button>}
           </div>
           <p className="mb-1 text-sm text-muted">Invoices take stock from the top location first, then the next. Use the arrows to change the order.</p>
-          {!locs && !error && <p className="py-3 text-sm text-muted">Loading…</p>}
+          {!locs && !error && <Loading />}
           <ul className="divide-y divide-line">
             {locs?.map((l, i) => (
               <li key={l.id} className="flex items-center gap-3 py-2.5">

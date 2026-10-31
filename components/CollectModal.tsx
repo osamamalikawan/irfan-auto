@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { spreadPayment } from "@/lib/bills";
 import { rs } from "@/lib/format";
 import CustomerPicker, { type PickedCustomer } from "./CustomerPicker";
+import { Loading, Spinner } from "./Loading";
 
 type Ledger = { balance: number; unpaid: { no: string; due: number }[] };
 
@@ -41,7 +42,7 @@ export default function CollectModal({ customer: given, onClose, onDone }: { cus
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line lg:hidden" />
         <h2 className="text-base font-semibold">Collect payment</h2>
         <p className="mb-3 text-sm text-muted">{customer.name}{!given && <button className="ml-2 underline" onClick={() => setCustomer(null)}>change</button>}</p>
-        {!led && !error && <p className="text-sm text-muted">Loading…</p>}
+        {!led && !error && <Loading />}
         {led && (
           <>
             <p className="text-sm text-muted">Outstanding balance</p>
@@ -64,7 +65,7 @@ export default function CollectModal({ customer: given, onClose, onDone }: { cus
         {error && <p role="alert" className="mt-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
         <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end">
           <button className="btn" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" disabled={!valid || busy} onClick={save}>{busy ? "Saving…" : "Receive"}</button>
+          <button className="btn btn-primary" disabled={!valid || busy} onClick={save}>{busy ? <><Spinner /> Saving…</> : "Receive"}</button>
         </div>
       </div>
     </div>

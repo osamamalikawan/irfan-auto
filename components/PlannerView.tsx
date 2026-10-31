@@ -6,6 +6,7 @@ import { DAYS } from "@/lib/days";
 import { FREQ_LABEL, MONTH_WEEKS, VISIT_OUTCOMES, describeSchedule, isVisitDate, monthDates, monthGrid, monthLabel, shiftMonth, weekdayName, type Freq, type Sched } from "@/lib/schedule";
 import { useMe } from "./Me";
 import Toast from "./Toast";
+import { Loading, Spinner } from "./Loading";
 
 type PRoute = Sched & { id: string; name: string; code: string | null; salesman: { id: string; name: string } | null; customers: number };
 type Coverage = { areasNoRoute: { id: string; name: string; city: string; customers: number }[]; customersNoRoute: { total: number; sample: { id: string; name: string }[] } } | null;
@@ -95,7 +96,7 @@ export default function PlannerView() {
         <section className="card p-4">
           <h2 className="font-semibold">{weekdayName(sel)} {niceDate(sel)}{sel === today ? " · today" : ""}</h2>
           {day && <p className="mb-2 text-sm text-muted">{day.length ? day.length + " route" + (day.length === 1 ? "" : "s") + " · " + done + " of " + total + " customers visited" : "No route is planned for this day."}</p>}
-          {!day && !error && <p className="text-sm text-muted">Loading…</p>}
+          {!day && !error && <Loading />}
           {sel > today && day && day.length > 0 && <p className="mb-2 rounded-lg bg-bg p-2 text-xs text-muted">This day is in the future. Visits can be recorded on the day itself.</p>}
           <div className="space-y-4">
             {day?.map((r) => (
@@ -120,7 +121,7 @@ export default function PlannerView() {
 
         <section className="card p-4 lg:col-span-2">
           <div className="mb-2 flex items-center gap-2"><h2 className="flex-1 font-semibold">Route schedules</h2>{can("routes.manage") && <Link href="/routes" className="btn min-h-9 px-3">Manage routes</Link>}</div>
-          {!routes && !error && <p className="text-sm text-muted">Loading…</p>}
+          {!routes && !error && <Loading />}
           {routes && !routes.length && <p className="text-sm text-muted">No routes yet. Add routes in Routes &amp; Areas.</p>}
           <ul className="grid gap-2 lg:grid-cols-2">
             {routes?.map((r) => {
@@ -190,7 +191,7 @@ function VisitModal({ customer, onClose, onDone }: { customer: { id: string; nam
         <label className="label mt-3" htmlFor="vs-notes">Notes (optional)</label>
         <textarea id="vs-notes" className="input min-h-16 py-2" rows={2} maxLength={300} value={notes} onChange={(e) => setNotes(e.target.value)} />
         {error && <p role="alert" className="mt-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
-        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end"><button type="button" className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={busy}>{busy ? "Saving…" : "Save visit"}</button></div>
+        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end"><button type="button" className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={busy}>{busy ? <><Spinner /> Saving…</> : "Save visit"}</button></div>
       </form>
     </div>
   );
@@ -236,7 +237,7 @@ function ScheduleModal({ route, ym, onClose, onSaved }: { route: PRoute; ym: str
         )}
         <p className="mt-3 rounded-lg bg-bg p-2 text-sm">{days.length ? (dates.length ? monthLabel(ym).split(" ")[0] + " visits: " + dates.map((d) => weekdayName(d) + " " + +d.slice(8, 10)).join(", ") : "No visits in " + monthLabel(ym) + ".") : "Choose at least one visit day."}</p>
         {error && <p role="alert" className="mt-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
-        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end"><button className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={busy || (freq === "fortnightly" && !cycle)} onClick={save}>{busy ? "Saving…" : "Save schedule"}</button></div>
+        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end"><button className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={busy || (freq === "fortnightly" && !cycle)} onClick={save}>{busy ? <><Spinner /> Saving…</> : "Save schedule"}</button></div>
       </div>
     </div>
   );

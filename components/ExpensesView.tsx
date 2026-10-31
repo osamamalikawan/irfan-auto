@@ -5,6 +5,7 @@ import { EXPENSE_CATEGORIES } from "@/lib/expense";
 import { rs } from "@/lib/format";
 import { useMe } from "./Me";
 import Toast from "./Toast";
+import { Loading, Spinner } from "./Loading";
 
 type Exp = { id: string; no: number; expense_date: string; amount: number; category: string; note: string | null; ref_type: string | null; route: string };
 const RANGES = [["today", "Today"], ["week", "This week"], ["month", "This month"], ["all", "All"]] as const;
@@ -66,7 +67,7 @@ export default function ExpensesView() {
           ))}
         </div>
         {error && <p className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
-        {!items && !error && <p className="text-sm text-muted">Loading…</p>}
+        {!items && !error && <Loading />}
         {items && !items.length && <p className="text-sm text-muted">No expenses for these dates.</p>}
         <ul className="grid gap-2 lg:grid-cols-2">
           {items?.map((e) => (
@@ -119,7 +120,7 @@ function AddExpense({ onClose, onDone }: { onClose: () => void; onDone: () => vo
           <div><label className="label" htmlFor="ex-note">Details</label><input id="ex-note" className="input" maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} /></div>
         </div>
         {error && <p role="alert" className="mt-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
-        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end"><button type="button" className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={busy || !(Number(amount) > 0)}>{busy ? "Saving…" : "Add"}</button></div>
+        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end"><button type="button" className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={busy || !(Number(amount) > 0)}>{busy ? <><Spinner /> Saving…</> : "Add"}</button></div>
       </form>
     </div>
   );

@@ -6,6 +6,7 @@ import { rs } from "@/lib/format";
 import { FREQ_LABEL, addDays, daysInMonth, weekdayName, type Freq } from "@/lib/schedule";
 import { useMe } from "./Me";
 import Toast from "./Toast";
+import { Loading, Spinner } from "./Loading";
 
 type Entry = { key: string; date: string; route_id: string; name: string; code: string | null; frequency: Freq; salesman: string; planned: number; fuel_cost: number; areas: string[]; status: "planned" | "overdue" | "completed"; run_id: string | null };
 type Run = { id: string; route_id: string; date: string; route: string; code: string; salesman: string; planned: number; visited: number; productive: number; sales: number; collections: number; fuel: number; note: string | null };
@@ -85,7 +86,7 @@ export default function RoutePlansView() {
               {tile("Routes still to do", String(todo.length))}{tile("Overdue", String(over), over > 0)}
               {tile("Customers to visit", String(todo.reduce((x, e) => x + e.planned, 0)))}{tile("Estimated fuel", rs(todo.reduce((x, e) => x + e.fuel_cost, 0)))}
             </div>
-            {!entries && !error && <p className="text-sm text-muted">Loading…</p>}
+            {!entries && !error && <Loading />}
             {entries && !todo.length && <p className="text-sm text-muted">No planned routes in these dates, or all are completed. Routes follow their schedule in the Monthly planner.</p>}
             <ul className="grid gap-2 lg:grid-cols-2">
               {todo.map((e) => (
@@ -113,7 +114,7 @@ export default function RoutePlansView() {
             <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
               {tile("Routes completed", String(runs?.length ?? 0))}{tile("Customers visited", String(sum("visited")))}{tile("Sales", rs(sum("sales")))}{tile("Collections", rs(sum("collections")))}{tile("Fuel cost", rs(sum("fuel")))}
             </div>
-            {!runs && !error && <p className="text-sm text-muted">Loading…</p>}
+            {!runs && !error && <Loading />}
             {runs && !runs.length && <p className="text-sm text-muted">No completed routes in these dates.</p>}
             <ul className="grid gap-2 lg:grid-cols-2">
               {runs?.map((r) => (
@@ -174,7 +175,7 @@ export function CompleteModal({ routeId, name, date, fuel, onClose, onDone }: { 
         <label className="label mt-3" htmlFor="cr-note">Note (optional)</label>
         <input id="cr-note" className="input" maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} />
         {error && <p role="alert" className="mt-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
-        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end"><button className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={busy} onClick={save}>{busy ? "Saving…" : "Complete route"}</button></div>
+        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end"><button className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={busy} onClick={save}>{busy ? <><Spinner /> Saving…</> : "Complete route"}</button></div>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { Spinner } from "./Loading";
 
 export default function LoginForm() {
   const [users, setUsers] = useState<{ id: string; name: string }[] | null>(null);
@@ -50,7 +51,7 @@ export default function LoginForm() {
             pattern="[0-9]*" maxLength={8} required value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} />
         </div>
         {error && <p role="alert" className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
-        <button className="btn btn-primary w-full" disabled={busy || !userId || pin.length < 4}>{busy ? "Signing in…" : "Sign in"}</button>
+        <button className="btn btn-primary w-full" disabled={busy || !userId || pin.length < 4}>{busy ? <><Spinner /> Signing in…</> : "Sign in"}</button>
       </form>
     </main>
   );

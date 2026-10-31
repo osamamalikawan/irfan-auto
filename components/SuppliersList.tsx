@@ -7,6 +7,7 @@ import { telLink } from "@/lib/phone";
 import { useMe } from "./Me";
 import SupplierForm from "./SupplierForm";
 import Toast from "./Toast";
+import { ListSkeleton, LoadingBar, Spinner } from "./Loading";
 
 type S = { id: string; code: string; name: string; name_ur: string | null; contact: string | null; phone: string | null; city: string | null; balance: number };
 
@@ -54,7 +55,9 @@ export default function SuppliersList() {
           <button className={"chip " + (status === "active" ? "chip-on" : "")} onClick={() => setStatus("active")}>Active</button>
           <button className={"chip " + (status === "archived" ? "chip-on" : "")} onClick={() => setStatus("archived")}>Archived</button>
         </div>
+        <LoadingBar active={loading} className="mt-2" />
       </header>
+      {loading && !items.length && !error && <ListSkeleton />}
       <div className="p-3 lg:px-5">
         {owed > 0 && <p className="mb-2 text-sm text-muted">We owe the suppliers shown: <b className="text-ink">{rs(owed)}</b></p>}
         <ul className="grid gap-2 lg:grid-cols-2">
@@ -72,7 +75,7 @@ export default function SuppliersList() {
         </ul>
         {error && <p className="mt-2 text-center text-red">{error} <button className="underline" onClick={() => load(0)}>Retry</button></p>}
         {!loading && !error && !items.length && <p className="py-4 text-center text-sm text-muted">No suppliers {q ? "match" : "yet"}.</p>}
-        {items.length < total && <div className="mt-3 text-center"><button className="btn" disabled={loading} onClick={() => load(items.length)}>{loading ? "Loading…" : "Load more"}</button></div>}
+        {items.length < total && <div className="mt-3 text-center"><button className="btn" disabled={loading} onClick={() => load(items.length)}>{loading ? <><Spinner /> Loading…</> : "Load more"}</button></div>}
       </div>
       {adding && <SupplierForm supplier={null} onClose={() => setAdding(false)} onSaved={(m, id) => { setAdding(false); setToast(m); if (id) router.push("/suppliers/" + id); else load(0); }} />}
       {toast && <Toast msg={toast} onHide={() => setToast("")} />}

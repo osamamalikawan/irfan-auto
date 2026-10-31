@@ -8,6 +8,7 @@ import VisitHistory from "./VisitHistory";
 import { MoveModal } from "./CustomersList";
 import { useMe } from "./Me";
 import Toast from "./Toast";
+import { PageLoading, Spinner } from "./Loading";
 
 type Detail = {
   customer: {
@@ -63,7 +64,7 @@ export default function CustomerDetail({ id }: { id: string }) {
   }
 
   if (error) return <p className="p-4 text-red">{error} <Link href="/customers" className="underline">Back</Link></p>;
-  if (!d) return <p className="p-4 text-muted">Loading…</p>;
+  if (!d) return <PageLoading />;
   const c = d.customer;
   const place = [c.area?.name, c.area?.city?.name].filter(Boolean).join(", ");
   const phones = [c.phone, c.phone2].filter(Boolean) as string[];
@@ -128,7 +129,7 @@ export default function CustomerDetail({ id }: { id: string }) {
           {canRemark && (
             <form onSubmit={addRemark} className="mb-3 space-y-2">
               <textarea className="input min-h-20 py-2" rows={2} maxLength={500} placeholder="e.g. pays on Fridays, call before visiting" value={text} onChange={(e) => setText(e.target.value)} aria-label="New remark" />
-              <button className="btn btn-primary w-full" disabled={busy || !text.trim()}>{busy ? "Saving…" : "Add remark"}</button>
+              <button className="btn btn-primary w-full" disabled={busy || !text.trim()}>{busy ? <><Spinner /> Saving…</> : "Add remark"}</button>
             </form>
           )}
           {!d.remarks.length && <p className="text-sm text-muted">No remarks yet.</p>}

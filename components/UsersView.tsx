@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { PERM_GROUPS } from "@/lib/permissions";
 import Toast from "./Toast";
+import { Loading, Spinner } from "./Loading";
 
 type Role = { id: string; name: string; perms: string[]; own_only: boolean; system: boolean };
 type User = {
@@ -55,7 +56,7 @@ export default function UsersView() {
 
       <div className="p-3 lg:p-5">
         {error && <p className="mb-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
-        {!users && !error && <p className="text-sm text-muted">Loading…</p>}
+        {!users && !error && <Loading />}
 
         {tab === "users" && users && (
           <ul className="grid gap-2 lg:grid-cols-2">
@@ -189,7 +190,7 @@ function UserForm({ user, roles, locs, onClose, onSaved }: { user: User | null; 
         <div className="mt-4 flex flex-wrap gap-2 lg:justify-end">
           {user?.locked && <button type="button" className="btn" onClick={unlock}>Unlock</button>}
           <button type="button" className="btn flex-1 lg:flex-none" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary flex-1 lg:flex-none" disabled={busy || !name.trim()}>{busy ? "Saving…" : "Save"}</button>
+          <button className="btn btn-primary flex-1 lg:flex-none" disabled={busy || !name.trim()}>{busy ? <><Spinner /> Saving…</> : "Save"}</button>
         </div>
       </form>
     </div>
@@ -236,7 +237,7 @@ function RoleForm({ role, onClose, onSaved }: { role: Role | null; onClose: () =
         {error && <p role="alert" className="mt-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
         <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end">
           <button type="button" className="btn" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" disabled={busy || !name.trim()}>{busy ? "Saving…" : "Save"}</button>
+          <button className="btn btn-primary" disabled={busy || !name.trim()}>{busy ? <><Spinner /> Saving…</> : "Save"}</button>
         </div>
       </form>
     </div>

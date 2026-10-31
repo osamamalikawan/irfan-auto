@@ -5,6 +5,7 @@ import { todayPk } from "@/lib/dates";
 import { rs } from "@/lib/format";
 import { FREQ_LABEL, MONTH_WEEKS, describeSchedule, type Freq } from "@/lib/schedule";
 import Toast from "./Toast";
+import { Loading, Spinner } from "./Loading";
 
 type Area = { id: string; name: string; customers: number; route_ids: string[] };
 type City = { id: string; name: string; areas: Area[] };
@@ -72,7 +73,7 @@ export default function RoutesView() {
 
       <div className="p-3 lg:p-5">
         {error && <p className="mb-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
-        {!routes && !error && <p className="text-sm text-muted">Loading…</p>}
+        {!routes && !error && <Loading />}
 
         {tab === "routes" && routes && (
           <>
@@ -171,7 +172,7 @@ function NameModal({ title, label, cities, onClose, onSave, onDone }: {
         {error && <p role="alert" className="mt-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
         <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end">
           <button type="button" className="btn" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" disabled={busy || !name.trim() || (!!cities && !cityId)}>{busy ? "Saving…" : "Add"}</button>
+          <button className="btn btn-primary" disabled={busy || !name.trim() || (!!cities && !cityId)}>{busy ? <><Spinner /> Saving…</> : "Add"}</button>
         </div>
       </form>
     </div>
@@ -281,7 +282,7 @@ function RouteForm({ route, salesmen, cities, lists, onClose, onSaved }: {
         {error && <p role="alert" className="mt-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
         <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end">
           <button type="button" className="btn" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" disabled={busy || !name.trim()}>{busy ? "Saving…" : "Save"}</button>
+          <button className="btn btn-primary" disabled={busy || !name.trim()}>{busy ? <><Spinner /> Saving…</> : "Save"}</button>
         </div>
       </form>
     </div>

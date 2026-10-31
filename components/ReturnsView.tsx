@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { niceDate } from "@/lib/dates";
 import { qty as fmtQty, rs } from "@/lib/format";
 import Toast from "./Toast";
+import { Spinner } from "./Loading";
 
 type Found = { id: string; no: string; customer_name: string; total: number; sale_date: string };
 type Item = { id: string; name: string; sold: number; returned: number; remaining: number; net_unit: number };
@@ -107,7 +108,7 @@ export default function ReturnsView() {
               <p className="mt-3 text-lg font-bold">Credit to customer: {rs(credit)}</p>
               {tooMuch && <p className="text-sm text-red">A quantity is more than is left to return.</p>}
               {error && <p role="alert" className="mt-2 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
-              <button className="btn btn-primary mt-3 w-full" disabled={busy || !lines.length || tooMuch} onClick={save}>{busy ? "Saving…" : "Record return"}</button>
+              <button className="btn btn-primary mt-3 w-full" disabled={busy || !lines.length || tooMuch} onClick={save}>{busy ? <><Spinner /> Saving…</> : "Record return"}</button>
             </>
           )}
           {!sale && error && <p role="alert" className="mt-2 text-sm text-red">{error}</p>}

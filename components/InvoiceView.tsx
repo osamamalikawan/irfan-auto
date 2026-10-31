@@ -7,6 +7,7 @@ import CollectModal from "./CollectModal";
 import { useMe } from "./Me";
 import { saleState } from "./SalesList";
 import Toast from "./Toast";
+import { PageLoading } from "./Loading";
 
 type Item = {
   id: string; name: string; code_name: string | null; name_ur: string | null; unit: string; qty: number; free: number; price: number; disc_pct: number; line_disc: number;
@@ -45,7 +46,7 @@ export default function InvoiceView({ id }: { id: string }) {
   }
 
   if (error) return <p className="p-4 text-red">{error} <Link href="/sales" className="underline">Back</Link></p>;
-  if (!d) return <p className="p-4 text-muted">Loading…</p>;
+  if (!d) return <PageLoading />;
   const { sale: s, customer: c } = d;
   const st = saleState(s);
   const due = s.status === "confirmed" ? Number(s.total) - Number(s.paid) : 0;

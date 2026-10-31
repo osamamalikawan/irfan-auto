@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { rs } from "@/lib/format";
 import { todayPk } from "@/lib/dates";
 import { ProductPicker, type Prod } from "./InvoiceBuilder";
+import { Spinner } from "./Loading";
 
 type Line = { key: string; p: Prod; qty: string; free: string; cost: string; disc: string };
 type Sup = { id: string; name: string; balance: number };
@@ -89,7 +90,7 @@ export default function PurchaseBuilder({ supplierId }: { supplierId?: string })
       <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-line bg-bg px-2 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-4 lg:pt-4">
         <Link href="/purchases" className="btn border-0 bg-transparent px-3 text-xl" aria-label="Back">←</Link>
         <div className="min-w-0 flex-1"><h1 className="text-base font-bold leading-tight">New purchase</h1><p className="text-xs text-muted">Total {rs(total)}</p></div>
-        <button className="btn btn-primary" disabled={!ready} onClick={save}>{busy ? "Saving…" : "Save purchase"}</button>
+        <button className="btn btn-primary" disabled={!ready} onClick={save}>{busy ? <><Spinner /> Saving…</> : "Save purchase"}</button>
       </header>
       <div className="space-y-3 p-3 lg:max-w-3xl lg:px-5">
         {error && <p role="alert" className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}

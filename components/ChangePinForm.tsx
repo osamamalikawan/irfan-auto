@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { pinError } from "@/lib/pin";
+import { Spinner } from "./Loading";
 
 export default function ChangePinForm({ forced }: { forced?: boolean }) {
   const [current, setCurrent] = useState("");
@@ -35,7 +36,7 @@ export default function ChangePinForm({ forced }: { forced?: boolean }) {
       <div><label className="label" htmlFor="cp-again">New PIN again</label><input id="cp-again" className={field} type="password" inputMode="numeric" maxLength={8} required value={again} onChange={digits(setAgain)} /></div>
       {error && <p role="alert" className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
       {done && <p role="status" className="rounded-lg bg-green-bg p-2 text-sm text-green">PIN changed.</p>}
-      <button className="btn btn-primary w-full" disabled={busy || current.length < 4 || next.length < 4}>{busy ? "Saving…" : "Change PIN"}</button>
+      <button className="btn btn-primary w-full" disabled={busy || current.length < 4 || next.length < 4}>{busy ? <><Spinner /> Saving…</> : "Change PIN"}</button>
     </form>
   );
 }

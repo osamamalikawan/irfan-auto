@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { monthStart, niceDate, todayPk, weekStart } from "@/lib/dates";
 import { rs } from "@/lib/format";
 import { useMe } from "./Me";
+import { ListSkeleton, LoadingBar, Spinner } from "./Loading";
 
 type P = { id: string; no: string; purchase_date: string; supplier_name: string; supplier_inv_no: string | null; total: number; paid: number; status: string; items: number };
 const RANGES = [["today", "Today"], ["week", "This week"], ["month", "This month"], ["all", "All"]] as const;
@@ -52,7 +53,9 @@ export default function PurchasesList() {
         <div className="-mx-3 mt-2 flex gap-2 overflow-x-auto px-3 pb-1 lg:mx-0 lg:mt-3 lg:px-0">
           {RANGES.map(([k, label]) => <button key={k} className={"chip " + (range === k ? "chip-on" : "")} onClick={() => setRange(k)}>{label}</button>)}
         </div>
+        <LoadingBar active={loading} className="mt-2" />
       </header>
+      {loading && !items.length && !error && <ListSkeleton />}
       <div className="p-3 lg:px-5">
         {items.length > 0 && <p className="mb-2 text-sm text-muted">Shown: <b className="text-ink">{rs(sum)}</b> in confirmed purchases</p>}
         <ul className="grid gap-2 lg:grid-cols-2">
@@ -69,7 +72,7 @@ export default function PurchasesList() {
         </ul>
         {error && <p className="mt-2 text-center text-red">{error} <button className="underline" onClick={() => load(0)}>Retry</button></p>}
         {!loading && !error && !items.length && <p className="py-4 text-center text-sm text-muted">No purchases in this period.</p>}
-        {items.length < total && <div className="mt-3 text-center"><button className="btn" disabled={loading} onClick={() => load(items.length)}>{loading ? "Loading…" : "Load more"}</button></div>}
+        {items.length < total && <div className="mt-3 text-center"><button className="btn" disabled={loading} onClick={() => load(items.length)}>{loading ? <><Spinner /> Loading…</> : "Load more"}</button></div>}
       </div>
     </div>
   );

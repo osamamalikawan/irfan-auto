@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { rackCodes, rackPrefix } from "@/lib/placement";
+import { Spinner } from "./Loading";
 
 const TYPES = ["Shop", "Godown", "Warehouse", "Damaged stock"];
 
@@ -65,7 +66,7 @@ export default function AddLocationModal({ onClose, onDone }: { onClose: () => v
 
         <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end">
           <button type="button" className="btn" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" disabled={busy || !name.trim()}>{busy ? "Adding…" : "Add location"}</button>
+          <button className="btn btn-primary" disabled={busy || !name.trim()}>{busy ? <><Spinner /> Adding…</> : "Add location"}</button>
         </div>
       </form>
     </div>

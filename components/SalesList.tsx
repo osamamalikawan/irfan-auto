@@ -6,6 +6,7 @@ import { rs } from "@/lib/format";
 import CollectModal from "./CollectModal";
 import { useMe } from "./Me";
 import Toast from "./Toast";
+import { ListSkeleton, LoadingBar, Spinner } from "./Loading";
 
 type Sale = { id: string; no: string; sale_date: string; customer_name: string; total: number; paid: number; status: string; items: number };
 const RANGES = [["today", "Today"], ["week", "This week"], ["month", "This month"], ["all", "All"]] as const;
@@ -58,7 +59,7 @@ export default function SalesList() {
       <header className="sticky top-0 z-20 border-b border-line bg-bg px-3 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-5 lg:pb-0 lg:pt-4">
         <div className="mb-2 flex items-baseline justify-between lg:hidden">
           <h1 className="text-lg font-bold leading-tight">Sales</h1>
-          <span className="text-xs text-muted">{loading && !items.length ? "Loading…" : total.toLocaleString() + " invoices"}</span>
+          <span className="text-xs text-muted">{loading && !items.length ? <><Spinner /> Loading…</> : total.toLocaleString() + " invoices"}</span>
         </div>
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
           <div className="flex gap-2 lg:order-1">
@@ -73,7 +74,9 @@ export default function SalesList() {
         <div className="-mx-3 mt-2 flex gap-2 overflow-x-auto px-3 pb-1 lg:mx-0 lg:mt-3 lg:px-0">
           {RANGES.map(([k, label]) => <button key={k} className={"chip " + (range === k ? "chip-on" : "")} onClick={() => setRange(k)}>{label}</button>)}
         </div>
+        <LoadingBar active={loading} className="mt-2" />
       </header>
+      {loading && !items.length && !error && <ListSkeleton />}
 
       {items.length > 0 && <p className="px-3 pt-2 text-sm text-muted lg:px-5">Shown: <b className="text-ink">{rs(sum)}</b> in {items.filter((s) => s.status === "confirmed").length} confirmed invoices</p>}
 
@@ -127,7 +130,7 @@ export default function SalesList() {
       <div className="px-3 pb-6 text-center text-sm text-muted lg:px-5 lg:pt-3">
         {error && <p className="mb-2 text-red">{error} <button className="underline" onClick={() => load(0)}>Retry</button></p>}
         {!loading && !error && !items.length && <p>No invoices in this period.</p>}
-        {items.length < total && <button className="btn w-full lg:w-auto" disabled={loading} onClick={() => load(items.length)}>{loading ? "Loading…" : "Load more (" + (total - items.length) + " left)"}</button>}
+        {items.length < total && <button className="btn w-full lg:w-auto" disabled={loading} onClick={() => load(items.length)}>{loading ? <><Spinner /> Loading…</> : "Load more (" + (total - items.length) + " left)"}</button>}
       </div>
 
       {collect && <CollectModal onClose={() => setCollect(false)} onDone={(m) => { setCollect(false); setToast(m); load(0); }} />}

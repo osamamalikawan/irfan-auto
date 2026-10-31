@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { monthStart, niceDate, todayPk, weekStart } from "@/lib/dates";
 import { rs } from "@/lib/format";
+import { Loading } from "./Loading";
 
 type Data = {
   summary: { sales: number; returns: number; collected: number; purchases: number; supplier_paid: number; expenses: number; receivable: number; payable: number };
@@ -55,7 +56,7 @@ export default function AccountsView() {
       </header>
       <div className="space-y-3 p-3 lg:px-5">
         {error && <p className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
-        {!d && !error && <p className="text-sm text-muted">Loading…</p>}
+        {!d && !error && <Loading />}
         {s && (
           <>
             <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useMe } from "./Me";
+import { Loading, Spinner } from "./Loading";
 
 type City = { id: string; name: string; areas: { id: string; name: string }[] };
 
@@ -52,10 +53,11 @@ export default function CustomerForm({ id }: { id?: string }) {
       <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-line bg-bg px-2 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-4 lg:pt-4">
         <Link href={id ? "/customers/" + id : "/customers"} className="btn border-0 bg-transparent px-3 text-xl" aria-label="Cancel">←</Link>
         <h1 className="flex-1 text-base font-bold">{id ? "Edit customer" : "New customer"}</h1>
-        <button className="btn btn-primary" disabled={busy || !loaded || !f.name.trim() || (!id && !full && !f.route_id)}>{busy ? "Saving…" : "Save"}</button>
+        <button className="btn btn-primary" disabled={busy || !loaded || !f.name.trim() || (!id && !full && !f.route_id)}>{busy ? <><Spinner /> Saving…</> : "Save"}</button>
       </header>
 
       <div className="space-y-4 p-3 lg:px-5">
+        {!loaded && !error && <Loading />}
         {error && <p role="alert" className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
         <section className="card space-y-3 p-4">
           {L("Business name *", "c-name", <input id="c-name" className="input" required value={f.name} onChange={set("name")} />)}

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { rs } from "@/lib/format";
 import { canAddCustomer, hasPerm } from "@/lib/permissions";
 import { useMe } from "./Me";
+import { Loading, LoadingBar, Spinner } from "./Loading";
 
 export type PickedCustomer = { id: string; name: string; is_walk_in?: boolean };
 type Row = { id: string; code: string; name: string; owner: string | null; phone: string | null; balance: number; route: { name: string } | null };
@@ -51,6 +52,7 @@ export default function CustomerPicker({ onPick, onClose, allowWalkIn, allowAdd,
           <input className="input" autoFocus type="text" inputMode="search" placeholder="Search name, phone or code" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search customers" />
           <button className="btn px-3" onClick={onClose} aria-label="Close">✕</button>
         </div>
+        <LoadingBar active={loading} className="mb-2" />
         {allowAdd && canAddCustomer(user) && (
           <button className="btn mb-2 w-full justify-start gap-2" onClick={() => setAdding(true)}>＋ Add new customer{q.trim() ? ": " + q.trim() : ""}</button>
         )}
@@ -72,6 +74,7 @@ export default function CustomerPicker({ onPick, onClose, allowWalkIn, allowAdd,
             </li>
           ))}
         </ul>
+        {loading && !rows.length && !error && <Loading label={q.trim() ? "Searching…" : "Loading…"} />}
         {error && <p role="alert" className="mt-2 text-sm text-red">{error}</p>}
         {!loading && !error && !rows.length && <p className="py-4 text-center text-sm text-muted">{onlyWithBalance ? "No customer with a balance matches." : "No customer matches."}</p>}
       </div>
@@ -146,7 +149,7 @@ function QuickAdd({ startName, mustPickRoute, onBack, onClose, onCreated }: {
         {error && <p role="alert" className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
         <div className="grid grid-cols-2 gap-2 lg:flex lg:justify-end">
           <button type="button" className="btn" onClick={onBack}>Cancel</button>
-          <button className="btn btn-primary" disabled={busy || !name.trim() || (mustPickRoute && !routeId)}>{busy ? "Saving…" : "Save and use"}</button>
+          <button className="btn btn-primary" disabled={busy || !name.trim() || (mustPickRoute && !routeId)}>{busy ? <><Spinner /> Saving…</> : "Save and use"}</button>
         </div>
       </form>
     </div>

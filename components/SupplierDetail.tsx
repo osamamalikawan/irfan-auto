@@ -9,6 +9,7 @@ import PaySupplierModal from "./PaySupplierModal";
 import StatementTable, { type Statement } from "./StatementTable";
 import SupplierForm, { type SupplierRow } from "./SupplierForm";
 import Toast from "./Toast";
+import { PageLoading } from "./Loading";
 
 type Detail = { supplier: SupplierRow & { code: string; status: string; balance: number }; purchases: { id: string; no: string; purchase_date: string; total: number; paid: number; status: string; supplier_inv_no: string | null }[] };
 
@@ -48,7 +49,7 @@ export default function SupplierDetail({ id }: { id: string }) {
   }
 
   if (error) return <p className="p-4 text-red">{error} <Link href="/suppliers" className="underline">Back</Link></p>;
-  if (!d) return <p className="p-4 text-muted">Loading…</p>;
+  if (!d) return <PageLoading />;
   const s = d.supplier;
   const phones = [s.phone, s.phone2].filter(Boolean) as string[];
 

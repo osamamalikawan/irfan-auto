@@ -6,6 +6,7 @@ import { telLink } from "@/lib/phone";
 import { canAddCustomer } from "@/lib/permissions";
 import { useMe } from "./Me";
 import Toast from "./Toast";
+import { ListSkeleton, LoadingBar, Spinner } from "./Loading";
 
 type Customer = {
   id: string; code: string; name: string; name_ur: string | null; owner: string | null; phone: string | null; credit_limit: number; balance: number; last_remark: string | null;
@@ -74,7 +75,7 @@ export default function CustomersList() {
       <header className="sticky top-0 z-20 border-b border-line bg-bg px-3 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-5 lg:pb-0 lg:pt-4">
         <div className="mb-2 flex items-baseline justify-between lg:hidden">
           <h1 className="text-lg font-bold leading-tight">Customers</h1>
-          <span className="text-xs text-muted">{loading && !items.length ? "Loading…" : total.toLocaleString() + (status === "archived" ? " archived" : " customers")}</span>
+          <span className="text-xs text-muted">{loading && !items.length ? <><Spinner /> Loading…</> : total.toLocaleString() + (status === "archived" ? " archived" : " customers")}</span>
         </div>
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
           {canAddCustomer(user) && status === "active" && <Link href="/customers/new" className="btn btn-primary hidden lg:order-1 lg:inline-flex">Add customer</Link>}
@@ -98,7 +99,9 @@ export default function CustomersList() {
           <button className={"chip " + (status === "active" ? "chip-on" : "")} onClick={() => setStatus("active")}>Active</button>
           <button className={"chip " + (status === "archived" ? "chip-on" : "")} onClick={() => setStatus("archived")}>Archived</button>
         </div>
+        <LoadingBar active={loading} className="mt-2" />
       </header>
+      {loading && !items.length && !error && <ListSkeleton />}
 
       {status === "archived" && <p className="mx-3 mt-2 rounded-lg bg-amber-bg p-2 text-sm text-amber lg:mx-5">Archived customers keep their history. They stay out of invoices and route plans until made active again.</p>}
 
@@ -178,7 +181,7 @@ export default function CustomersList() {
         {!loading && !error && !items.length && <p>No customers match these filters.</p>}
         {items.length < total && (
           <button className="btn w-full lg:w-auto" disabled={loading} onClick={() => load(items.length)}>
-            {loading ? "Loading…" : "Load more (" + (total - items.length).toLocaleString() + " left)"}
+            {loading ? <><Spinner /> Loading…</> : "Load more (" + (total - items.length).toLocaleString() + " left)"}
           </button>
         )}
       </div>
@@ -221,7 +224,7 @@ export function MoveModal({ ids, routes, onClose, onDone }: { ids: string[]; rou
         {error && <p role="alert" className="mt-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
         <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end">
           <button className="btn" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" disabled={busy || !routeId} onClick={go}>{busy ? "Moving…" : "Move"}</button>
+          <button className="btn btn-primary" disabled={busy || !routeId} onClick={go}>{busy ? <><Spinner /> Moving…</> : "Move"}</button>
         </div>
       </div>
     </div>
