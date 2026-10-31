@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase";
 import { authorize } from "@/lib/auth";
+import { canAddCustomer, hasPerm } from "@/lib/permissions";
 import { allowedRouteIds, safeWord } from "@/lib/customer-scope";
 
 export const dynamic = "force-dynamic";
@@ -50,12 +51,23 @@ const TEXT = ["name_ur", "owner", "phone", "phone2", "address", "cnic", "ntn", "
 
 /** Body: { name, name_ur?, owner?, phone?, phone2?, address?, cnic?, ntn?, email?, credit_limit?, credit_days?, opening_balance?, area_id?, route_id?, remarks? } */
 export async function POST(req: NextRequest) {
-  const a = await authorize("customers.edit");
+  const a = await authorize();
   if (a.error) return a.error;
+  if (!canAddCustomer(a.user)) return NextResponse.json({ error: "You do not have permission for this." }, { status: 403 });
+  const full = hasPerm(a.user, "customers.edit");
   const b = await req.json().catch(() => null);
   const name = String(b?.name ?? "").trim().replace(/\s+/g, " ");
   if (!name) return NextResponse.json({ error: "Customer name is required." }, { status: 400 });
   const sb = db();
+
+  // A salesman can only add customers to a route of their own, and cannot set credit terms or an opening balance.
+  if (!full) {
+    const rid = String(b?.route_id ?? "");
+    if (!rid) return NextResponse.json({ error: "Choose one of your routes." }, { status: 400 });
+    const own = await sb.from("routes").select("id").eq("id", rid).eq("salesman_id", a.user.id).maybeSingle();
+    if (own.error) return NextResponse.json({ error: own.error.message }, { status: 500 });
+    if (!own.data) return NextResponse.json({ error: "You can only add customers to your own routes." }, { status: 403 });
+  }
 
   const phone = String(b?.phone ?? "").trim();
   let dup = sb.from("customers").select("id").ilike("name", name.replace(/[\\%_]/g, "\\$&")).limit(1);
@@ -65,8 +77,8 @@ export async function POST(req: NextRequest) {
   if (d.data?.length) return NextResponse.json({ error: "A customer with this name and phone already exists." }, { status: 409 });
 
   const row: Record<string, unknown> = {
-    name, credit_limit: Math.max(0, Number(b?.credit_limit) || 0), credit_days: Math.max(0, Math.round(Number(b?.credit_days) || 0)),
-    opening_balance: Number(b?.opening_balance) || 0, area_id: b?.area_id || null, route_id: b?.route_id || null,
+    name, credit_limit: full ? Math.max(0, Number(b?.credit_limit) || 0) : 0, credit_days: full ? Math.max(0, Math.round(Number(b?.credit_days) || 0)) : 0,
+    opening_balance: full ? Number(b?.opening_balance) || 0 : 0, area_id: b?.area_id || null, route_id: b?.route_id || null,
   };
   for (const k of TEXT) row[k] = String(b?.[k] ?? "").trim() || null;
   const { data, error } = await sb.from("customers").insert(row).select("id,code").single();

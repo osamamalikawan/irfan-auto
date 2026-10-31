@@ -192,7 +192,7 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
         </section>
       </div>
 
-      {pickCust && <CustomerPicker allowWalkIn onPick={chooseCustomer} onClose={() => setPickCust(false)} />}
+      {pickCust && <CustomerPicker allowWalkIn allowAdd onPick={chooseCustomer} onClose={() => setPickCust(false)} />}
       {pickProd && <ProductPicker onAdd={addProduct} inInvoice={Object.fromEntries(lines.map((l) => [l.p.id, money(l.qty)]))} onClose={() => setPickProd(false)} />}
     </div>
   );

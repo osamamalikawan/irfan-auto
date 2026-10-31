@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { rs } from "@/lib/format";
 import { telLink } from "@/lib/phone";
+import { canAddCustomer } from "@/lib/permissions";
 import { useMe } from "./Me";
 import Toast from "./Toast";
 
@@ -16,7 +17,7 @@ type City = { id: string; name: string; areas: { id: string; name: string }[] };
 const PAGE = 30;
 
 export default function CustomersList() {
-  const { can } = useMe();
+  const { can, user } = useMe();
   const [status, setStatus] = useState<"active" | "archived">("active");
   const [q, setQ] = useState("");
   const [route, setRoute] = useState("");
@@ -76,7 +77,7 @@ export default function CustomersList() {
           <span className="text-xs text-muted">{loading && !items.length ? "Loading…" : total.toLocaleString() + (status === "archived" ? " archived" : " customers")}</span>
         </div>
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-          {can("customers.edit") && status === "active" && <Link href="/customers/new" className="btn btn-primary hidden lg:order-1 lg:inline-flex">Add customer</Link>}
+          {canAddCustomer(user) && status === "active" && <Link href="/customers/new" className="btn btn-primary hidden lg:order-1 lg:inline-flex">Add customer</Link>}
           {canSelect && <button className="btn hidden lg:order-2 lg:inline-flex" disabled={!sel.size} onClick={() => setMoving(true)}>Move selected to route ({sel.size})</button>}
           <div className="relative order-1 w-full lg:order-4 lg:flex-1">
             <input className="input pr-10" type="text" inputMode="search" enterKeyHint="search" placeholder="Search name, phone, owner or code" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search customers" />
@@ -182,7 +183,7 @@ export default function CustomersList() {
         )}
       </div>
 
-      {can("customers.edit") && status === "active" && (
+      {canAddCustomer(user) && status === "active" && (
         <Link href="/customers/new" aria-label="Add customer"
           className="fixed bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] right-4 z-20 flex size-14 items-center justify-center rounded-full bg-accent text-3xl text-accent-ink shadow-lg active:opacity-80 lg:hidden">＋</Link>
       )}

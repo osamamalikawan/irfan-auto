@@ -30,4 +30,6 @@ export type SessionUser = {
 };
 
 export const hasPerm = (u: { perms: string[] } | null | undefined, p: string) => !!u && (u.perms.includes("*") || u.perms.includes(p));
+/** Who may add a customer: anyone who can edit customers, and salesmen (limited to their own routes, no credit terms). */
+export const canAddCustomer = (u: { perms: string[]; isSalesman?: boolean } | null | undefined) => hasPerm(u, "customers.edit") || !!u?.isSalesman;
 export const hasAny = (u: { perms: string[] } | null | undefined, ps: string[]) => ps.some((p) => hasPerm(u, p));

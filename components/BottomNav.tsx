@@ -2,13 +2,14 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { canAddCustomer } from "@/lib/permissions";
 import { useMe } from "./Me";
 
 /** Phone navigation: the modules a person uses most, plus a "More" sheet for everything else. */
 export default function BottomNav() {
   const path = usePathname();
   const filter = useSearchParams().get("filter");
-  const { can, canAny } = useMe();
+  const { user, can, canAny } = useMe();
   const [open, setOpen] = useState(false);
   useEffect(() => { setOpen(false); }, [path, filter]);
 
@@ -34,7 +35,7 @@ export default function BottomNav() {
     { href: "/expenses", label: "Expenses", show: canAny(["accounts.edit", "reports.view"]) },
     { href: "/vouchers", label: "Payment vouchers", show: canAny(["payments.receive", "accounts.edit", "reports.view"]) },
     { href: "/inventory/new", label: "Add product", show: can("stock.manage") },
-    { href: "/customers/new", label: "Add customer", show: can("customers.edit") },
+    { href: "/customers/new", label: "Add customer", show: canAddCustomer(user) },
     { href: "/users", label: "Users & Roles", show: can("users.manage") },
     { href: "/settings", label: "Settings", show: can("settings.edit") },
     { href: "/account", label: "My account", show: true },

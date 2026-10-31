@@ -2,11 +2,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useMe } from "./Me";
 
 type City = { id: string; name: string; areas: { id: string; name: string }[] };
 
 export default function CustomerForm({ id }: { id?: string }) {
   const router = useRouter();
+  const { can } = useMe();
+  const full = can("customers.edit"); // salesmen add customers to their own routes only, without credit terms
   const [cities, setCities] = useState<City[]>([]);
   const [routes, setRoutes] = useState<{ id: string; name: string }[]>([]);
   const [loaded, setLoaded] = useState(!id);
@@ -49,7 +52,7 @@ export default function CustomerForm({ id }: { id?: string }) {
       <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-line bg-bg px-2 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-4 lg:pt-4">
         <Link href={id ? "/customers/" + id : "/customers"} className="btn border-0 bg-transparent px-3 text-xl" aria-label="Cancel">←</Link>
         <h1 className="flex-1 text-base font-bold">{id ? "Edit customer" : "New customer"}</h1>
-        <button className="btn btn-primary" disabled={busy || !loaded || !f.name.trim()}>{busy ? "Saving…" : "Save"}</button>
+        <button className="btn btn-primary" disabled={busy || !loaded || !f.name.trim() || (!id && !full && !f.route_id)}>{busy ? "Saving…" : "Save"}</button>
       </header>
 
       <div className="space-y-4 p-3 lg:px-5">
@@ -77,17 +80,17 @@ export default function CustomerForm({ id }: { id?: string }) {
               {cities.map((c) => <optgroup key={c.id} label={c.name}>{c.areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</optgroup>)}
             </select>
           ))}
-          {!id && L("Route", "c-route", (
-            <select id="c-route" className="input" value={f.route_id} onChange={set("route_id")}>
-              <option value="">No route</option>
+          {!id && L(full ? "Route" : "Route *", "c-route", (
+            <select id="c-route" className="input" required={!full} value={f.route_id} onChange={set("route_id")}>
+              <option value="">{full ? "No route" : "Choose a route"}</option>
               {routes.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
             </select>
           ))}
-          <div className="grid grid-cols-2 gap-3">
+          {full && <div className="grid grid-cols-2 gap-3">
             {L("Credit limit (Rs)", "c-limit", <input id="c-limit" className="input" type="number" inputMode="decimal" min="0" value={f.credit_limit} onChange={set("credit_limit")} />)}
             {L("Credit days", "c-days", <input id="c-days" className="input" type="number" inputMode="numeric" min="0" value={f.credit_days} onChange={set("credit_days")} />)}
             {!id && L("Opening balance (Rs)", "c-open", <input id="c-open" className="input" type="number" inputMode="decimal" value={f.opening_balance} onChange={set("opening_balance")} />)}
-          </div>
+          </div>}
           {!id && L("Remarks (optional)", "c-rem", <textarea id="c-rem" className="input min-h-16 py-2" rows={2} maxLength={500} placeholder="e.g. pays on Fridays, call before visiting" value={f.remarks} onChange={set("remarks")} />)}
         </section>
       </div>

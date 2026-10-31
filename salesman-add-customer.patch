@@ -1,0 +1,330 @@
+diff --git a/app/api/customers/route.ts b/app/api/customers/route.ts
+index d086b97..e4f2d4b 100644
+--- a/app/api/customers/route.ts
++++ b/app/api/customers/route.ts
+@@ -1,6 +1,7 @@
+ import { NextRequest, NextResponse } from "next/server";
+ import { db } from "@/lib/supabase";
+ import { authorize } from "@/lib/auth";
++import { canAddCustomer, hasPerm } from "@/lib/permissions";
+ import { allowedRouteIds, safeWord } from "@/lib/customer-scope";
+ 
+ export const dynamic = "force-dynamic";
+@@ -50,13 +51,24 @@ const TEXT = ["name_ur", "owner", "phone", "phone2", "address", "cnic", "ntn", "
+ 
+ /** Body: { name, name_ur?, owner?, phone?, phone2?, address?, cnic?, ntn?, email?, credit_limit?, credit_days?, opening_balance?, area_id?, route_id?, remarks? } */
+ export async function POST(req: NextRequest) {
+-  const a = await authorize("customers.edit");
++  const a = await authorize();
+   if (a.error) return a.error;
++  if (!canAddCustomer(a.user)) return NextResponse.json({ error: "You do not have permission for this." }, { status: 403 });
++  const full = hasPerm(a.user, "customers.edit");
+   const b = await req.json().catch(() => null);
+   const name = String(b?.name ?? "").trim().replace(/\s+/g, " ");
+   if (!name) return NextResponse.json({ error: "Customer name is required." }, { status: 400 });
+   const sb = db();
+ 
++  // A salesman can only add customers to a route of their own, and cannot set credit terms or an opening balance.
++  if (!full) {
++    const rid = String(b?.route_id ?? "");
++    if (!rid) return NextResponse.json({ error: "Choose one of your routes." }, { status: 400 });
++    const own = await sb.from("routes").select("id").eq("id", rid).eq("salesman_id", a.user.id).maybeSingle();
++    if (own.error) return NextResponse.json({ error: own.error.message }, { status: 500 });
++    if (!own.data) return NextResponse.json({ error: "You can only add customers to your own routes." }, { status: 403 });
++  }
++
+   const phone = String(b?.phone ?? "").trim();
+   let dup = sb.from("customers").select("id").ilike("name", name.replace(/[\\%_]/g, "\\$&")).limit(1);
+   dup = phone ? dup.eq("phone", phone) : dup.is("phone", null);
+@@ -65,8 +77,8 @@ export async function POST(req: NextRequest) {
+   if (d.data?.length) return NextResponse.json({ error: "A customer with this name and phone already exists." }, { status: 409 });
+ 
+   const row: Record<string, unknown> = {
+-    name, credit_limit: Math.max(0, Number(b?.credit_limit) || 0), credit_days: Math.max(0, Math.round(Number(b?.credit_days) || 0)),
+-    opening_balance: Number(b?.opening_balance) || 0, area_id: b?.area_id || null, route_id: b?.route_id || null,
++    name, credit_limit: full ? Math.max(0, Number(b?.credit_limit) || 0) : 0, credit_days: full ? Math.max(0, Math.round(Number(b?.credit_days) || 0)) : 0,
++    opening_balance: full ? Number(b?.opening_balance) || 0 : 0, area_id: b?.area_id || null, route_id: b?.route_id || null,
+   };
+   for (const k of TEXT) row[k] = String(b?.[k] ?? "").trim() || null;
+   const { data, error } = await sb.from("customers").insert(row).select("id,code").single();
+diff --git a/app/customers/new/page.tsx b/app/customers/new/page.tsx
+index c499308..11db492 100644
+--- a/app/customers/new/page.tsx
++++ b/app/customers/new/page.tsx
+@@ -1,9 +1,9 @@
+ import { redirect } from "next/navigation";
+ import CustomerForm from "@/components/CustomerForm";
+ import { getUser } from "@/lib/auth";
+-import { hasPerm } from "@/lib/permissions";
++import { canAddCustomer } from "@/lib/permissions";
+ 
+ export default async function Page() {
+-  if (!hasPerm(await getUser(), "customers.edit")) redirect("/customers");
++  if (!canAddCustomer(await getUser())) redirect("/customers");
+   return <CustomerForm />;
+ }
+diff --git a/components/BottomNav.tsx b/components/BottomNav.tsx
+index 90c9943..e02d0b2 100644
+--- a/components/BottomNav.tsx
++++ b/components/BottomNav.tsx
+@@ -2,13 +2,14 @@
+ import Link from "next/link";
+ import { usePathname, useSearchParams } from "next/navigation";
+ import { useEffect, useState } from "react";
++import { canAddCustomer } from "@/lib/permissions";
+ import { useMe } from "./Me";
+ 
+ /** Phone navigation: the modules a person uses most, plus a "More" sheet for everything else. */
+ export default function BottomNav() {
+   const path = usePathname();
+   const filter = useSearchParams().get("filter");
+-  const { can, canAny } = useMe();
++  const { user, can, canAny } = useMe();
+   const [open, setOpen] = useState(false);
+   useEffect(() => { setOpen(false); }, [path, filter]);
+ 
+@@ -34,7 +35,7 @@ export default function BottomNav() {
+     { href: "/expenses", label: "Expenses", show: canAny(["accounts.edit", "reports.view"]) },
+     { href: "/vouchers", label: "Payment vouchers", show: canAny(["payments.receive", "accounts.edit", "reports.view"]) },
+     { href: "/inventory/new", label: "Add product", show: can("stock.manage") },
+-    { href: "/customers/new", label: "Add customer", show: can("customers.edit") },
++    { href: "/customers/new", label: "Add customer", show: canAddCustomer(user) },
+     { href: "/users", label: "Users & Roles", show: can("users.manage") },
+     { href: "/settings", label: "Settings", show: can("settings.edit") },
+     { href: "/account", label: "My account", show: true },
+diff --git a/components/CustomerForm.tsx b/components/CustomerForm.tsx
+index fd5aae7..3c267f9 100644
+--- a/components/CustomerForm.tsx
++++ b/components/CustomerForm.tsx
+@@ -2,11 +2,14 @@
+ import Link from "next/link";
+ import { useRouter } from "next/navigation";
+ import { useEffect, useState } from "react";
++import { useMe } from "./Me";
+ 
+ type City = { id: string; name: string; areas: { id: string; name: string }[] };
+ 
+ export default function CustomerForm({ id }: { id?: string }) {
+   const router = useRouter();
++  const { can } = useMe();
++  const full = can("customers.edit"); // salesmen add customers to their own routes only, without credit terms
+   const [cities, setCities] = useState<City[]>([]);
+   const [routes, setRoutes] = useState<{ id: string; name: string }[]>([]);
+   const [loaded, setLoaded] = useState(!id);
+@@ -49,7 +52,7 @@ export default function CustomerForm({ id }: { id?: string }) {
+       <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-line bg-bg px-2 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-4 lg:pt-4">
+         <Link href={id ? "/customers/" + id : "/customers"} className="btn border-0 bg-transparent px-3 text-xl" aria-label="Cancel">←</Link>
+         <h1 className="flex-1 text-base font-bold">{id ? "Edit customer" : "New customer"}</h1>
+-        <button className="btn btn-primary" disabled={busy || !loaded || !f.name.trim()}>{busy ? "Saving…" : "Save"}</button>
++        <button className="btn btn-primary" disabled={busy || !loaded || !f.name.trim() || (!id && !full && !f.route_id)}>{busy ? "Saving…" : "Save"}</button>
+       </header>
+ 
+       <div className="space-y-4 p-3 lg:px-5">
+@@ -77,17 +80,17 @@ export default function CustomerForm({ id }: { id?: string }) {
+               {cities.map((c) => <optgroup key={c.id} label={c.name}>{c.areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</optgroup>)}
+             </select>
+           ))}
+-          {!id && L("Route", "c-route", (
+-            <select id="c-route" className="input" value={f.route_id} onChange={set("route_id")}>
+-              <option value="">No route</option>
++          {!id && L(full ? "Route" : "Route *", "c-route", (
++            <select id="c-route" className="input" required={!full} value={f.route_id} onChange={set("route_id")}>
++              <option value="">{full ? "No route" : "Choose a route"}</option>
+               {routes.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+             </select>
+           ))}
+-          <div className="grid grid-cols-2 gap-3">
++          {full && <div className="grid grid-cols-2 gap-3">
+             {L("Credit limit (Rs)", "c-limit", <input id="c-limit" className="input" type="number" inputMode="decimal" min="0" value={f.credit_limit} onChange={set("credit_limit")} />)}
+             {L("Credit days", "c-days", <input id="c-days" className="input" type="number" inputMode="numeric" min="0" value={f.credit_days} onChange={set("credit_days")} />)}
+             {!id && L("Opening balance (Rs)", "c-open", <input id="c-open" className="input" type="number" inputMode="decimal" value={f.opening_balance} onChange={set("opening_balance")} />)}
+-          </div>
++          </div>}
+           {!id && L("Remarks (optional)", "c-rem", <textarea id="c-rem" className="input min-h-16 py-2" rows={2} maxLength={500} placeholder="e.g. pays on Fridays, call before visiting" value={f.remarks} onChange={set("remarks")} />)}
+         </section>
+       </div>
+diff --git a/components/CustomerPicker.tsx b/components/CustomerPicker.tsx
+index 86276f2..5c8b84e 100644
+--- a/components/CustomerPicker.tsx
++++ b/components/CustomerPicker.tsx
+@@ -1,14 +1,18 @@
+ "use client";
+ import { useEffect, useRef, useState } from "react";
+ import { rs } from "@/lib/format";
++import { canAddCustomer, hasPerm } from "@/lib/permissions";
++import { useMe } from "./Me";
+ 
+ export type PickedCustomer = { id: string; name: string; is_walk_in?: boolean };
+ type Row = { id: string; code: string; name: string; owner: string | null; phone: string | null; balance: number; route: { name: string } | null };
+ 
+ /** Bottom sheet (dialog on desktop) to find a customer by name, phone or code. */
+-export default function CustomerPicker({ onPick, onClose, allowWalkIn, onlyWithBalance }: {
+-  onPick: (c: PickedCustomer) => void; onClose: () => void; allowWalkIn?: boolean; onlyWithBalance?: boolean;
++export default function CustomerPicker({ onPick, onClose, allowWalkIn, allowAdd, onlyWithBalance }: {
++  onPick: (c: PickedCustomer) => void; onClose: () => void; allowWalkIn?: boolean; allowAdd?: boolean; onlyWithBalance?: boolean;
+ }) {
++  const { user } = useMe();
++  const [adding, setAdding] = useState(false);
+   const [q, setQ] = useState("");
+   const [rows, setRows] = useState<Row[]>([]);
+   const [loading, setLoading] = useState(true);
+@@ -36,6 +40,8 @@ export default function CustomerPicker({ onPick, onClose, allowWalkIn, onlyWithB
+     return () => clearTimeout(t);
+   }, [q, onlyWithBalance]);
+ 
++  if (adding) return <QuickAdd startName={q} mustPickRoute={!hasPerm(user, "customers.edit")} onBack={() => setAdding(false)} onClose={onClose} onCreated={onPick} />;
++
+   return (
+     <div className="fixed inset-0 z-50 flex items-end bg-black/50 lg:items-center" onClick={onClose}>
+       <div role="dialog" aria-label="Choose customer" onClick={(e) => e.stopPropagation()}
+@@ -45,6 +51,9 @@ export default function CustomerPicker({ onPick, onClose, allowWalkIn, onlyWithB
+           <input className="input" autoFocus type="text" inputMode="search" placeholder="Search name, phone or code" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search customers" />
+           <button className="btn px-3" onClick={onClose} aria-label="Close">✕</button>
+         </div>
++        {allowAdd && canAddCustomer(user) && (
++          <button className="btn mb-2 w-full justify-start gap-2" onClick={() => setAdding(true)}>＋ Add new customer{q.trim() ? ": " + q.trim() : ""}</button>
++        )}
+         <ul className="min-h-0 flex-1 divide-y divide-line overflow-auto">
+           {allowWalkIn && walkIn && !q && (
+             <li><button className="flex min-h-14 w-full items-center gap-2 py-2 text-left active:bg-bg" onClick={() => onPick(walkIn)}>
+@@ -69,3 +78,77 @@ export default function CustomerPicker({ onPick, onClose, allowWalkIn, onlyWithB
+     </div>
+   );
+ }
++
++/** Small form to create a customer without leaving the invoice. Saves through POST /api/customers and returns the new customer. */
++function QuickAdd({ startName, mustPickRoute, onBack, onClose, onCreated }: {
++  startName: string; mustPickRoute: boolean; onBack: () => void; onClose: () => void; onCreated: (c: PickedCustomer) => void;
++}) {
++  const [name, setName] = useState(startName.trim());
++  const [phone, setPhone] = useState("");
++  const [owner, setOwner] = useState("");
++  const [routeId, setRouteId] = useState("");
++  const [routes, setRoutes] = useState<{ id: string; name: string }[]>([]);
++  const [busy, setBusy] = useState(false);
++  const [error, setError] = useState("");
++
++  useEffect(() => {
++    fetch("/api/routes").then((r) => r.json()).then((j) => setRoutes(j.routes ?? [])).catch(() => {});
++  }, []);
++
++  async function save(e: React.FormEvent) {
++    e.preventDefault();
++    setBusy(true); setError("");
++    try {
++      const r = await fetch("/api/customers", {
++        method: "POST", headers: { "Content-Type": "application/json" },
++        body: JSON.stringify({ name, phone, owner, route_id: routeId }),
++      });
++      const j = await r.json().catch(() => ({}));
++      if (!r.ok) throw new Error(j.error || "Could not save the customer");
++      onCreated({ id: j.id, name: name.trim().replace(/\s+/g, " ") });
++    } catch (err) {
++      setError((err as Error).message);
++      setBusy(false);
++    }
++  }
++
++  return (
++    <div className="fixed inset-0 z-50 flex items-end bg-black/50 lg:items-center" onClick={onClose}>
++      <form role="dialog" aria-label="Add customer" onSubmit={save} onClick={(e) => e.stopPropagation()}
++        className="mx-auto flex max-h-[85dvh] w-full max-w-2xl flex-col gap-3 overflow-auto rounded-t-2xl bg-surface p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] lg:max-w-lg lg:rounded-2xl lg:pb-4">
++        <div className="mx-auto h-1 w-10 shrink-0 rounded-full bg-line lg:hidden" />
++        <div className="flex items-center gap-2">
++          <button type="button" className="btn border-0 bg-transparent px-3 text-xl" onClick={onBack} aria-label="Back">←</button>
++          <h2 className="flex-1 text-base font-semibold">New customer</h2>
++        </div>
++        <div>
++          <label className="label" htmlFor="qa-name">Business name *</label>
++          <input id="qa-name" className="input" autoFocus required value={name} onChange={(e) => setName(e.target.value)} />
++        </div>
++        <div className="grid grid-cols-2 gap-3">
++          <div>
++            <label className="label" htmlFor="qa-phone">Phone</label>
++            <input id="qa-phone" className="input" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
++          </div>
++          <div>
++            <label className="label" htmlFor="qa-owner">Owner</label>
++            <input id="qa-owner" className="input" value={owner} onChange={(e) => setOwner(e.target.value)} />
++          </div>
++        </div>
++        <div>
++          <label className="label" htmlFor="qa-route">Route{mustPickRoute ? " *" : ""}</label>
++          <select id="qa-route" className="input" required={mustPickRoute} value={routeId} onChange={(e) => setRouteId(e.target.value)}>
++            <option value="">{mustPickRoute ? "Choose a route" : "No route"}</option>
++            {routes.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
++          </select>
++        </div>
++        <p className="text-xs text-muted">Credit limit, area, address and the rest can be added later from the Customers page.</p>
++        {error && <p role="alert" className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
++        <div className="grid grid-cols-2 gap-2 lg:flex lg:justify-end">
++          <button type="button" className="btn" onClick={onBack}>Cancel</button>
++          <button className="btn btn-primary" disabled={busy || !name.trim() || (mustPickRoute && !routeId)}>{busy ? "Saving…" : "Save and use"}</button>
++        </div>
++      </form>
++    </div>
++  );
++}
+diff --git a/components/CustomersList.tsx b/components/CustomersList.tsx
+index e3b16d0..d5fba81 100644
+--- a/components/CustomersList.tsx
++++ b/components/CustomersList.tsx
+@@ -3,6 +3,7 @@ import Link from "next/link";
+ import { useCallback, useEffect, useRef, useState } from "react";
+ import { rs } from "@/lib/format";
+ import { telLink } from "@/lib/phone";
++import { canAddCustomer } from "@/lib/permissions";
+ import { useMe } from "./Me";
+ import Toast from "./Toast";
+ 
+@@ -16,7 +17,7 @@ type City = { id: string; name: string; areas: { id: string; name: string }[] };
+ const PAGE = 30;
+ 
+ export default function CustomersList() {
+-  const { can } = useMe();
++  const { can, user } = useMe();
+   const [status, setStatus] = useState<"active" | "archived">("active");
+   const [q, setQ] = useState("");
+   const [route, setRoute] = useState("");
+@@ -76,7 +77,7 @@ export default function CustomersList() {
+           <span className="text-xs text-muted">{loading && !items.length ? "Loading…" : total.toLocaleString() + (status === "archived" ? " archived" : " customers")}</span>
+         </div>
+         <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+-          {can("customers.edit") && status === "active" && <Link href="/customers/new" className="btn btn-primary hidden lg:order-1 lg:inline-flex">Add customer</Link>}
++          {canAddCustomer(user) && status === "active" && <Link href="/customers/new" className="btn btn-primary hidden lg:order-1 lg:inline-flex">Add customer</Link>}
+           {canSelect && <button className="btn hidden lg:order-2 lg:inline-flex" disabled={!sel.size} onClick={() => setMoving(true)}>Move selected to route ({sel.size})</button>}
+           <div className="relative order-1 w-full lg:order-4 lg:flex-1">
+             <input className="input pr-10" type="text" inputMode="search" enterKeyHint="search" placeholder="Search name, phone, owner or code" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search customers" />
+@@ -182,7 +183,7 @@ export default function CustomersList() {
+         )}
+       </div>
+ 
+-      {can("customers.edit") && status === "active" && (
++      {canAddCustomer(user) && status === "active" && (
+         <Link href="/customers/new" aria-label="Add customer"
+           className="fixed bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] right-4 z-20 flex size-14 items-center justify-center rounded-full bg-accent text-3xl text-accent-ink shadow-lg active:opacity-80 lg:hidden">＋</Link>
+       )}
+diff --git a/components/InvoiceBuilder.tsx b/components/InvoiceBuilder.tsx
+index c007956..3580bfd 100644
+--- a/components/InvoiceBuilder.tsx
++++ b/components/InvoiceBuilder.tsx
+@@ -192,7 +192,7 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string })
+         </section>
+       </div>
+ 
+-      {pickCust && <CustomerPicker allowWalkIn onPick={chooseCustomer} onClose={() => setPickCust(false)} />}
++      {pickCust && <CustomerPicker allowWalkIn allowAdd onPick={chooseCustomer} onClose={() => setPickCust(false)} />}
+       {pickProd && <ProductPicker onAdd={addProduct} inInvoice={Object.fromEntries(lines.map((l) => [l.p.id, money(l.qty)]))} onClose={() => setPickProd(false)} />}
+     </div>
+   );
+diff --git a/lib/permissions.ts b/lib/permissions.ts
+index 1206a3a..c2d94b0 100644
+--- a/lib/permissions.ts
++++ b/lib/permissions.ts
+@@ -30,4 +30,6 @@ export type SessionUser = {
+ };
+ 
+ export const hasPerm = (u: { perms: string[] } | null | undefined, p: string) => !!u && (u.perms.includes("*") || u.perms.includes(p));
++/** Who may add a customer: anyone who can edit customers, and salesmen (limited to their own routes, no credit terms). */
++export const canAddCustomer = (u: { perms: string[]; isSalesman?: boolean } | null | undefined) => hasPerm(u, "customers.edit") || !!u?.isSalesman;
+ export const hasAny = (u: { perms: string[] } | null | undefined, ps: string[]) => ps.some((p) => hasPerm(u, p));
