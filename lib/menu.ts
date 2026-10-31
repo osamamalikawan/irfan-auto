@@ -12,21 +12,21 @@ const MONEY = ["accounts.edit", "reports.view"];
 
 /**
  * The one menu used by the top bar (desktop) and the "More" sheet (phone).
- * Order here is the order on screen, and the number keys follow it (Alt+1 opens the first menu, 1 to 9 pick an item).
+ * Order here is the order on screen, and the number keys follow it: press 1 for the first menu, then 1 to 9 to pick an item in it.
  * An item with no `perms` is open to everyone; groups with no visible item are hidden.
  */
 export const MENU: MenuGroup[] = [
-  { label: "Stock", items: [
-    { label: "Stock & Racks", href: "/inventory", perms: STOCK },
-    { label: "Low stock", href: "/inventory?filter=low", perms: STOCK },
-    { label: "Add product", href: "/inventory/new", perms: ["stock.manage"] },
-  ] },
   { label: "Sales", items: [
     { label: "New Invoice", href: "/sales/new", perms: ["sales.create"] },
     { label: "Sales", href: "/sales", perms: SALES },
     { label: "Returns", href: "/returns", perms: ["sales.return", "reports.view"] },
     { label: "Dispatch vouchers", href: "/dispatch", perms: ["sales.create", "stock.view", "stock.transfer"] },
     { label: "Completed Sales", href: "/sales?status=confirmed&range=month", perms: SALES },
+  ] },
+  { label: "Stock", items: [
+    { label: "Stock & Racks", href: "/inventory", perms: STOCK },
+    { label: "Low stock", href: "/inventory?filter=low", perms: STOCK },
+    { label: "Add product", href: "/inventory/new", perms: ["stock.manage"] },
   ] },
   { label: "People", items: [
     { label: "Customers", href: "/customers", perms: CUSTOMERS },

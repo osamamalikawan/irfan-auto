@@ -1,0 +1,77 @@
+diff --git a/components/TopNav.tsx b/components/TopNav.tsx
+index 02e7cb8..5da905c 100644
+--- a/components/TopNav.tsx
++++ b/components/TopNav.tsx
+@@ -5,11 +5,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
+ import { activeHref, visibleMenu } from "@/lib/menu";
+ import { useMe } from "./Me";
+ 
++const typing = (t: EventTarget | null) => { const el = t as HTMLElement | null; return !!el && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName)); };
+ const digit = (e: KeyboardEvent) => { const m = /^(?:Digit|Numpad)([1-9])$/.exec(e.code); return m ? Number(m[1]) : 0; };
+ 
+ /**
+  * Desktop top bar with drop-down menus (lg and up; phones use the bottom bar).
+- * Keys: Alt+1..9 opens a menu, then 1..9 opens that item, arrows move, Esc closes.
++ * Keys: press 1..9 to open a menu (Alt+1..9 also works while typing), then 1..9 to open that item.
++ * Example: 1 then 3 opens Returns. Arrows move, Esc closes. Plain digits are ignored while typing in a field or when a dialog is open.
+  */
+ export default function TopNav() {
+   const path = usePathname();
+@@ -40,7 +42,14 @@ export default function TopNav() {
+         setOpen((o) => (o === n - 1 ? null : n - 1));
+         return;
+       }
+-      if (open === null) return;
++      if (open === null) {
++        if (n && !e.repeat && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && groups[n - 1] && !typing(e.target) && !document.querySelector('[role="dialog"]')) {
++          e.preventDefault();
++          focusFirst.current = true;
++          setOpen(n - 1);
++        }
++        return;
++      }
+       if (e.key === "Escape") { setOpen(null); root.current?.querySelector<HTMLButtonElement>('[data-top="' + open + '"]')?.focus(); return; }
+       if (e.altKey || e.ctrlKey || e.metaKey) return;
+       const items = links(open);
+@@ -73,7 +82,7 @@ export default function TopNav() {
+         const isOpen = open === i;
+         return (
+           <div key={g.label} className="relative" data-menu={i} onMouseEnter={() => open !== null && setOpen(i)}>
+-            <button type="button" data-top={i} aria-haspopup="menu" aria-expanded={isOpen} title={"Alt+" + (i + 1)}
++            <button type="button" data-top={i} aria-haspopup="menu" aria-expanded={isOpen} title={"Press " + (i + 1)}
+               onClick={() => { focusFirst.current = false; setOpen(isOpen ? null : i); }}
+               className={"flex h-9 items-center gap-1.5 rounded-md px-2.5 text-sm " + (cur ? "bg-accent font-semibold text-accent-ink" : isOpen ? "bg-white/15 text-white" : "hover:bg-white/10")}>
+               <span className="text-[11px] opacity-60" aria-hidden>{i + 1}</span>{g.label}<span className="text-[10px]" aria-hidden>▾</span>
+diff --git a/lib/menu.ts b/lib/menu.ts
+index 704054f..b7b280f 100644
+--- a/lib/menu.ts
++++ b/lib/menu.ts
+@@ -12,15 +12,10 @@ const MONEY = ["accounts.edit", "reports.view"];
+ 
+ /**
+  * The one menu used by the top bar (desktop) and the "More" sheet (phone).
+- * Order here is the order on screen, and the number keys follow it (Alt+1 opens the first menu, 1 to 9 pick an item).
++ * Order here is the order on screen, and the number keys follow it: press 1 for the first menu, then 1 to 9 to pick an item in it.
+  * An item with no `perms` is open to everyone; groups with no visible item are hidden.
+  */
+ export const MENU: MenuGroup[] = [
+-  { label: "Stock", items: [
+-    { label: "Stock & Racks", href: "/inventory", perms: STOCK },
+-    { label: "Low stock", href: "/inventory?filter=low", perms: STOCK },
+-    { label: "Add product", href: "/inventory/new", perms: ["stock.manage"] },
+-  ] },
+   { label: "Sales", items: [
+     { label: "New Invoice", href: "/sales/new", perms: ["sales.create"] },
+     { label: "Sales", href: "/sales", perms: SALES },
+@@ -28,6 +23,11 @@ export const MENU: MenuGroup[] = [
+     { label: "Dispatch vouchers", href: "/dispatch", perms: ["sales.create", "stock.view", "stock.transfer"] },
+     { label: "Completed Sales", href: "/sales?status=confirmed&range=month", perms: SALES },
+   ] },
++  { label: "Stock", items: [
++    { label: "Stock & Racks", href: "/inventory", perms: STOCK },
++    { label: "Low stock", href: "/inventory?filter=low", perms: STOCK },
++    { label: "Add product", href: "/inventory/new", perms: ["stock.manage"] },
++  ] },
+   { label: "People", items: [
+     { label: "Customers", href: "/customers", perms: CUSTOMERS },
+     { label: "Suppliers", href: "/suppliers", perms: SUPPLIERS },

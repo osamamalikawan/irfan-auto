@@ -5,11 +5,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { activeHref, visibleMenu } from "@/lib/menu";
 import { useMe } from "./Me";
 
+const typing = (t: EventTarget | null) => { const el = t as HTMLElement | null; return !!el && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName)); };
 const digit = (e: KeyboardEvent) => { const m = /^(?:Digit|Numpad)([1-9])$/.exec(e.code); return m ? Number(m[1]) : 0; };
 
 /**
  * Desktop top bar with drop-down menus (lg and up; phones use the bottom bar).
- * Keys: Alt+1..9 opens a menu, then 1..9 opens that item, arrows move, Esc closes.
+ * Keys: press 1..9 to open a menu (Alt+1..9 also works while typing), then 1..9 to open that item.
+ * Example: 1 then 3 opens Returns. Arrows move, Esc closes. Plain digits are ignored while typing in a field or when a dialog is open.
  */
 export default function TopNav() {
   const path = usePathname();
@@ -40,7 +42,14 @@ export default function TopNav() {
         setOpen((o) => (o === n - 1 ? null : n - 1));
         return;
       }
-      if (open === null) return;
+      if (open === null) {
+        if (n && !e.repeat && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && groups[n - 1] && !typing(e.target) && !document.querySelector('[role="dialog"]')) {
+          e.preventDefault();
+          focusFirst.current = true;
+          setOpen(n - 1);
+        }
+        return;
+      }
       if (e.key === "Escape") { setOpen(null); root.current?.querySelector<HTMLButtonElement>('[data-top="' + open + '"]')?.focus(); return; }
       if (e.altKey || e.ctrlKey || e.metaKey) return;
       const items = links(open);
@@ -73,7 +82,7 @@ export default function TopNav() {
         const isOpen = open === i;
         return (
           <div key={g.label} className="relative" data-menu={i} onMouseEnter={() => open !== null && setOpen(i)}>
-            <button type="button" data-top={i} aria-haspopup="menu" aria-expanded={isOpen} title={"Alt+" + (i + 1)}
+            <button type="button" data-top={i} aria-haspopup="menu" aria-expanded={isOpen} title={"Press " + (i + 1)}
               onClick={() => { focusFirst.current = false; setOpen(isOpen ? null : i); }}
               className={"flex h-9 items-center gap-1.5 rounded-md px-2.5 text-sm " + (cur ? "bg-accent font-semibold text-accent-ink" : isOpen ? "bg-white/15 text-white" : "hover:bg-white/10")}>
               <span className="text-[11px] opacity-60" aria-hidden>{i + 1}</span>{g.label}<span className="text-[10px]" aria-hidden>▾</span>
