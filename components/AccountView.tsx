@@ -1,6 +1,7 @@
 "use client";
 import ChangePinForm from "./ChangePinForm";
 import { useMe } from "./Me";
+import ThemeSetting from "./ThemeSetting";
 
 export default function AccountView() {
   const { user } = useMe();
@@ -18,6 +19,10 @@ export default function AccountView() {
           <p className="text-lg font-semibold">{user.name}</p>
           <p className="text-sm text-muted">{user.roleName}</p>
           <button className="btn mt-3 w-full" onClick={signOut}>Sign out</button>
+        </section>
+        <section>
+          <h2 className="mb-2 font-semibold">Appearance</h2>
+          <ThemeSetting />
         </section>
         <section>
           <h2 className="mb-2 font-semibold">Change my PIN</h2>

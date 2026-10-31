@@ -4,7 +4,7 @@ Mobile-first stock screens. No users or login yet (that is a later module).
 
 ## 1. Database
 1. Create a Supabase project.
-2. SQL Editor: run, in order, `0001_inventory.sql`, `0002_settings.sql` (list visibility, CP rename), `0003_search.sql` (word-by-word search) and `0004_users_roles.sql` (users, roles, PIN login) `0006_customers_routes.sql` (customers, cities, areas, routes) `0007_sales.sql` (invoices, payments, customer balances) `0008_returns_money.sql` (returns, expenses, vouchers, dispatch) `0009_purchases_suppliers.sql` (suppliers, purchases, supplier payments, accounts) `0010_planner.sql` (route types, visits) and `0011_route_plans.sql` (completed routes, promises to pay). `0005_legacy_ids.sql` is only needed for the old-system import.
+2. SQL Editor: run, in order, `0001_inventory.sql`, `0002_settings.sql` (list visibility, CP rename), `0003_search.sql` (word-by-word search) and `0004_users_roles.sql` (users, roles, PIN login) `0006_customers_routes.sql` (customers, cities, areas, routes) `0007_sales.sql` (invoices, payments, customer balances) `0008_returns_money.sql` (returns, expenses, vouchers, dispatch) `0009_purchases_suppliers.sql` (suppliers, purchases, supplier payments, accounts) `0010_planner.sql` (route types, visits) `0011_route_plans.sql` (completed routes, promises to pay) and `0012_team_dashboard.sql` (team figures, dashboard numbers). `0005_legacy_ids.sql` is only needed for the old-system import.
 
 ## 2. Run locally
 ```bash
@@ -115,3 +115,11 @@ visit recording for today (outcome + note), every route's schedule with "Edit", 
   **record the customer's response** (outcome, notes, and an optional promise to pay with date and amount). Responses can be entered
   for today or up to 31 days back. **Print** gives a sheet for the salesman with a blank response column.
 - A customer's profile now shows their recent visit responses.
+
+## Sales Team and Dashboard
+- `/team`: sales, collections and visits against targets, per **salesman**, **route** or **area**, for today, this week, this month or any dates.
+  Monthly targets are pro-rated by days (days / 30). Sales are net of returns and exclude bilti; collections are payments received.
+  Targets are set on a salesman (Users & Roles, or the Targets button) or on a route (the Targets button). An area has no target of its own: each route's
+  target is shared between the areas on it. Colours: red below 70%, green from 100% (change them in Settings > Target colours).
+- `/dashboard` is the home page for everyone and shows only what the role may see: today's sales and collections, what customers owe, money in hand,
+  visits left today, targets this month, low stock and the latest invoices.

@@ -6,8 +6,8 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "Irfan Autos",
     start_url: "/inventory",
     display: "standalone",
-    background_color: "#eceff3",
-    theme_color: "#0e6b66",
+    background_color: "#eef4ff",
+    theme_color: "#1f5fd6",
     icons: [{ src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" }],
   };
 }

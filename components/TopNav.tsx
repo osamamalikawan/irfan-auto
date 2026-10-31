@@ -76,7 +76,7 @@ export default function TopNav() {
 
   return (
     <nav ref={root} aria-label="Main menu" data-noprint className="sticky top-0 z-40 hidden h-12 items-center gap-1 bg-side px-3 text-side-ink lg:flex">
-      <Link href="/" className="mr-3 shrink-0 text-[15px] font-bold leading-none text-white">Irfan Autos</Link>
+      <Link href="/dashboard" title="Dashboard" className={"mr-3 shrink-0 rounded-md px-2 py-1.5 text-[15px] font-bold leading-none text-white hover:bg-white/10 " + (path.startsWith("/dashboard") ? "bg-white/15" : "")}>Irfan Autos</Link>
       {groups.map((g, i) => {
         const cur = activeHref(g, path, params);
         const isOpen = open === i;
@@ -84,7 +84,7 @@ export default function TopNav() {
           <div key={g.label} className="relative" data-menu={i} onMouseEnter={() => open !== null && setOpen(i)}>
             <button type="button" data-top={i} aria-haspopup="menu" aria-expanded={isOpen} title={"Press " + (i + 1)}
               onClick={() => { focusFirst.current = false; setOpen(isOpen ? null : i); }}
-              className={"flex h-9 items-center gap-1.5 rounded-md px-2.5 text-sm " + (cur ? "bg-accent font-semibold text-accent-ink" : isOpen ? "bg-white/15 text-white" : "hover:bg-white/10")}>
+              className={"flex h-9 items-center gap-1.5 rounded-md px-2.5 text-sm " + (cur ? "bg-white font-semibold text-side" : isOpen ? "bg-white/15 text-white" : "hover:bg-white/10")}>
               <span className="text-[11px] opacity-60" aria-hidden>{i + 1}</span>{g.label}<span className="text-[10px]" aria-hidden>▾</span>
             </button>
             {isOpen && (

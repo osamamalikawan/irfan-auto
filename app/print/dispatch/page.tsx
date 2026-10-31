@@ -7,7 +7,7 @@ import { hasAny } from "@/lib/permissions";
 export default async function Page({ searchParams }: { searchParams: Promise<{ ids?: string; mode?: string }> }) {
   const user = await getUser();
   if (!user) redirect("/login");
-  if (!hasAny(user, ["sales.create", "stock.view", "stock.transfer"])) redirect("/");
+  if (!hasAny(user, ["sales.create", "stock.view", "stock.transfer"])) redirect("/dashboard");
   const sp = await searchParams;
   const ids = (sp.ids ?? "").split(",").filter((x) => /^[0-9a-f-]{36}$/i.test(x)).slice(0, 50);
   if (!ids.length) redirect("/dispatch");

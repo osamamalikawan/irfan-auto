@@ -4,6 +4,6 @@ import { getUser } from "@/lib/auth";
 import { hasAny } from "@/lib/permissions";
 
 export default async function Page() {
-  if (!hasAny(await getUser(), ["suppliers.view", "suppliers.edit", "suppliers.pay", "purchases.create"])) redirect("/");
+  if (!hasAny(await getUser(), ["suppliers.view", "suppliers.edit", "suppliers.pay", "purchases.create"])) redirect("/dashboard");
   return <SuppliersList />;
 }

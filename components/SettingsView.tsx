@@ -5,6 +5,7 @@ import AddLocationModal from "./AddLocationModal";
 import { useMe } from "./Me";
 import Toast from "./Toast";
 import { Loading } from "./Loading";
+import ThemeSetting from "./ThemeSetting";
 
 type ListRow = { id: string; name: string; visible: boolean; products: number };
 type LocRow = { id: string; name: string; type: string; racks: number; active: boolean };
@@ -17,14 +18,21 @@ export default function SettingsView() {
   const [addLoc, setAddLoc] = useState(false);
   const [toast, setToast] = useState("");
   const [negStock, setNegStock] = useState(false);
+  const [red, setRed] = useState("70");
+  const [green, setGreen] = useState("100");
 
   useEffect(() => {
-    fetch("/api/settings").then((r) => r.json()).then((j) => setNegStock(!!j.settings?.allow_negative_stock)).catch(() => {});
+    fetch("/api/settings").then((r) => r.json()).then((j) => { setNegStock(!!j.settings?.allow_negative_stock); if (j.settings?.thresholds) { setRed(String(j.settings.thresholds.red)); setGreen(String(j.settings.thresholds.green)); } }).catch(() => {});
   }, []);
   async function toggleNeg(v: boolean) {
     setNegStock(v);
     const r = await fetch("/api/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ allow_negative_stock: v }) });
     if (!r.ok) { setNegStock(!v); const j = await r.json().catch(() => ({})); setToast(j.error || "Could not save"); }
+  }
+  async function saveThresholds() {
+    const r = await fetch("/api/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ thresholds: { red: Number(red), green: Number(green) } }) });
+    const j = await r.json().catch(() => ({}));
+    setToast(r.ok ? "Target colours saved" : j.error || "Could not save");
   }
   async function move(i: number, dir: -1 | 1) {
     if (!locs) return;
@@ -80,6 +88,12 @@ export default function SettingsView() {
           </Link>
         )}
 
+        <section className="card p-4">
+          <h2 className="mb-1 font-semibold">Appearance</h2>
+          <p className="mb-3 text-sm text-muted">Choose how the app looks. This is saved on this device only.</p>
+          <ThemeSetting />
+        </section>
+
         <section id="stock-settings" className="card scroll-mt-16 p-4">
           <div className="mb-1 flex items-center justify-between gap-2">
             <h2 className="font-semibold">Price lists</h2>
@@ -117,6 +131,16 @@ export default function SettingsView() {
             <input type="checkbox" className="size-5" checked={negStock} onChange={(e) => toggleNeg(e.target.checked)} />
             <span><span className="block">Allow selling more than is in stock</span><span className="block text-xs text-muted">Stock can go below zero. Leave off to refuse such invoices.</span></span>
           </label>
+        </section>
+
+        <section className="card p-4">
+          <h2 className="mb-1 font-semibold">Target colours</h2>
+          <p className="mb-2 text-sm text-muted">Used on the Sales Team and Dashboard bars: red below the first number, green from the second, amber in between (percent of target).</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="label" htmlFor="th-red">Red below (%)</label><input id="th-red" className="input" type="number" inputMode="numeric" min="1" max="99" value={red} onChange={(e) => setRed(e.target.value)} /></div>
+            <div><label className="label" htmlFor="th-green">Green from (%)</label><input id="th-green" className="input" type="number" inputMode="numeric" min="2" max="200" value={green} onChange={(e) => setGreen(e.target.value)} /></div>
+          </div>
+          <button className="btn mt-3" onClick={saveThresholds}>Save colours</button>
         </section>
 
         <section className="card p-4">

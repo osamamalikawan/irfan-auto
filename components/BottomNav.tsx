@@ -18,13 +18,13 @@ export default function BottomNav() {
   const customers = canAny(["customers.view", "customers.edit", "sales.create"]);
   const sales = canAny(["sales.create", "payments.receive"]);
   const main = [
+    { href: "/dashboard", label: "Home", icon: "⌂", on: path.startsWith("/dashboard"), show: true },
     { href: "/inventory", label: "Stock", icon: "▤", on: path.startsWith("/inventory"), show: stock },
     { href: "/sales", label: "Sales", icon: "₨", on: path.startsWith("/sales"), show: sales },
     { href: "/customers", label: "Customers", icon: "☺", on: path.startsWith("/customers"), show: customers },
-    { href: "/routes", label: "Routes", icon: "⇄", on: path.startsWith("/routes"), show: can("routes.manage") },
   ].filter((i) => i.show);
   const groups = visibleMenu(user);
-  const moreOn = ["/users", "/settings", "/account", "/returns", "/dispatch", "/expenses", "/vouchers", "/purchases", "/suppliers", "/accounts", "/planner", "/route-plans"].some((p) => path.startsWith(p));
+  const moreOn = ["/users", "/settings", "/account", "/returns", "/dispatch", "/expenses", "/vouchers", "/purchases", "/suppliers", "/accounts", "/planner", "/route-plans", "/routes", "/team"].some((p) => path.startsWith(p));
 
   async function signOut() {
     await fetch("/api/auth/logout", { method: "POST" });

@@ -1,15 +1,10 @@
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
-import { hasAny } from "@/lib/permissions";
 
+// Everybody lands on the Dashboard; it shows only what their role may see.
 export default async function Home() {
   const user = await getUser();
   if (!user) redirect("/login");
   if (user.mustChangePin) redirect("/change-pin");
-  if (hasAny(user, ["sales.create", "payments.receive"])) redirect("/sales");
-  if (hasAny(user, ["stock.view", "stock.transfer", "stock.adjust"])) redirect("/inventory");
-  if (hasAny(user, ["customers.view", "customers.edit"])) redirect("/customers");
-  if (hasAny(user, ["purchases.create", "suppliers.view", "suppliers.pay"])) redirect("/purchases");
-  if (hasAny(user, ["accounts.edit", "reports.view"])) redirect("/accounts");
-  redirect("/account");
+  redirect("/dashboard");
 }
