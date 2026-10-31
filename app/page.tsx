@@ -9,6 +9,7 @@ export default async function Home() {
   if (hasAny(user, ["sales.create", "payments.receive"])) redirect("/sales");
   if (hasAny(user, ["stock.view", "stock.transfer", "stock.adjust"])) redirect("/inventory");
   if (hasAny(user, ["customers.view", "customers.edit"])) redirect("/customers");
-  if (hasAny(user, ["accounts.edit", "reports.view"])) redirect("/expenses");
+  if (hasAny(user, ["purchases.create", "suppliers.view", "suppliers.pay"])) redirect("/purchases");
+  if (hasAny(user, ["accounts.edit", "reports.view"])) redirect("/accounts");
   redirect("/account");
 }

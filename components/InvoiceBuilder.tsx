@@ -6,7 +6,7 @@ import { qty as fmtQty, rs } from "@/lib/format";
 import CustomerPicker, { type PickedCustomer } from "./CustomerPicker";
 import { useMe } from "./Me";
 
-type Prod = { id: string; name_en: string; code_name: string | null; name_ur: string | null; unit: string; cp: number; scheme: string | null; on_hand: number; racks: string[] };
+export type Prod = { id: string; name_en: string; code_name: string | null; name_ur: string | null; unit: string; cp: number; scheme: string | null; on_hand: number; racks: string[] };
 type Line = { key: string; p: Prod; qty: string; price: string; disc: string };
 type Cust = { id: string; name: string; is_walk_in: boolean; credit_limit: number; balance: number; route: string | null };
 
@@ -198,7 +198,7 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
   );
 }
 
-function ProductPicker({ onAdd, inInvoice, onClose }: { onAdd: (p: Prod) => void; inInvoice: Record<string, number>; onClose: () => void }) {
+export function ProductPicker({ onAdd, inInvoice, onClose, allowNoPrice }: { onAdd: (p: Prod) => void; inInvoice: Record<string, number>; onClose: () => void; allowNoPrice?: boolean }) {
   const [q, setQ] = useState("");
   const [rows, setRows] = useState<Prod[]>([]);
   const [loading, setLoading] = useState(true);
@@ -234,7 +234,7 @@ function ProductPicker({ onAdd, inInvoice, onClose }: { onAdd: (p: Prod) => void
             const n = inInvoice[p.id];
             return (
               <li key={p.id}>
-                <button className="flex min-h-16 w-full items-center gap-2 py-2 text-left active:bg-bg disabled:opacity-50" disabled={!(p.cp > 0)} onClick={() => onAdd(p)}>
+                <button className="flex min-h-16 w-full items-center gap-2 py-2 text-left active:bg-bg disabled:opacity-50" disabled={!allowNoPrice && !(p.cp > 0)} onClick={() => onAdd(p)}>
                   <span className="min-w-0 flex-1">
                     <span className="block font-medium leading-snug">{p.name_en}</span>
                     {p.name_ur && <span className="ur block text-sm text-muted">{p.name_ur}</span>}

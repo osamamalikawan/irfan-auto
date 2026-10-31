@@ -4,7 +4,7 @@ Mobile-first stock screens. No users or login yet (that is a later module).
 
 ## 1. Database
 1. Create a Supabase project.
-2. SQL Editor: run, in order, `0001_inventory.sql`, `0002_settings.sql` (list visibility, CP rename), `0003_search.sql` (word-by-word search) and `0004_users_roles.sql` (users, roles, PIN login) `0006_customers_routes.sql` (customers, cities, areas, routes) `0007_sales.sql` (invoices, payments, customer balances) and `0008_returns_money.sql` (returns, expenses, vouchers, dispatch). `0005_legacy_ids.sql` is only needed for the old-system import.
+2. SQL Editor: run, in order, `0001_inventory.sql`, `0002_settings.sql` (list visibility, CP rename), `0003_search.sql` (word-by-word search) and `0004_users_roles.sql` (users, roles, PIN login) `0006_customers_routes.sql` (customers, cities, areas, routes) `0007_sales.sql` (invoices, payments, customer balances) `0008_returns_money.sql` (returns, expenses, vouchers, dispatch) `0009_purchases_suppliers.sql` (suppliers, purchases, supplier payments, accounts) `0010_planner.sql` (route types, visits) and `0011_route_plans.sql` (completed routes, promises to pay). `0005_legacy_ids.sql` is only needed for the old-system import.
 
 ## 2. Run locally
 ```bash
@@ -89,3 +89,29 @@ together. A cancelled invoice puts the stock back and reverses the ledger. Chang
 - `/dispatch`: warehouse pick vouchers (no prices) for the thermal roll or A4 sheets; remembers what was printed.
 - `/expenses`: money paid out by category; remove a wrong entry. Refunds from returns appear here automatically.
 - `/vouchers`: received vouchers (RV-, customer payments) and paid vouchers (PV-, expenses), each printable.
+
+## Suppliers, purchases and accounts
+- `/suppliers`: supplier list and profile with what we owe, a statement, recent purchases, and **Pay supplier** (cash, bank or cheque).
+- `/purchases`: record goods received. Stock goes up at the chosen location (including free bonus pieces), the supplier's account is
+  credited, and the last price paid is remembered for each part. Cancelling takes the goods out again, but only if they are still there.
+- `/accounts`: sales, purchases, money in and out, what customers owe and what we owe, biggest balances and a daily money book.
+- New permissions (Users & Roles > Roles): suppliers.view/edit/pay, purchases.create/cancel. Administrators have them already; give them to other roles as needed.
+
+## Monthly planner
+Every route is **weekly**, **fortnightly** or **monthly**, with visit days (Mon-Sat):
+- weekly: every week on its visit days
+- fortnightly: every second week, counted from the week of a chosen date
+- monthly: the 1st, 2nd, 3rd, 4th or last occurrence of each visit day in the month
+
+`/planner` shows the month as a calendar (dots on phone, route names on desktop), the day you tap with its routes and customers,
+visit recording for today (outcome + note), every route's schedule with "Edit", and a list of what the plan does not cover
+(routes without a salesman or visit days, areas on no route, customers without a route). The rules live in `lib/schedule.ts`.
+
+## Route plans and customer responses
+- `/route-plans` lists every planned visit of every route (from the monthly schedule) as Planned, Overdue or Completed. **Mark completed** asks for the
+  fuel cost, which is recorded in Expenses as Fuel. Reopening a completed route cancels that expense. The Completed tab shows visited / planned,
+  productive visits, sales, collections and fuel as a share of sales.
+- `/route-plans/<route>/<date>` is the plan for one run: every customer with what they owe, their last response, and a form to
+  **record the customer's response** (outcome, notes, and an optional promise to pay with date and amount). Responses can be entered
+  for today or up to 31 days back. **Print** gives a sheet for the salesman with a blank response column.
+- A customer's profile now shows their recent visit responses.

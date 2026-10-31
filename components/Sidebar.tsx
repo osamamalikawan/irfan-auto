@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMe } from "./Me";
 
-const SOON = ["Purchases", "Suppliers", "Accounts"];
+const SOON = ["Sales team", "Dashboard"];
 
 /** Desktop only (lg and up). Mirrors the original prototype's dark side menu. */
 export default function Sidebar() {
@@ -15,9 +15,14 @@ export default function Sidebar() {
     { href: "/returns", label: "Returns", show: canAny(["sales.return", "reports.view"]) },
     { href: "/dispatch", label: "Dispatch vouchers", show: canAny(["sales.create", "stock.view", "stock.transfer"]) },
     { href: "/customers", label: "Customers", show: canAny(["customers.view", "customers.edit", "sales.create"]) },
+    { href: "/planner", label: "Monthly planner", show: canAny(["planner.edit", "visits.record", "routes.manage", "reports.view"]) },
+    { href: "/route-plans", label: "Route plans", show: canAny(["planner.edit", "visits.record", "routes.manage", "reports.view"]) },
     { href: "/routes", label: "Routes & Areas", show: can("routes.manage") },
+    { href: "/purchases", label: "Purchases", show: canAny(["purchases.create", "purchases.cancel", "suppliers.view"]) },
+    { href: "/suppliers", label: "Suppliers", show: canAny(["suppliers.view", "suppliers.edit", "suppliers.pay", "purchases.create"]) },
     { href: "/expenses", label: "Expenses", show: canAny(["accounts.edit", "reports.view"]) },
     { href: "/vouchers", label: "Payment vouchers", show: canAny(["payments.receive", "accounts.edit", "reports.view"]) },
+    { href: "/accounts", label: "Accounts", show: canAny(["accounts.edit", "reports.view"]) },
     { href: "/users", label: "Users & Roles", show: can("users.manage") },
     { href: "/settings", label: "Settings", show: can("settings.edit") },
   ].filter((i) => i.show);

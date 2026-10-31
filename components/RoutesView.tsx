@@ -1,13 +1,15 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { DAYS } from "@/lib/days";
+import { todayPk } from "@/lib/dates";
 import { rs } from "@/lib/format";
+import { FREQ_LABEL, MONTH_WEEKS, describeSchedule, type Freq } from "@/lib/schedule";
 import Toast from "./Toast";
 
 type Area = { id: string; name: string; customers: number; route_ids: string[] };
 type City = { id: string; name: string; areas: Area[] };
 type Route = {
-  id: string; name: string; code: string | null; salesman_id: string | null; list_id: string | null; visit_days: string[]; fuel_cost: number;
+  id: string; name: string; code: string | null; salesman_id: string | null; list_id: string | null; visit_days: string[]; frequency: Freq; cycle_start: string | null; month_week: number | null; fuel_cost: number;
   target_sales: number; target_collection: number; target_visits: number; customers: number;
   salesman: { id: string; name: string } | null; areas: { id: string; name: string; city: { id: string; name: string } | null }[];
 };
@@ -86,7 +88,7 @@ export default function RoutesView() {
                     <button className="btn min-h-9 px-3" onClick={() => setEditR(r)}>Edit</button>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1">
-                    {r.visit_days.length ? r.visit_days.map((d) => <span key={d} className="pill bg-green-bg text-green">{d}</span>) : <span className="pill bg-amber-bg text-amber">No visit day</span>}
+                    <span className="pill bg-green-bg text-green">{FREQ_LABEL[r.frequency]}</span>{r.visit_days.length ? <span className="pill bg-bg text-ink">{describeSchedule(r)}</span> : <span className="pill bg-amber-bg text-amber">No visit day</span>}
                     <span className="pill bg-bg text-muted">{r.customers} customers</span>
                   </div>
                   <p className="mt-2 text-xs text-muted">{byCity(r) || "No areas yet"}</p>
@@ -184,6 +186,9 @@ function RouteForm({ route, salesmen, cities, lists, onClose, onSaved }: {
   const [salesman, setSalesman] = useState(route?.salesman_id ?? "");
   const [list, setList] = useState(route?.list_id ?? "");
   const [days, setDays] = useState<string[]>(route?.visit_days ?? []);
+  const [freq, setFreq] = useState<Freq>(route?.frequency ?? "weekly");
+  const [cycle, setCycle] = useState(route?.cycle_start ?? todayPk());
+  const [mw, setMw] = useState(route?.month_week ?? 1);
   const [areaIds, setAreaIds] = useState<string[]>(route?.areas.map((a) => a.id) ?? []);
   const [fuel, setFuel] = useState(route?.fuel_cost ? String(route.fuel_cost) : "");
   const [tS, setTS] = useState(route?.target_sales ? String(route.target_sales) : "");
@@ -195,7 +200,7 @@ function RouteForm({ route, salesmen, cities, lists, onClose, onSaved }: {
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true); setError("");
-    const body = { name, code, salesman_id: salesman || null, list_id: list || null, visit_days: days, area_ids: areaIds, fuel_cost: fuel, target_sales: tS, target_collection: tC, target_visits: tV };
+    const body = { name, code, salesman_id: salesman || null, list_id: list || null, visit_days: days, frequency: freq, cycle_start: cycle, month_week: mw, area_ids: areaIds, fuel_cost: fuel, target_sales: tS, target_collection: tC, target_visits: tV };
     const r = route ? await send("/api/routes/" + route.id, "PATCH", body) : await send("/api/routes", "POST", body);
     setBusy(false);
     if (!r.ok) return setError(r.error);
@@ -236,6 +241,19 @@ function RouteForm({ route, salesmen, cities, lists, onClose, onSaved }: {
                 <button key={d} type="button" aria-pressed={days.includes(d)} className={"chip " + (days.includes(d) ? "chip-on" : "")} onClick={() => setDays((s) => (s.includes(d) ? s.filter((x) => x !== d) : [...s, d]))}>{d}</button>
               ))}
             </div>
+          </fieldset>
+          <fieldset>
+            <legend className="label">How often is it visited?</legend>
+            <div className="flex flex-wrap gap-2">
+              {(["weekly", "fortnightly", "monthly"] as Freq[]).map((f) => <button key={f} type="button" aria-pressed={freq === f} className={"chip " + (freq === f ? "chip-on" : "")} onClick={() => setFreq(f)}>{FREQ_LABEL[f]}</button>)}
+            </div>
+            {freq === "fortnightly" && (
+              <div className="mt-2"><label className="label" htmlFor="rt-cycle">A date in the first visit week</label><input id="rt-cycle" className="input" type="date" value={cycle} onChange={(e) => setCycle(e.target.value)} /></div>
+            )}
+            {freq === "monthly" && (
+              <div className="mt-2"><label className="label" htmlFor="rt-mw">Which week of the month</label>
+                <select id="rt-mw" className="input" value={mw} onChange={(e) => setMw(Number(e.target.value))}>{MONTH_WEEKS.map(([n, l]) => <option key={n} value={n}>{l} week</option>)}</select></div>
+            )}
           </fieldset>
           <fieldset>
             <legend className="label">Areas on this route</legend>

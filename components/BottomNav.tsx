@@ -24,8 +24,13 @@ export default function BottomNav() {
   const more = [
     { href: "/inventory?filter=low", label: "Low stock", show: stock },
     { href: "/sales/new", label: "New invoice", show: can("sales.create") },
+    { href: "/route-plans", label: "Route plans", show: canAny(["planner.edit", "visits.record", "routes.manage", "reports.view"]) },
+    { href: "/planner", label: "Monthly planner", show: canAny(["planner.edit", "visits.record", "routes.manage", "reports.view"]) },
     { href: "/returns", label: "Returns", show: canAny(["sales.return", "reports.view"]) },
     { href: "/dispatch", label: "Dispatch vouchers", show: canAny(["sales.create", "stock.view", "stock.transfer"]) },
+    { href: "/purchases", label: "Purchases", show: canAny(["purchases.create", "purchases.cancel", "suppliers.view"]) },
+    { href: "/suppliers", label: "Suppliers", show: canAny(["suppliers.view", "suppliers.edit", "suppliers.pay", "purchases.create"]) },
+    { href: "/accounts", label: "Accounts", show: canAny(["accounts.edit", "reports.view"]) },
     { href: "/expenses", label: "Expenses", show: canAny(["accounts.edit", "reports.view"]) },
     { href: "/vouchers", label: "Payment vouchers", show: canAny(["payments.receive", "accounts.edit", "reports.view"]) },
     { href: "/inventory/new", label: "Add product", show: can("stock.manage") },
@@ -34,7 +39,7 @@ export default function BottomNav() {
     { href: "/settings", label: "Settings", show: can("settings.edit") },
     { href: "/account", label: "My account", show: true },
   ].filter((i) => i.show);
-  const moreOn = ["/users", "/settings", "/account", "/returns", "/dispatch", "/expenses", "/vouchers"].some((p) => path.startsWith(p));
+  const moreOn = ["/users", "/settings", "/account", "/returns", "/dispatch", "/expenses", "/vouchers", "/purchases", "/suppliers", "/accounts", "/planner", "/route-plans"].some((p) => path.startsWith(p));
 
   async function signOut() {
     await fetch("/api/auth/logout", { method: "POST" });

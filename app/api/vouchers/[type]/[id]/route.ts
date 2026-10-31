@@ -10,7 +10,7 @@ const one = <T,>(x: T | T[] | null | undefined): T | null => (Array.isArray(x) ?
 
 /** One voucher for printing. type = "pay" (received) or "exp" (paid). */
 export async function GET(_req: NextRequest, { params }: Ctx) {
-  const a = await authorize("payments.receive", "accounts.edit", "reports.view");
+  const a = await authorize("payments.receive", "accounts.edit", "reports.view", "suppliers.pay");
   if (a.error) return a.error;
   const { type, id } = await params;
   const sb = db();
@@ -34,6 +34,19 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
     return NextResponse.json({
       voucher: { no: "PV-" + pad4(e.data.no), type: "paid", title: "Payment Voucher - Paid (Debit)", date: e.data.expense_date, party: e.data.category, code: "", amount: Number(e.data.amount), reversed: false,
         details: e.data.note ?? "", route: (one(e.data.route) as { name: string } | null)?.name ?? "", balance_after: null, by: (one(e.data.by) as { name: string } | null)?.name ?? "" },
+    });
+  }
+  if (type === "sup") {
+    if (a.user.ownOnly) return NextResponse.json({ error: "Voucher not found." }, { status: 404 });
+    const p = await sb.from("supplier_payments").select("id,no,pay_date,amount,method,ref_no,note,reversed,created_at,supplier_id,supplier:suppliers(code,name),purchase:purchases(no),by:app_users!supplier_payments_created_by_fkey(name)").eq("id", id).maybeSingle();
+    if (!p.data) return NextResponse.json({ error: "Voucher not found." }, { status: 404 });
+    const led = await sb.from("supplier_ledger").select("amount").eq("supplier_id", p.data.supplier_id).lte("ts", p.data.created_at);
+    const owed = (led.data ?? []).reduce((x: number, e: { amount: number }) => x + Number(e.amount), 0);
+    const sup = one(p.data.supplier) as { code: string; name: string } | null, pur = one(p.data.purchase) as { no: string } | null;
+    return NextResponse.json({
+      voucher: { no: "SP-" + pad4(p.data.no), type: "paid", title: "Payment Voucher - Paid to supplier (Debit)", date: p.data.pay_date, party: sup?.name ?? "", code: sup?.code ?? "", amount: Number(p.data.amount),
+        reversed: !!p.data.reversed, details: [p.data.method + (p.data.ref_no ? " " + p.data.ref_no : ""), pur ? "with " + pur.no : "", p.data.note].filter(Boolean).join(" · "),
+        balance_after: owed, balance_label: "We still owe this supplier", by: (one(p.data.by) as { name: string } | null)?.name ?? "" },
     });
   }
   return NextResponse.json({ error: "Voucher not found." }, { status: 404 });

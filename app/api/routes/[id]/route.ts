@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase";
 import { authorize } from "@/lib/auth";
 import { cleanDays } from "@/lib/days";
+import { cleanDate, cleanFreq, cleanMonthWeek } from "@/lib/schedule";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -22,6 +23,12 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   if (b.salesman_id !== undefined) patch.salesman_id = b.salesman_id || null;
   if (b.list_id !== undefined) patch.list_id = b.list_id || null;
   if (b.visit_days !== undefined) patch.visit_days = cleanDays(b.visit_days);
+  if (b.frequency !== undefined) {
+    const f = cleanFreq(b.frequency);
+    patch.frequency = f;
+    patch.cycle_start = f === "fortnightly" ? cleanDate(b.cycle_start) : null;
+    patch.month_week = f === "monthly" ? cleanMonthWeek(b.month_week) ?? 1 : null;
+  }
   if (b.fuel_cost !== undefined) patch.fuel_cost = Math.max(0, Math.round(Number(b.fuel_cost) || 0));
   if (b.target_sales !== undefined) patch.target_sales = Math.max(0, Number(b.target_sales) || 0);
   if (b.target_collection !== undefined) patch.target_collection = Math.max(0, Number(b.target_collection) || 0);

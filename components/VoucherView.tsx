@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { niceDate } from "@/lib/dates";
 import { rs } from "@/lib/format";
 
-type V = { no: string; type: string; title: string; date: string; party: string; code: string; amount: number; reversed: boolean; details: string; route?: string; balance_after: number | null; by: string };
+type V = { no: string; type: string; title: string; date: string; party: string; code: string; amount: number; reversed: boolean; details: string; route?: string; balance_after: number | null; balance_label?: string; by: string };
 
 export default function VoucherView({ type, id }: { type: string; id: string }) {
   const [v, setV] = useState<V | null>(null);
@@ -28,11 +28,11 @@ export default function VoucherView({ type, id }: { type: string; id: string }) 
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between"><dt className="text-muted">Voucher no.</dt><dd className="font-semibold">{v.no}</dd></div>
             <div className="flex justify-between"><dt className="text-muted">Date</dt><dd>{niceDate(v.date)}</dd></div>
-            <div className="flex justify-between"><dt className="text-muted">{v.type === "received" ? "Received from" : "Paid for"}</dt><dd className="text-right font-medium">{v.party}{v.code ? " (" + v.code + ")" : ""}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted">{v.type === "received" ? "Received from" : v.code ? "Paid to" : "Paid for"}</dt><dd className="text-right font-medium">{v.party}{v.code ? " (" + v.code + ")" : ""}</dd></div>
             {v.details && <div className="flex justify-between gap-4"><dt className="text-muted">Details</dt><dd className="text-right">{v.details}</dd></div>}
             {v.route && <div className="flex justify-between"><dt className="text-muted">Route</dt><dd>{v.route}</dd></div>}
             <div className="flex justify-between border-t border-line pt-2 text-xl font-bold"><dt>Amount</dt><dd className={v.reversed ? "line-through" : ""}>{rs(v.amount)}</dd></div>
-            {v.balance_after !== null && <div className="flex justify-between"><dt className="text-muted">Balance after this payment</dt><dd>{rs(v.balance_after)}</dd></div>}
+            {v.balance_after !== null && <div className="flex justify-between"><dt className="text-muted">{v.balance_label ?? "Balance after this payment"}</dt><dd>{rs(v.balance_after)}</dd></div>}
             {v.reversed && <p className="rounded-lg bg-bg p-2 text-center text-muted">This payment was reversed (invoice cancelled).</p>}
           </dl>
           <div className="mt-8 flex justify-between text-xs text-muted"><span>Prepared by: {v.by || "—"}</span><span>Signature: ____________</span></div>

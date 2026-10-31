@@ -14,6 +14,10 @@ export const PERM_GROUPS: { title: string; perms: [string, string][] }[] = [
   { title: "Field work", perms: [
     ["planner.edit", "Edit the weekly planner"], ["visits.record", "Record visits"], ["targets.manage", "Set targets"], ["reports.view", "View reports"],
   ] },
+  { title: "Purchasing", perms: [
+    ["suppliers.view", "View suppliers"], ["suppliers.edit", "Add and edit suppliers"], ["suppliers.pay", "Pay suppliers"],
+    ["purchases.create", "Record purchases (goods received)"], ["purchases.cancel", "Cancel purchases"],
+  ] },
   { title: "Administration", perms: [
     ["accounts.edit", "Accounts, expenses and vouchers"], ["settings.edit", "Change settings"], ["users.manage", "Manage users and roles"],
   ] },

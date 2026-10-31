@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase";
 import { authorize } from "@/lib/auth";
 import { cleanDays } from "@/lib/days";
+import { cleanDate, cleanFreq, cleanMonthWeek } from "@/lib/schedule";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ export async function GET() {
   if (a.error) return a.error;
   const sb = db();
   let q = sb.from("routes")
-    .select("id,name,code,salesman_id,list_id,visit_days,fuel_cost,target_sales,target_collection,target_visits,active,salesman:app_users(id,name),route_areas(area:areas(id,name,city:cities(id,name)))")
+    .select("id,name,code,salesman_id,list_id,visit_days,frequency,cycle_start,month_week,fuel_cost,target_sales,target_collection,target_visits,active,salesman:app_users(id,name),route_areas(area:areas(id,name,city:cities(id,name)))")
     .order("name");
   if (a.user.ownOnly) q = q.eq("salesman_id", a.user.id);
   const [routes, counts, sm] = await Promise.all([
@@ -43,6 +44,8 @@ export async function POST(req: NextRequest) {
   const { data, error } = await sb.from("routes").insert({
     name, code: String(b?.code ?? "").trim() || name.slice(0, 3).toUpperCase(),
     salesman_id: b?.salesman_id || null, list_id: b?.list_id || null, visit_days: cleanDays(b?.visit_days),
+    frequency: cleanFreq(b?.frequency), cycle_start: cleanFreq(b?.frequency) === "fortnightly" ? cleanDate(b?.cycle_start) : null,
+    month_week: cleanFreq(b?.frequency) === "monthly" ? cleanMonthWeek(b?.month_week) ?? 1 : null,
     fuel_cost: Math.max(0, Math.round(Number(b?.fuel_cost) || 0)),
     target_sales: Math.max(0, Number(b?.target_sales) || 0), target_collection: Math.max(0, Number(b?.target_collection) || 0),
     target_visits: Math.max(0, Math.round(Number(b?.target_visits) || 0)),

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { rs } from "@/lib/format";
 import { telLink, waLink } from "@/lib/phone";
 import LedgerSection from "./LedgerSection";
+import VisitHistory from "./VisitHistory";
 import { MoveModal } from "./CustomersList";
 import { useMe } from "./Me";
 import Toast from "./Toast";
@@ -143,7 +144,8 @@ export default function CustomerDetail({ id }: { id: string }) {
             ))}
           </ul>
         </section>
-        <div className="lg:col-span-2">
+        <div className="space-y-3 lg:col-span-2">
+          <VisitHistory customerId={id} />
           <LedgerSection customerId={id} customerName={c.name} isWalkIn={c.is_walk_in} />
         </div>
       </div>
