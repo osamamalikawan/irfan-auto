@@ -80,7 +80,7 @@ export default function SettingsView() {
           </Link>
         )}
 
-        <section className="card p-4">
+        <section id="stock-settings" className="card scroll-mt-16 p-4">
           <div className="mb-1 flex items-center justify-between gap-2">
             <h2 className="font-semibold">Price lists</h2>
             <div className="flex gap-2">

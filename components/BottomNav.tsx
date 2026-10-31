@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { visibleMenu } from "@/lib/menu";
 import { canAddCustomer } from "@/lib/permissions";
 import { useMe } from "./Me";
 
@@ -22,24 +23,7 @@ export default function BottomNav() {
     { href: "/customers", label: "Customers", icon: "☺", on: path.startsWith("/customers"), show: customers },
     { href: "/routes", label: "Routes", icon: "⇄", on: path.startsWith("/routes"), show: can("routes.manage") },
   ].filter((i) => i.show);
-  const more = [
-    { href: "/inventory?filter=low", label: "Low stock", show: stock },
-    { href: "/sales/new", label: "New invoice", show: can("sales.create") },
-    { href: "/route-plans", label: "Route plans", show: canAny(["planner.edit", "visits.record", "routes.manage", "reports.view"]) },
-    { href: "/planner", label: "Monthly planner", show: canAny(["planner.edit", "visits.record", "routes.manage", "reports.view"]) },
-    { href: "/returns", label: "Returns", show: canAny(["sales.return", "reports.view"]) },
-    { href: "/dispatch", label: "Dispatch vouchers", show: canAny(["sales.create", "stock.view", "stock.transfer"]) },
-    { href: "/purchases", label: "Purchases", show: canAny(["purchases.create", "purchases.cancel", "suppliers.view"]) },
-    { href: "/suppliers", label: "Suppliers", show: canAny(["suppliers.view", "suppliers.edit", "suppliers.pay", "purchases.create"]) },
-    { href: "/accounts", label: "Accounts", show: canAny(["accounts.edit", "reports.view"]) },
-    { href: "/expenses", label: "Expenses", show: canAny(["accounts.edit", "reports.view"]) },
-    { href: "/vouchers", label: "Payment vouchers", show: canAny(["payments.receive", "accounts.edit", "reports.view"]) },
-    { href: "/inventory/new", label: "Add product", show: can("stock.manage") },
-    { href: "/customers/new", label: "Add customer", show: canAddCustomer(user) },
-    { href: "/users", label: "Users & Roles", show: can("users.manage") },
-    { href: "/settings", label: "Settings", show: can("settings.edit") },
-    { href: "/account", label: "My account", show: true },
-  ].filter((i) => i.show);
+  const groups = visibleMenu(user);
   const moreOn = ["/users", "/settings", "/account", "/returns", "/dispatch", "/expenses", "/vouchers", "/purchases", "/suppliers", "/accounts", "/planner", "/route-plans"].some((p) => path.startsWith(p));
 
   async function signOut() {
@@ -66,12 +50,24 @@ export default function BottomNav() {
       {open && (
         <div className="fixed inset-0 z-40 flex items-end bg-black/50 lg:hidden" onClick={() => setOpen(false)}>
           <div role="dialog" aria-label="More" onClick={(e) => e.stopPropagation()}
-            className="mx-auto w-full max-w-2xl rounded-t-2xl bg-surface p-2 pb-[calc(env(safe-area-inset-bottom)+4.5rem)]">
+            className="mx-auto max-h-[85dvh] w-full max-w-2xl overflow-auto rounded-t-2xl bg-surface p-2 pb-[calc(env(safe-area-inset-bottom)+4.5rem)]">
             <div className="mx-auto my-2 h-1 w-10 rounded-full bg-line" />
             <ul>
-              {more.map((i) => (
-                <li key={i.label}><Link href={i.href} className="flex min-h-12 items-center rounded-lg px-4 text-base active:bg-bg">{i.label}</Link></li>
+              {groups.map((g) => (
+                <li key={g.label}>
+                  <p className="px-4 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-muted">{g.label}</p>
+                  <ul>
+                    {g.items.map((i) => (
+                      <li key={i.href}><Link href={i.href} className="flex min-h-12 items-center rounded-lg px-4 text-base active:bg-bg">{i.label}</Link></li>
+                    ))}
+                  </ul>
+                </li>
               ))}
+              <li>
+                <p className="px-4 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-muted">Quick add</p>
+                {canAddCustomer(user) && <Link href="/customers/new" className="flex min-h-12 items-center rounded-lg px-4 text-base active:bg-bg">Add customer</Link>}
+                <Link href="/account" className="flex min-h-12 items-center rounded-lg px-4 text-base active:bg-bg">My account</Link>
+              </li>
               <li><button className="flex min-h-12 w-full items-center rounded-lg px-4 text-left text-base text-red active:bg-bg" onClick={signOut}>Sign out</button></li>
             </ul>
           </div>

@@ -1,0 +1,508 @@
+diff --git a/app/route-plans/page.tsx b/app/route-plans/page.tsx
+index cd72c0b..f69441b 100644
+--- a/app/route-plans/page.tsx
++++ b/app/route-plans/page.tsx
+@@ -3,7 +3,10 @@ import RoutePlansView from "@/components/RoutePlansView";
+ import { getUser } from "@/lib/auth";
+ import { hasAny } from "@/lib/permissions";
+ 
+-export default async function Page() {
++export default async function Page({ searchParams }: { searchParams: Promise<{ tab?: string; range?: string }> }) {
+   if (!hasAny(await getUser(), ["planner.edit", "visits.record", "routes.manage", "reports.view"])) redirect("/");
+-  return <RoutePlansView />;
++  const sp = await searchParams;
++  const tab = sp.tab === "completed" ? "completed" : "planned";
++  const range = ["upcoming", "today", "week", "month"].includes(sp.range ?? "") ? sp.range! : "upcoming";
++  return <RoutePlansView key={tab + range} initialTab={tab} initialRange={range} />;
+ }
+diff --git a/app/sales/page.tsx b/app/sales/page.tsx
+index de8fb06..ff4e5b9 100644
+--- a/app/sales/page.tsx
++++ b/app/sales/page.tsx
+@@ -3,7 +3,10 @@ import SalesList from "@/components/SalesList";
+ import { getUser } from "@/lib/auth";
+ import { hasAny } from "@/lib/permissions";
+ 
+-export default async function Page() {
++export default async function Page({ searchParams }: { searchParams: Promise<{ status?: string; range?: string }> }) {
+   if (!hasAny(await getUser(), ["sales.create", "payments.receive"])) redirect("/");
+-  return <SalesList />;
++  const sp = await searchParams;
++  const status = ["confirmed", "cancelled"].includes(sp.status ?? "") ? sp.status! : "";
++  const range = ["today", "week", "month", "all"].includes(sp.range ?? "") ? sp.range! : "today";
++  return <SalesList key={status + range} initialStatus={status} initialRange={range} />;
+ }
+diff --git a/app/users/page.tsx b/app/users/page.tsx
+index d3b0558..5f47506 100644
+--- a/app/users/page.tsx
++++ b/app/users/page.tsx
+@@ -3,8 +3,10 @@ import UsersView from "@/components/UsersView";
+ import { getUser } from "@/lib/auth";
+ import { hasPerm } from "@/lib/permissions";
+ 
+-export default async function Page() {
++export default async function Page({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+   const user = await getUser();
+   if (!hasPerm(user, "users.manage")) redirect("/inventory");
+-  return <UsersView />;
++  const { tab } = await searchParams;
++  const t = tab === "roles" ? "roles" : "users";
++  return <UsersView key={t} initialTab={t} />;
+ }
+diff --git a/components/BottomNav.tsx b/components/BottomNav.tsx
+index e02d0b2..e6498bb 100644
+--- a/components/BottomNav.tsx
++++ b/components/BottomNav.tsx
+@@ -2,6 +2,7 @@
+ import Link from "next/link";
+ import { usePathname, useSearchParams } from "next/navigation";
+ import { useEffect, useState } from "react";
++import { visibleMenu } from "@/lib/menu";
+ import { canAddCustomer } from "@/lib/permissions";
+ import { useMe } from "./Me";
+ 
+@@ -22,24 +23,7 @@ export default function BottomNav() {
+     { href: "/customers", label: "Customers", icon: "☺", on: path.startsWith("/customers"), show: customers },
+     { href: "/routes", label: "Routes", icon: "⇄", on: path.startsWith("/routes"), show: can("routes.manage") },
+   ].filter((i) => i.show);
+-  const more = [
+-    { href: "/inventory?filter=low", label: "Low stock", show: stock },
+-    { href: "/sales/new", label: "New invoice", show: can("sales.create") },
+-    { href: "/route-plans", label: "Route plans", show: canAny(["planner.edit", "visits.record", "routes.manage", "reports.view"]) },
+-    { href: "/planner", label: "Monthly planner", show: canAny(["planner.edit", "visits.record", "routes.manage", "reports.view"]) },
+-    { href: "/returns", label: "Returns", show: canAny(["sales.return", "reports.view"]) },
+-    { href: "/dispatch", label: "Dispatch vouchers", show: canAny(["sales.create", "stock.view", "stock.transfer"]) },
+-    { href: "/purchases", label: "Purchases", show: canAny(["purchases.create", "purchases.cancel", "suppliers.view"]) },
+-    { href: "/suppliers", label: "Suppliers", show: canAny(["suppliers.view", "suppliers.edit", "suppliers.pay", "purchases.create"]) },
+-    { href: "/accounts", label: "Accounts", show: canAny(["accounts.edit", "reports.view"]) },
+-    { href: "/expenses", label: "Expenses", show: canAny(["accounts.edit", "reports.view"]) },
+-    { href: "/vouchers", label: "Payment vouchers", show: canAny(["payments.receive", "accounts.edit", "reports.view"]) },
+-    { href: "/inventory/new", label: "Add product", show: can("stock.manage") },
+-    { href: "/customers/new", label: "Add customer", show: canAddCustomer(user) },
+-    { href: "/users", label: "Users & Roles", show: can("users.manage") },
+-    { href: "/settings", label: "Settings", show: can("settings.edit") },
+-    { href: "/account", label: "My account", show: true },
+-  ].filter((i) => i.show);
++  const groups = visibleMenu(user);
+   const moreOn = ["/users", "/settings", "/account", "/returns", "/dispatch", "/expenses", "/vouchers", "/purchases", "/suppliers", "/accounts", "/planner", "/route-plans"].some((p) => path.startsWith(p));
+ 
+   async function signOut() {
+@@ -66,12 +50,24 @@ export default function BottomNav() {
+       {open && (
+         <div className="fixed inset-0 z-40 flex items-end bg-black/50 lg:hidden" onClick={() => setOpen(false)}>
+           <div role="dialog" aria-label="More" onClick={(e) => e.stopPropagation()}
+-            className="mx-auto w-full max-w-2xl rounded-t-2xl bg-surface p-2 pb-[calc(env(safe-area-inset-bottom)+4.5rem)]">
++            className="mx-auto max-h-[85dvh] w-full max-w-2xl overflow-auto rounded-t-2xl bg-surface p-2 pb-[calc(env(safe-area-inset-bottom)+4.5rem)]">
+             <div className="mx-auto my-2 h-1 w-10 rounded-full bg-line" />
+             <ul>
+-              {more.map((i) => (
+-                <li key={i.label}><Link href={i.href} className="flex min-h-12 items-center rounded-lg px-4 text-base active:bg-bg">{i.label}</Link></li>
++              {groups.map((g) => (
++                <li key={g.label}>
++                  <p className="px-4 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-muted">{g.label}</p>
++                  <ul>
++                    {g.items.map((i) => (
++                      <li key={i.href}><Link href={i.href} className="flex min-h-12 items-center rounded-lg px-4 text-base active:bg-bg">{i.label}</Link></li>
++                    ))}
++                  </ul>
++                </li>
+               ))}
++              <li>
++                <p className="px-4 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-muted">Quick add</p>
++                {canAddCustomer(user) && <Link href="/customers/new" className="flex min-h-12 items-center rounded-lg px-4 text-base active:bg-bg">Add customer</Link>}
++                <Link href="/account" className="flex min-h-12 items-center rounded-lg px-4 text-base active:bg-bg">My account</Link>
++              </li>
+               <li><button className="flex min-h-12 w-full items-center rounded-lg px-4 text-left text-base text-red active:bg-bg" onClick={signOut}>Sign out</button></li>
+             </ul>
+           </div>
+diff --git a/components/RoutePlansView.tsx b/components/RoutePlansView.tsx
+index b47f91a..8b5c487 100644
+--- a/components/RoutePlansView.tsx
++++ b/components/RoutePlansView.tsx
+@@ -20,10 +20,10 @@ function bounds(k: (typeof RANGES)[number][0]) {
+   return { from: addDays(t, -14), to: addDays(t, 7) };
+ }
+ 
+-export default function RoutePlansView() {
++export default function RoutePlansView({ initialTab = "planned", initialRange = "upcoming" }: { initialTab?: "planned" | "completed"; initialRange?: string }) {
+   const { can } = useMe();
+-  const [tab, setTab] = useState<"planned" | "completed">("planned");
+-  const [range, setRange] = useState<(typeof RANGES)[number][0]>("upcoming");
++  const [tab, setTab] = useState<"planned" | "completed">(initialTab);
++  const [range, setRange] = useState<(typeof RANGES)[number][0]>(initialRange as (typeof RANGES)[number][0]);
+   const [entries, setEntries] = useState<Entry[] | null>(null);
+   const [runs, setRuns] = useState<Run[] | null>(null);
+   const [error, setError] = useState("");
+diff --git a/components/SalesList.tsx b/components/SalesList.tsx
+index 0bf07d1..0b25c35 100644
+--- a/components/SalesList.tsx
++++ b/components/SalesList.tsx
+@@ -19,9 +19,10 @@ export function saleState(s: { total: number; paid: number; status: string }) {
+   return Number(s.paid) > 0 ? { label: "Part paid", cls: "bg-amber-bg text-amber" } : { label: "On credit", cls: "bg-red-bg text-red" };
+ }
+ 
+-export default function SalesList() {
++export default function SalesList({ initialStatus = "", initialRange = "today" }: { initialStatus?: string; initialRange?: string }) {
+   const { can } = useMe();
+-  const [range, setRange] = useState<(typeof RANGES)[number][0]>("today");
++  const [range, setRange] = useState<(typeof RANGES)[number][0]>(initialRange as (typeof RANGES)[number][0])
++  const [status, setStatus] = useState(initialStatus);
+   const [q, setQ] = useState("");
+   const [items, setItems] = useState<Sale[]>([]);
+   const [total, setTotal] = useState(0);
+@@ -36,6 +37,7 @@ export default function SalesList() {
+     setLoading(true); setError("");
+     const t = todayPk();
+     const p = new URLSearchParams({ q, offset: String(offset), limit: String(PAGE) });
++    if (status) p.set("status", status);
+     if (range === "today") { p.set("from", t); p.set("to", t); }
+     if (range === "week") { p.set("from", weekStart(t)); p.set("to", t); }
+     if (range === "month") { p.set("from", monthStart(t)); p.set("to", t); }
+@@ -48,7 +50,7 @@ export default function SalesList() {
+       setTotal(j.total);
+     } catch (e) { if (id === req.current) setError((e as Error).message); }
+     finally { if (id === req.current) setLoading(false); }
+-  }, [q, range]);
++  }, [q, range, status]);
+ 
+   useEffect(() => { const t = setTimeout(() => load(0), 250); return () => clearTimeout(t); }, [load]);
+ 
+@@ -73,6 +75,8 @@ export default function SalesList() {
+         </div>
+         <div className="-mx-3 mt-2 flex gap-2 overflow-x-auto px-3 pb-1 lg:mx-0 lg:mt-3 lg:px-0">
+           {RANGES.map(([k, label]) => <button key={k} className={"chip " + (range === k ? "chip-on" : "")} onClick={() => setRange(k)}>{label}</button>)}
++          <span className="mx-1 w-px shrink-0 self-stretch bg-line" aria-hidden />
++          {([["", "All invoices"], ["confirmed", "Completed"], ["cancelled", "Cancelled"]] as const).map(([k, label]) => <button key={k} className={"chip " + (status === k ? "chip-on" : "")} onClick={() => setStatus(k)}>{label}</button>)}
+         </div>
+         <LoadingBar active={loading} className="mt-2" />
+       </header>
+diff --git a/components/SettingsView.tsx b/components/SettingsView.tsx
+index ec7ec23..ff8c1ae 100644
+--- a/components/SettingsView.tsx
++++ b/components/SettingsView.tsx
+@@ -80,7 +80,7 @@ export default function SettingsView() {
+           </Link>
+         )}
+ 
+-        <section className="card p-4">
++        <section id="stock-settings" className="card scroll-mt-16 p-4">
+           <div className="mb-1 flex items-center justify-between gap-2">
+             <h2 className="font-semibold">Price lists</h2>
+             <div className="flex gap-2">
+diff --git a/components/Shell.tsx b/components/Shell.tsx
+index 1ffa69e..c8784d8 100644
+--- a/components/Shell.tsx
++++ b/components/Shell.tsx
+@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
+ import { getUser } from "@/lib/auth";
+ import BottomNav from "./BottomNav";
+ import { MeProvider } from "./Me";
+-import Sidebar from "./Sidebar";
++import TopNav from "./TopNav";
+ import NavProgress from "./NavProgress";
+ import Topbar from "./Topbar";
+ import { Suspense } from "react";
+@@ -14,12 +14,14 @@ export default async function Shell({ children }: { children: React.ReactNode })
+   if (user.mustChangePin) redirect("/change-pin");
+   return (
+     <MeProvider user={user}>
+-      <div className="lg:flex lg:min-h-dvh">
++      <div className="min-h-dvh">
+         <Suspense fallback={null}>
+           <NavProgress />
+         </Suspense>
+-        <Sidebar />
+-        <div className="mx-auto min-h-dvh w-full max-w-2xl pb-[calc(env(safe-area-inset-bottom)+4.5rem)] lg:mx-0 lg:min-w-0 lg:max-w-none lg:flex-1 lg:pb-10">
++        <Suspense fallback={<div className="hidden h-12 bg-side lg:block" />}>
++          <TopNav />
++        </Suspense>
++        <div className="mx-auto min-h-dvh w-full max-w-2xl pb-[calc(env(safe-area-inset-bottom)+4.5rem)] lg:mx-0 lg:max-w-none lg:pb-10">
+           <Topbar />
+           {children}
+         </div>
+diff --git a/components/Sidebar.tsx b/components/Sidebar.tsx
+deleted file mode 100644
+index cfa131f..0000000
+--- a/components/Sidebar.tsx
++++ /dev/null
+@@ -1,63 +0,0 @@
+-"use client";
+-import Link from "next/link";
+-import { usePathname } from "next/navigation";
+-import { useMe } from "./Me";
+-
+-const SOON = ["Sales team", "Dashboard"];
+-
+-/** Desktop only (lg and up). Mirrors the original prototype's dark side menu. */
+-export default function Sidebar() {
+-  const path = usePathname();
+-  const { user, can, canAny } = useMe();
+-  const items = [
+-    { href: "/inventory", label: "Stock & Racks", show: canAny(["stock.view", "stock.transfer", "stock.adjust"]) },
+-    { href: "/sales", label: "Sales", show: canAny(["sales.create", "payments.receive"]) },
+-    { href: "/returns", label: "Returns", show: canAny(["sales.return", "reports.view"]) },
+-    { href: "/dispatch", label: "Dispatch vouchers", show: canAny(["sales.create", "stock.view", "stock.transfer"]) },
+-    { href: "/customers", label: "Customers", show: canAny(["customers.view", "customers.edit", "sales.create"]) },
+-    { href: "/planner", label: "Monthly planner", show: canAny(["planner.edit", "visits.record", "routes.manage", "reports.view"]) },
+-    { href: "/route-plans", label: "Route plans", show: canAny(["planner.edit", "visits.record", "routes.manage", "reports.view"]) },
+-    { href: "/routes", label: "Routes & Areas", show: can("routes.manage") },
+-    { href: "/purchases", label: "Purchases", show: canAny(["purchases.create", "purchases.cancel", "suppliers.view"]) },
+-    { href: "/suppliers", label: "Suppliers", show: canAny(["suppliers.view", "suppliers.edit", "suppliers.pay", "purchases.create"]) },
+-    { href: "/expenses", label: "Expenses", show: canAny(["accounts.edit", "reports.view"]) },
+-    { href: "/vouchers", label: "Payment vouchers", show: canAny(["payments.receive", "accounts.edit", "reports.view"]) },
+-    { href: "/accounts", label: "Accounts", show: canAny(["accounts.edit", "reports.view"]) },
+-    { href: "/users", label: "Users & Roles", show: can("users.manage") },
+-    { href: "/settings", label: "Settings", show: can("settings.edit") },
+-  ].filter((i) => i.show);
+-
+-  async function signOut() {
+-    await fetch("/api/auth/logout", { method: "POST" });
+-    window.location.replace("/login");
+-  }
+-
+-  return (
+-    <aside className="sticky top-0 hidden h-dvh w-52 shrink-0 flex-col overflow-auto bg-side p-2.5 text-side-ink lg:flex">
+-      <div className="px-2.5 pb-3.5 pt-1 text-[15px] font-bold leading-tight text-white">
+-        Irfan Autos
+-        <small className="mt-0.5 block text-xs font-normal text-side-ink">Bike &amp; auto spare parts</small>
+-      </div>
+-      {items.map((n) => {
+-        const on = path.startsWith(n.href);
+-        return (
+-          <Link key={n.href} href={n.href} aria-current={on ? "page" : undefined}
+-            className={"mb-px block rounded-md px-2.5 py-2 text-sm " + (on ? "bg-accent font-semibold text-accent-ink" : "hover:bg-white/10")}>
+-            {n.label}
+-          </Link>
+-        );
+-      })}
+-      <hr className="my-2.5 border-white/10" />
+-      {SOON.map((x) => (
+-        <span key={x} title="Planned, not built yet" className="mb-px block cursor-default rounded-md px-2.5 py-2 text-sm opacity-45">{x}</span>
+-      ))}
+-      <div className="mt-auto border-t border-white/10 pt-2.5">
+-        <Link href="/account" className={"block rounded-md px-2.5 py-2 text-sm hover:bg-white/10 " + (path.startsWith("/account") ? "bg-white/10" : "")}>
+-          <span className="block font-semibold text-white">{user.name}</span>
+-          <span className="text-xs">{user.roleName} · My account</span>
+-        </Link>
+-        <button className="mt-1 block w-full rounded-md px-2.5 py-2 text-left text-sm hover:bg-white/10" onClick={signOut}>Sign out</button>
+-      </div>
+-    </aside>
+-  );
+-}
+diff --git a/components/TopNav.tsx b/components/TopNav.tsx
+new file mode 100644
+index 0000000..02e7cb8
+--- /dev/null
++++ b/components/TopNav.tsx
+@@ -0,0 +1,104 @@
++"use client";
++import Link from "next/link";
++import { usePathname, useSearchParams } from "next/navigation";
++import { useEffect, useMemo, useRef, useState } from "react";
++import { activeHref, visibleMenu } from "@/lib/menu";
++import { useMe } from "./Me";
++
++const digit = (e: KeyboardEvent) => { const m = /^(?:Digit|Numpad)([1-9])$/.exec(e.code); return m ? Number(m[1]) : 0; };
++
++/**
++ * Desktop top bar with drop-down menus (lg and up; phones use the bottom bar).
++ * Keys: Alt+1..9 opens a menu, then 1..9 opens that item, arrows move, Esc closes.
++ */
++export default function TopNav() {
++  const path = usePathname();
++  const params = useSearchParams();
++  const search = params.toString();
++  const { user } = useMe();
++  const groups = useMemo(() => visibleMenu(user), [user]);
++  const [open, setOpen] = useState<number | null>(null);
++  const root = useRef<HTMLElement>(null);
++  const focusFirst = useRef(false);
++
++  useEffect(() => { setOpen(null); }, [path, search]);
++
++  const links = (i: number) => Array.from(root.current?.querySelectorAll<HTMLAnchorElement>('[data-menu="' + i + '"] a') ?? []);
++
++  useEffect(() => {
++    if (open === null || !focusFirst.current) return;
++    focusFirst.current = false;
++    links(open)[0]?.focus();
++  }, [open]);
++
++  useEffect(() => {
++    function onKey(e: KeyboardEvent) {
++      const n = digit(e);
++      if (e.altKey && !e.ctrlKey && !e.metaKey && n && groups[n - 1]) {
++        e.preventDefault();
++        focusFirst.current = true;
++        setOpen((o) => (o === n - 1 ? null : n - 1));
++        return;
++      }
++      if (open === null) return;
++      if (e.key === "Escape") { setOpen(null); root.current?.querySelector<HTMLButtonElement>('[data-top="' + open + '"]')?.focus(); return; }
++      if (e.altKey || e.ctrlKey || e.metaKey) return;
++      const items = links(open);
++      if (n && items[n - 1]) { e.preventDefault(); items[n - 1].click(); return; }
++      const at = items.indexOf(document.activeElement as HTMLAnchorElement);
++      if (e.key === "ArrowDown") { e.preventDefault(); items[(at + 1) % items.length]?.focus(); }
++      else if (e.key === "ArrowUp") { e.preventDefault(); items[(at <= 0 ? items.length : at) - 1]?.focus(); }
++      else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
++        e.preventDefault();
++        focusFirst.current = true;
++        setOpen((open + (e.key === "ArrowRight" ? 1 : groups.length - 1)) % groups.length);
++      }
++    }
++    function onDown(e: MouseEvent) { if (open !== null && !root.current?.contains(e.target as Node)) setOpen(null); }
++    document.addEventListener("keydown", onKey);
++    document.addEventListener("mousedown", onDown);
++    return () => { document.removeEventListener("keydown", onKey); document.removeEventListener("mousedown", onDown); };
++  }, [open, groups]);
++
++  async function signOut() {
++    await fetch("/api/auth/logout", { method: "POST" });
++    window.location.replace("/login");
++  }
++
++  return (
++    <nav ref={root} aria-label="Main menu" data-noprint className="sticky top-0 z-40 hidden h-12 items-center gap-1 bg-side px-3 text-side-ink lg:flex">
++      <Link href="/" className="mr-3 shrink-0 text-[15px] font-bold leading-none text-white">Irfan Autos</Link>
++      {groups.map((g, i) => {
++        const cur = activeHref(g, path, params);
++        const isOpen = open === i;
++        return (
++          <div key={g.label} className="relative" data-menu={i} onMouseEnter={() => open !== null && setOpen(i)}>
++            <button type="button" data-top={i} aria-haspopup="menu" aria-expanded={isOpen} title={"Alt+" + (i + 1)}
++              onClick={() => { focusFirst.current = false; setOpen(isOpen ? null : i); }}
++              className={"flex h-9 items-center gap-1.5 rounded-md px-2.5 text-sm " + (cur ? "bg-accent font-semibold text-accent-ink" : isOpen ? "bg-white/15 text-white" : "hover:bg-white/10")}>
++              <span className="text-[11px] opacity-60" aria-hidden>{i + 1}</span>{g.label}<span className="text-[10px]" aria-hidden>▾</span>
++            </button>
++            {isOpen && (
++              <div role="menu" aria-label={g.label} className="absolute left-0 top-full z-50 mt-1 min-w-56 rounded-xl border border-line bg-surface p-1 text-ink shadow-lg">
++                {g.items.map((it, j) => (
++                  <Link key={it.href} href={it.href} role="menuitem" aria-current={cur === it.href ? "page" : undefined} onClick={() => setOpen(null)}
++                    className={"flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm outline-none hover:bg-bg focus:bg-bg " + (cur === it.href ? "font-semibold text-accent" : "")}>
++                    <span className="flex size-5 shrink-0 items-center justify-center rounded border border-line text-[11px] text-muted" aria-hidden>{j + 1}</span>
++                    {it.label}
++                  </Link>
++                ))}
++              </div>
++            )}
++          </div>
++        );
++      })}
++      <div className="ml-auto flex shrink-0 items-center gap-1">
++        <Link href="/account" className={"rounded-md px-2.5 py-1 text-right leading-tight hover:bg-white/10 " + (path.startsWith("/account") ? "bg-white/10" : "")}>
++          <span className="block text-sm font-semibold text-white">{user.name}</span>
++          <span className="block text-[11px]">{user.roleName}</span>
++        </Link>
++        <button type="button" className="h-9 rounded-md px-2.5 text-sm hover:bg-white/10" onClick={signOut}>Sign out</button>
++      </div>
++    </nav>
++  );
++}
+diff --git a/components/UsersView.tsx b/components/UsersView.tsx
+index 067c845..37d9add 100644
+--- a/components/UsersView.tsx
++++ b/components/UsersView.tsx
+@@ -21,8 +21,8 @@ async function send(url: string, method: string, body: unknown) {
+   return r.ok ? { ok: true as const } : { ok: false as const, error: (j.error as string) || "Could not save" };
+ }
+ 
+-export default function UsersView() {
+-  const [tab, setTab] = useState<"users" | "roles">("users");
++export default function UsersView({ initialTab = "users" }: { initialTab?: "users" | "roles" }) {
++  const [tab, setTab] = useState<"users" | "roles">(initialTab);
+   const [users, setUsers] = useState<User[] | null>(null);
+   const [roles, setRoles] = useState<Role[] | null>(null);
+   const [locs, setLocs] = useState<Loc[]>([]);
+diff --git a/lib/menu.ts b/lib/menu.ts
+new file mode 100644
+index 0000000..704054f
+--- /dev/null
++++ b/lib/menu.ts
+@@ -0,0 +1,86 @@
++import { hasAny, type SessionUser } from "./permissions";
++
++export type MenuItem = { label: string; href: string; perms?: string[] };
++export type MenuGroup = { label: string; items: MenuItem[] };
++
++const STOCK = ["stock.view", "stock.transfer", "stock.adjust"];
++const SALES = ["sales.create", "payments.receive"];
++const CUSTOMERS = ["customers.view", "customers.edit", "sales.create"];
++const VISITS = ["planner.edit", "visits.record", "routes.manage", "reports.view"];
++const SUPPLIERS = ["suppliers.view", "suppliers.edit", "suppliers.pay", "purchases.create"];
++const MONEY = ["accounts.edit", "reports.view"];
++
++/**
++ * The one menu used by the top bar (desktop) and the "More" sheet (phone).
++ * Order here is the order on screen, and the number keys follow it (Alt+1 opens the first menu, 1 to 9 pick an item).
++ * An item with no `perms` is open to everyone; groups with no visible item are hidden.
++ */
++export const MENU: MenuGroup[] = [
++  { label: "Stock", items: [
++    { label: "Stock & Racks", href: "/inventory", perms: STOCK },
++    { label: "Low stock", href: "/inventory?filter=low", perms: STOCK },
++    { label: "Add product", href: "/inventory/new", perms: ["stock.manage"] },
++  ] },
++  { label: "Sales", items: [
++    { label: "New Invoice", href: "/sales/new", perms: ["sales.create"] },
++    { label: "Sales", href: "/sales", perms: SALES },
++    { label: "Returns", href: "/returns", perms: ["sales.return", "reports.view"] },
++    { label: "Dispatch vouchers", href: "/dispatch", perms: ["sales.create", "stock.view", "stock.transfer"] },
++    { label: "Completed Sales", href: "/sales?status=confirmed&range=month", perms: SALES },
++  ] },
++  { label: "People", items: [
++    { label: "Customers", href: "/customers", perms: CUSTOMERS },
++    { label: "Suppliers", href: "/suppliers", perms: SUPPLIERS },
++    { label: "Employees", href: "/users?tab=users", perms: ["users.manage"] },
++  ] },
++  { label: "Visit Planning", items: [
++    { label: "Monthly planner", href: "/planner", perms: VISITS },
++    { label: "Route plans", href: "/route-plans", perms: VISITS },
++    { label: "Routes & Areas", href: "/routes", perms: ["routes.manage"] },
++    { label: "Today Visits", href: "/route-plans?range=today", perms: VISITS },
++    { label: "Completed Visits", href: "/route-plans?tab=completed&range=month", perms: VISITS },
++  ] },
++  { label: "Accounts", items: [
++    { label: "Expenses", href: "/expenses", perms: MONEY },
++    { label: "Payment vouchers", href: "/vouchers", perms: ["payments.receive", "accounts.edit", "reports.view"] },
++    { label: "Accounts", href: "/accounts", perms: MONEY },
++  ] },
++  { label: "Purchasing", items: [
++    { label: "Purchases", href: "/purchases", perms: ["purchases.create", "purchases.cancel", "suppliers.view"] },
++    { label: "New purchase", href: "/purchases/new", perms: ["purchases.create"] },
++  ] },
++  { label: "Settings", items: [
++    { label: "Stock Settings", href: "/settings#stock-settings", perms: ["settings.edit"] },
++    { label: "Settings", href: "/settings", perms: ["settings.edit"] },
++    { label: "User & Roles", href: "/users?tab=roles", perms: ["users.manage"] },
++  ] },
++];
++
++/** The menu this person is allowed to see. */
++export function visibleMenu(user: { perms: string[] } | null | undefined): MenuGroup[] {
++  return MENU
++    .map((g) => ({ ...g, items: g.items.filter((i) => !i.perms || hasAny(user as Pick<SessionUser, "perms">, i.perms)) }))
++    .filter((g) => g.items.length);
++}
++
++const split = (href: string) => {
++  const [noHash] = href.split("#");
++  const [base, query = ""] = noHash.split("?");
++  return { base, query: new URLSearchParams(query) };
++};
++
++/** Which item of a group matches the current page (the most specific one), or null. */
++export function activeHref(group: MenuGroup, path: string, params: URLSearchParams): string | null {
++  let best: { href: string; score: number } | null = null;
++  for (const it of group.items) {
++    if (it.href.includes("#")) continue; // a jump link, never "current"
++    const { base, query } = split(it.href);
++    if (path !== base && !path.startsWith(base + "/")) continue;
++    let hits = 0, ok = true;
++    query.forEach((v, k) => { if (params.get(k) === v) hits++; else ok = false; });
++    if (!ok) continue;
++    const score = base.length * 10 + hits;
++    if (!best || score > best.score) best = { href: it.href, score };
++  }
++  return best?.href ?? null;
++}

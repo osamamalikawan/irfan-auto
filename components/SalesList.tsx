@@ -19,9 +19,10 @@ export function saleState(s: { total: number; paid: number; status: string }) {
   return Number(s.paid) > 0 ? { label: "Part paid", cls: "bg-amber-bg text-amber" } : { label: "On credit", cls: "bg-red-bg text-red" };
 }
 
-export default function SalesList() {
+export default function SalesList({ initialStatus = "", initialRange = "today" }: { initialStatus?: string; initialRange?: string }) {
   const { can } = useMe();
-  const [range, setRange] = useState<(typeof RANGES)[number][0]>("today");
+  const [range, setRange] = useState<(typeof RANGES)[number][0]>(initialRange as (typeof RANGES)[number][0])
+  const [status, setStatus] = useState(initialStatus);
   const [q, setQ] = useState("");
   const [items, setItems] = useState<Sale[]>([]);
   const [total, setTotal] = useState(0);
@@ -36,6 +37,7 @@ export default function SalesList() {
     setLoading(true); setError("");
     const t = todayPk();
     const p = new URLSearchParams({ q, offset: String(offset), limit: String(PAGE) });
+    if (status) p.set("status", status);
     if (range === "today") { p.set("from", t); p.set("to", t); }
     if (range === "week") { p.set("from", weekStart(t)); p.set("to", t); }
     if (range === "month") { p.set("from", monthStart(t)); p.set("to", t); }
@@ -48,7 +50,7 @@ export default function SalesList() {
       setTotal(j.total);
     } catch (e) { if (id === req.current) setError((e as Error).message); }
     finally { if (id === req.current) setLoading(false); }
-  }, [q, range]);
+  }, [q, range, status]);
 
   useEffect(() => { const t = setTimeout(() => load(0), 250); return () => clearTimeout(t); }, [load]);
 
@@ -73,6 +75,8 @@ export default function SalesList() {
         </div>
         <div className="-mx-3 mt-2 flex gap-2 overflow-x-auto px-3 pb-1 lg:mx-0 lg:mt-3 lg:px-0">
           {RANGES.map(([k, label]) => <button key={k} className={"chip " + (range === k ? "chip-on" : "")} onClick={() => setRange(k)}>{label}</button>)}
+          <span className="mx-1 w-px shrink-0 self-stretch bg-line" aria-hidden />
+          {([["", "All invoices"], ["confirmed", "Completed"], ["cancelled", "Cancelled"]] as const).map(([k, label]) => <button key={k} className={"chip " + (status === k ? "chip-on" : "")} onClick={() => setStatus(k)}>{label}</button>)}
         </div>
         <LoadingBar active={loading} className="mt-2" />
       </header>

@@ -21,8 +21,8 @@ async function send(url: string, method: string, body: unknown) {
   return r.ok ? { ok: true as const } : { ok: false as const, error: (j.error as string) || "Could not save" };
 }
 
-export default function UsersView() {
-  const [tab, setTab] = useState<"users" | "roles">("users");
+export default function UsersView({ initialTab = "users" }: { initialTab?: "users" | "roles" }) {
+  const [tab, setTab] = useState<"users" | "roles">(initialTab);
   const [users, setUsers] = useState<User[] | null>(null);
   const [roles, setRoles] = useState<Role[] | null>(null);
   const [locs, setLocs] = useState<Loc[]>([]);

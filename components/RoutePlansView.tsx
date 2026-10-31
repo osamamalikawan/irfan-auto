@@ -20,10 +20,10 @@ function bounds(k: (typeof RANGES)[number][0]) {
   return { from: addDays(t, -14), to: addDays(t, 7) };
 }
 
-export default function RoutePlansView() {
+export default function RoutePlansView({ initialTab = "planned", initialRange = "upcoming" }: { initialTab?: "planned" | "completed"; initialRange?: string }) {
   const { can } = useMe();
-  const [tab, setTab] = useState<"planned" | "completed">("planned");
-  const [range, setRange] = useState<(typeof RANGES)[number][0]>("upcoming");
+  const [tab, setTab] = useState<"planned" | "completed">(initialTab);
+  const [range, setRange] = useState<(typeof RANGES)[number][0]>(initialRange as (typeof RANGES)[number][0]);
   const [entries, setEntries] = useState<Entry[] | null>(null);
   const [runs, setRuns] = useState<Run[] | null>(null);
   const [error, setError] = useState("");
