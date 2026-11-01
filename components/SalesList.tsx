@@ -5,6 +5,8 @@ import { monthStart, niceDate, todayPk, weekStart } from "@/lib/dates";
 import { rs } from "@/lib/format";
 import { FULFIL, saleKind, statusPill } from "@/lib/sale-types";
 import CollectModal from "./CollectModal";
+import PrintModal, { type PrintJob } from "./PrintModal";
+import type { PrintType } from "./SalePrint";
 import { useMe } from "./Me";
 import Toast from "./Toast";
 import { ListSkeleton, LoadingBar, Spinner } from "./Loading";
@@ -25,9 +27,37 @@ export function saleState(s: { total: number; paid: number; status: string }) {
   return Number(s.paid) > 0 ? { label: "Part paid", cls: "bg-amber-bg text-amber" } : { label: "On credit", cls: "bg-red-bg text-red" };
 }
 
-/** Opens the print page for the chosen invoices. type: invoice | gateout | delivery. */
-function printSelected(type: string, ids: string[], layout: "a4" | "roll") {
-  window.open("/print/sales?type=" + type + "&layout=" + layout + "&ids=" + ids.join(","), "_blank");
+const PRINT_CHOICES: [PrintType, "roll" | "a4", string][] = [
+  ["invoice", "roll", "Invoice (80mm)"], ["gateout", "roll", "Gate-out slip (80mm)"],
+  ["invoice", "a4", "Invoice (A4)"], ["gateout", "a4", "Gate-out slip (A4)"], ["delivery", "a4", "Delivery slip (A4)"],
+];
+
+/** "Print" button on a row: pick what to print for that invoice. The menu is fixed-position so the table's scroll area cannot clip it. */
+function PrintMenu({ cancelled, onPick }: { cancelled: boolean; onPick: (type: PrintType, layout: "roll" | "a4") => void }) {
+  const [at, setAt] = useState<{ top: number; right: number } | null>(null);
+  useEffect(() => {
+    if (!at) return;
+    const close = () => setAt(null);
+    const key = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
+    window.addEventListener("scroll", close, true); window.addEventListener("resize", close); window.addEventListener("keydown", key);
+    return () => { window.removeEventListener("scroll", close, true); window.removeEventListener("resize", close); window.removeEventListener("keydown", key); };
+  }, [at]);
+  return (
+    <>
+      <button className="btn min-h-8 px-2.5 text-[13px]" aria-haspopup="menu" aria-expanded={!!at}
+        onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setAt(at ? null : { top: r.bottom + 4, right: window.innerWidth - r.right }); }}>Print ▾</button>
+      {at && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setAt(null)} />
+          <div role="menu" className="fixed z-50 w-52 rounded-xl border border-line bg-surface p-1 shadow-lg" style={{ top: at.top, right: at.right }}>
+            {PRINT_CHOICES.filter(([t]) => !cancelled || t === "invoice").map(([t, l, label]) => (
+              <button key={label} role="menuitem" className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-bg" onClick={() => { setAt(null); onPick(t, l); }}>{label}</button>
+            ))}
+          </div>
+        </>
+      )}
+    </>
+  );
 }
 
 export default function SalesList({ initialStatus = "", initialRange = "today" }: { initialStatus?: string; initialRange?: string }) {
@@ -44,6 +74,7 @@ export default function SalesList({ initialStatus = "", initialRange = "today" }
   const [toast, setToast] = useState("");
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [changing, setChanging] = useState<string | null>(null);
+  const [job, setJob] = useState<PrintJob | null>(null);
   const req = useRef(0);
 
   const load = useCallback(async (offset: number) => {
@@ -120,9 +151,7 @@ export default function SalesList({ initialStatus = "", initialRange = "today" }
       {ids.length > 0 && (
         <div data-noprint className="mx-3 mt-2 hidden flex-wrap items-center gap-2 rounded-xl border border-accent bg-surface p-2 lg:mx-5 lg:flex">
           <b className="px-2 text-sm">{ids.length} selected</b>
-          <button className="btn min-h-9 px-3" onClick={() => printSelected("invoice", ids, "a4")}>Print invoices (A4)</button>
-          <button className="btn min-h-9 px-3" onClick={() => printSelected("gateout", ids, "a4")}>Gate-out slips (A4)</button>
-          <button className="btn min-h-9 px-3" onClick={() => printSelected("delivery", ids, "a4")}>Delivery slips (A4)</button>
+          {PRINT_CHOICES.map(([t, l, label]) => <button key={label} className="btn min-h-9 px-3" onClick={() => setJob({ ids, type: t, layout: l })}>{label}</button>)}
           <button className="btn ml-auto min-h-9 border-0 bg-transparent px-3 text-muted" onClick={() => setSel(new Set())}>Clear</button>
         </div>
       )}
@@ -157,6 +186,7 @@ export default function SalesList({ initialStatus = "", initialRange = "today" }
               {["Invoice", "Date", "Customer", "Type", "Items"].map((h) => <th key={h} className="border-b border-line px-2 py-1.5 font-semibold">{h}</th>)}
               {["Total", "Paid", "Due"].map((h) => <th key={h} className="border-b border-line px-2 py-1.5 text-right font-semibold">{h}</th>)}
               <th className="border-b border-line px-2 py-1.5 font-semibold">Status</th>
+              <th className="border-b border-line px-2 py-1.5"><span className="sr-only">Print</span></th>
             </tr></thead>
             <tbody>
               {items.map((s) => {
@@ -184,6 +214,7 @@ export default function SalesList({ initialStatus = "", initialRange = "today" }
                         </span>
                       ) : <span className={"pill " + st.cls}>{st.label}</span>}
                     </td>
+                    <td className="whitespace-nowrap border-b border-line px-2 py-2 text-right"><PrintMenu cancelled={s.status === "cancelled"} onPick={(t, l) => setJob({ ids: [s.id], type: t, layout: l })} /></td>
                   </tr>
                 );
               })}
@@ -199,6 +230,7 @@ export default function SalesList({ initialStatus = "", initialRange = "today" }
       </div>
 
       {collect && <CollectModal onClose={() => setCollect(false)} onDone={(m) => { setCollect(false); setToast(m); load(0); }} />}
+      {job && <PrintModal job={job} onClose={() => setJob(null)} />}
       {toast && <Toast msg={toast} onHide={() => setToast("")} />}
     </div>
   );

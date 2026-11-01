@@ -7,6 +7,7 @@ import CollectModal from "./CollectModal";
 import { useMe } from "./Me";
 import { FULFIL, saleKind, statusPill } from "@/lib/sale-types";
 import PayInvoiceModal from "./PayInvoiceModal";
+import PrintModal, { type PrintJob } from "./PrintModal";
 import Toast from "./Toast";
 import { PageLoading, Spinner } from "./Loading";
 
@@ -26,6 +27,7 @@ export default function InvoiceView({ id }: { id: string }) {
   const [error, setError] = useState("");
   const [collect, setCollect] = useState(false);
   const [payInv, setPayInv] = useState(false);
+  const [job, setJob] = useState<PrintJob | null>(null);
   const [changing, setChanging] = useState(false);
   const [toast, setToast] = useState("");
   const [busy, setBusy] = useState(false);
@@ -148,9 +150,9 @@ export default function InvoiceView({ id }: { id: string }) {
         </section>
 
         <div data-noprint className="grid grid-cols-2 gap-2 lg:flex">
-          <a className="btn" href={"/print/sales?type=invoice&layout=roll&ids=" + id} target="_blank" rel="noreferrer">Print invoice (80mm)</a>
-          {s.status === "confirmed" && <a className="btn" href={"/print/sales?type=gateout&layout=roll&ids=" + id} target="_blank" rel="noreferrer">Gate-out slip (80mm)</a>}
-          {s.status === "confirmed" && <a className="btn" href={"/print/sales?type=delivery&layout=a4&ids=" + id} target="_blank" rel="noreferrer">Delivery slip (A4)</a>}
+          <button className="btn" onClick={() => setJob({ ids: [id], type: "invoice", layout: "roll" })}>Print invoice (80mm)</button>
+          {s.status === "confirmed" && <button className="btn" onClick={() => setJob({ ids: [id], type: "gateout", layout: "roll" })}>Gate-out slip (80mm)</button>}
+          {s.status === "confirmed" && <button className="btn" onClick={() => setJob({ ids: [id], type: "delivery", layout: "a4" })}>Delivery slip (A4)</button>}
           <button className="btn" onClick={share}>Share</button>
           {(can("payments.receive") || can("sales.create")) && due > 0 && <button className="btn btn-primary" onClick={() => setPayInv(true)}>Receive payment ({rs(due)})</button>}
           {can("payments.receive") && !c?.is_walk_in && s.status === "confirmed" && d.final_balance > 0 && <button className="btn" onClick={() => setCollect(true)}>Collect from customer</button>}
@@ -159,6 +161,7 @@ export default function InvoiceView({ id }: { id: string }) {
         </div>
       </div>
 
+      {job && <PrintModal job={job} onClose={() => setJob(null)} />}
       {payInv && <PayInvoiceModal saleId={id} no={s.no} due={due} onClose={() => setPayInv(false)} onDone={(m) => { setPayInv(false); setToast(m); load(); }} />}
       {collect && c && <CollectModal customer={{ id: c.id, name: c.name }} onClose={() => setCollect(false)} onDone={(m) => { setCollect(false); setToast(m); load(); }} />}
       {toast && <Toast msg={toast} onHide={() => setToast("")} />}

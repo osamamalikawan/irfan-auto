@@ -7,7 +7,7 @@ type Item = {
   id: string; name: string; name_ur: string | null; code_name: string | null; brand: string | null; qty: number; free: number; price: number; disc_pct: number; line_disc: number;
   allocs: { qty: number; location: string; racks: string[] }[];
 };
-type Detail = {
+export type Detail = {
   sale: {
     id: string; no: string; sale_date: string; customer_name: string; remarks: string | null; status: string; total: number; paid: number; discount: number; line_discount: number;
     bilti: number; local_charges: number; sale_kind: string; pay_term: string; contact_phone: string | null;
@@ -28,22 +28,22 @@ const urdu: React.CSSProperties = { fontFamily: "var(--font-urdu), serif", direc
 const qtyOf = (i: Item) => n(i.qty) + (Number(i.free) > 0 ? "+" + n(i.free) : "");
 const termLabel = (s: Detail["sale"]) => { const k = saleKind(s).key; return k === "counter" ? "Counter Sale" : k === "cash" ? "On Cash" : "On Credit"; };
 
-/** Product on every slip: (brand)(code) and the Urdu name. The English name is used only when there is no Urdu name. */
-function ProductName({ i, size = "text-[13px]" }: { i: Item; size?: string }) {
-  const meta = (i.brand ? "(" + i.brand + ")" : "") + (i.code_name ? "(" + i.code_name + ")" : "");
-  return (
-    <div className={"flex flex-wrap items-baseline justify-center gap-x-1.5 font-bold " + size}>
-      {meta && <span dir="ltr">{meta}</span>}
-      {i.name_ur ? <span style={urdu}>{i.name_ur}</span> : <span dir="ltr">{i.name}</span>}
-    </div>
-  );
+/** "Hashir Auto - Qasim Bela": the customer with their area. Walk-in customers have no area. */
+const custName = (d: Detail) => (d.customer && !d.customer.is_walk_in && d.customer.area?.name ? d.sale.customer_name + " - " + d.customer.area.name : d.sale.customer_name);
+const phoneOf = (d: Detail) => d.sale.contact_phone ?? d.customer?.phone ?? null;
+
+/** Product name on every slip: the Urdu name only. The English name is used only when a product has no Urdu name yet. */
+function Name({ i, className = "" }: { i: Item; className?: string }) {
+  return i.name_ur ? <span className={className} style={urdu}>{i.name_ur}</span> : <span className={className} dir="ltr">{i.name}</span>;
 }
+
+/* ------------------------------------------------------------------ 80mm roll ------------------------------------------------------------------ */
 
 function Row({ v, l }: { v: string; l: string }) {
   return <div className="flex items-baseline"><span className="w-[7.5em] text-right font-bold">{v}</span><span className="ml-1 font-bold">:{l}</span></div>;
 }
 
-function InvoiceSlip({ d, printedAt }: { d: Detail; printedAt: string }) {
+function InvoiceRoll({ d, printedAt }: { d: Detail; printedAt: string }) {
   const { sale: s, customer: c } = d;
   const gross = d.items.reduce((x, i) => x + i.qty * i.price, 0);
   const discount = Number(s.line_discount) + Number(s.discount);
@@ -55,7 +55,7 @@ function InvoiceSlip({ d, printedAt }: { d: Detail; printedAt: string }) {
       <p className="text-center text-[20px] font-bold leading-tight">{BUSINESS.name}</p>
       <p className="text-center text-[11px] font-bold uppercase">{BUSINESS.address} - {BUSINESS.phone}</p>
       <p className="text-right text-[11px]">Page 1 of 1</p>
-      <p className="mt-1 border-b-2 border-black text-[13px] font-bold uppercase italic">{s.customer_name}{s.contact_phone ? " · " + s.contact_phone : ""}</p>
+      <p className="mt-1 border-b-2 border-black text-[13px] font-bold uppercase italic">{custName(d)}{s.contact_phone ? " · " + s.contact_phone : ""}</p>
       <div className="mt-1 flex justify-between text-[13px] font-bold"><span>Inv # {s.no}</span><span>Dated {dmy(s.sale_date)}</span></div>
       {s.remarks && <p className="font-bold">Remarks {s.remarks}</p>}
       <div className="flex justify-between text-[10px]"><span>{printedAt}</span><span className="text-[12px] italic">{termLabel(s)}</span></div>
@@ -73,7 +73,7 @@ function InvoiceSlip({ d, printedAt }: { d: Detail; printedAt: string }) {
               <tr key={i.id} className="border-b border-black align-middle">
                 <td className="border-r border-black px-1 py-0.5 text-right font-bold">{n(i.qty * i.price)}</td>
                 <td className="border-r border-black px-1 py-0.5 text-center">{n(i.price)}{Number(i.line_disc) > 0 && <><br /><span className="text-[11px]">({n(Math.round(net * 100) / 100)})</span></>}</td>
-                <td className="border-r border-black px-1 py-0.5"><ProductName i={i} /></td>
+                <td className="border-r border-black px-1 py-0.5 text-center text-[13px] font-bold"><Name i={i} /></td>
                 <td className="px-1 py-0.5 text-right font-bold">{qtyOf(i)}</td>
               </tr>
             );
@@ -98,7 +98,7 @@ function InvoiceSlip({ d, printedAt }: { d: Detail; printedAt: string }) {
   );
 }
 
-function Header({ title, d }: { title: string; d: Detail }) {
+function RollHead({ title, d }: { title: string; d: Detail }) {
   return (
     <>
       <p className="text-center text-[18px] font-bold leading-tight">{BUSINESS.name}</p>
@@ -108,22 +108,23 @@ function Header({ title, d }: { title: string; d: Detail }) {
   );
 }
 
-/** Warehouse / gate slip: no prices. Each product shows its location and rack. */
-function GateSlip({ d }: { d: Detail }) {
+/** 80mm gate slip: no prices. Each product shows its location and rack. */
+function GateRoll({ d }: { d: Detail }) {
   const { sale: s, customer: c } = d;
   const pieces = d.items.reduce((x, i) => x + Number(i.qty) + Number(i.free), 0);
+  const sub = [c?.route?.name, phoneOf(d)].filter(Boolean).join(" · ");
   return (
     <div className="text-[12px] leading-snug text-black">
-      <Header title="GATE-OUT SLIP" d={d} />
-      <p className="mt-1 border-b border-black font-bold uppercase">{s.customer_name}</p>
-      <p className="text-[11px]">{[c?.area?.name, c?.route?.name, s.contact_phone ?? c?.phone].filter(Boolean).join(" · ")}{(c?.area || c?.route || s.contact_phone || c?.phone) ? " · " : ""}<b>{termLabel(s)}</b></p>
+      <RollHead title="GATE-OUT SLIP" d={d} />
+      <p className="mt-1 border-b border-black font-bold uppercase">{custName(d)}</p>
+      <p className="text-[11px]">{sub}{sub ? " · " : ""}<b>{termLabel(s)}</b></p>
       <table className="mt-1 w-full border-collapse text-[12px]">
         <tbody>
           {d.items.map((i) => (
             <tr key={i.id} className="border-b border-dotted border-black align-top">
               <td className="w-[3.2em] py-1 pr-1 text-[15px] font-bold">{qtyOf(i)}</td>
               <td className="py-1">
-                <ProductName i={i} size="text-[13px]" />
+                <div className="text-center text-[13px] font-bold"><Name i={i} /></div>
                 <div className="mt-0.5 space-y-px text-[11px]">
                   {i.allocs.map((a, k) => <p key={k}>{a.location}{a.racks.length ? " · Rack " + a.racks.join(", ") : " · no rack"} × {n(a.qty)}</p>)}
                 </div>
@@ -135,34 +136,32 @@ function GateSlip({ d }: { d: Detail }) {
       <p className="mt-1 text-right font-bold">{d.items.length} items · {n(pieces)} pieces</p>
       {s.remarks && <p>Remarks: {s.remarks}</p>}
       <p className="mt-4 flex justify-between text-[11px]"><span>Packed by: ______</span><span>Gate: ______</span></p>
-      <p className="mt-2 text-center text-[9px]">{BUSINESS.credit}</p>
     </div>
   );
 }
 
-/** For the delivery man: customer details, the goods, and a box for the customer to confirm receipt. */
-function DeliverySlip({ d }: { d: Detail }) {
+/** 80mm delivery slip: customer details, the goods, and a box for the customer to confirm receipt. */
+function DeliveryRoll({ d }: { d: Detail }) {
   const { sale: s, customer: c } = d;
   const due = Number(s.total) - Number(s.paid);
   const pieces = d.items.reduce((x, i) => x + Number(i.qty) + Number(i.free), 0);
   const cash = saleKind(s).key === "cash" && due > 0;
   return (
     <div className="text-[12px] leading-snug text-black">
-      <Header title="DELIVERY SLIP" d={d} />
+      <RollHead title="DELIVERY SLIP" d={d} />
       <div className="mt-1 rounded border border-black p-1.5">
-        <p className="text-[14px] font-bold uppercase">{s.customer_name}</p>
-        {c?.name_ur && !c.is_walk_in && <p className="text-[13px]" style={urdu}>{c.name_ur}</p>}
-        {(s.contact_phone ?? c?.phone) && <p>Phone: <b>{s.contact_phone ?? c?.phone}</b></p>}
+        <p className="text-[14px] font-bold uppercase">{custName(d)}</p>
+        {phoneOf(d) && <p>Phone: <b>{phoneOf(d)}</b></p>}
         {c?.address && <p>{c.address}</p>}
-        {(c?.area || c?.route) && <p className="text-[11px]">{[c?.area?.name, c?.route?.name].filter(Boolean).join(" · ")}</p>}
+        {c?.route && <p className="text-[11px]">{c.route.name}</p>}
       </div>
       <table className="mt-1 w-full border-collapse border border-black text-[12px]">
-        <thead><tr className="border-b border-black text-left text-[11px]"><th className="w-[3.2em] border-r border-black px-1">Qty</th><th className="px-1">Item</th></tr></thead>
+        <thead><tr className="border-b border-black text-left text-[11px]"><th className="w-[3.2em] border-r border-black px-1">Qty</th><th className="px-1 text-center">Item</th></tr></thead>
         <tbody>
           {d.items.map((i) => (
             <tr key={i.id} className="border-b border-black">
               <td className="border-r border-black px-1 py-0.5 text-[14px] font-bold">{qtyOf(i)}</td>
-              <td className="px-1 py-0.5"><ProductName i={i} /></td>
+              <td className="px-1 py-0.5 text-center text-[13px] font-bold"><Name i={i} /></td>
             </tr>
           ))}
         </tbody>
@@ -176,13 +175,168 @@ function DeliverySlip({ d }: { d: Detail }) {
         <p className="mt-3">Received by: ____________________</p>
         <p className="mt-3 flex justify-between"><span>Signature / stamp: ____________</span><span>Date: ________</span></p>
       </div>
-      <p className="mt-1 text-center text-[9px]">{BUSINESS.credit}</p>
     </div>
   );
 }
 
-/** Prints invoices (80mm roll or A4), gate-out slips or delivery slips for one or many invoices. A4 puts several slips on a page with dashed dividers. */
-export default function SalePrint({ ids, type, layout: first }: { ids: string[]; type: PrintType; layout: "a4" | "roll" }) {
+/* --------------------------------------------------------------------- A4 ---------------------------------------------------------------------- */
+
+const th = "border border-black bg-gray-100 px-2 py-1 font-semibold";
+const td = "border border-black px-2 py-1";
+
+function A4Head({ title, d, right }: { title: string; d: Detail; right?: React.ReactNode }) {
+  const s = d.sale;
+  return (
+    <div className="flex items-start justify-between gap-4 border-b-2 border-black pb-2">
+      <div>
+        <p className="text-[24px] font-bold leading-tight">{BUSINESS.name}</p>
+        <p className="text-[11px] font-semibold uppercase">{BUSINESS.address}</p>
+        <p className="text-[11px]">Phone: {BUSINESS.phone}</p>
+      </div>
+      <div className="text-right">
+        <p className="text-[18px] font-bold tracking-wide">{title}</p>
+        <p className="text-[13px]">No. <b>{s.no}</b></p>
+        <p>Date: <b>{dmy(s.sale_date)}</b></p>
+        <p className="italic">{termLabel(s)}</p>
+        {right}
+      </div>
+    </div>
+  );
+}
+
+function InvoiceA4({ d, printedAt }: { d: Detail; printedAt: string }) {
+  const { sale: s, customer: c } = d;
+  const gross = d.items.reduce((x, i) => x + i.qty * i.price, 0);
+  const discount = Number(s.line_discount) + Number(s.discount);
+  const showBal = !!c && !c.is_walk_in;
+  const line = (l: string, v: string, bold = false) => <div className={"flex justify-between gap-6 py-0.5 " + (bold ? "border-t border-black text-[14px] font-bold" : "")}><span>{l}</span><span>{v}</span></div>;
+  return (
+    <div className="text-[12px] text-black">
+      <A4Head title="SALES INVOICE" d={d} />
+      <div className="mt-2 flex justify-between gap-4">
+        <div>
+          <p className="text-[10px] uppercase text-gray-600">Customer</p>
+          <p className="text-[16px] font-bold">{custName(d)}</p>
+          {phoneOf(d) && <p>Phone: {phoneOf(d)}</p>}
+          {c?.address && !c.is_walk_in && <p>{c.address}</p>}
+        </div>
+        {s.remarks && <p className="max-w-[60mm] text-right"><span className="text-[10px] uppercase text-gray-600">Remarks</span><br />{s.remarks}</p>}
+      </div>
+      <table className="mt-2 w-full border-collapse text-[12px]">
+        <thead><tr><th className={th + " w-8 text-center"}>#</th><th className={th + " text-right"}>Item</th><th className={th + " w-16 text-right"}>Qty</th><th className={th + " w-20 text-right"}>Rate</th><th className={th + " w-20 text-right"}>Discount</th><th className={th + " w-24 text-right"}>Amount</th></tr></thead>
+        <tbody>
+          {d.items.map((i, k) => (
+            <tr key={i.id}>
+              <td className={td + " text-center"}>{k + 1}</td>
+              <td className={td + " text-right text-[14px] font-semibold"}><Name i={i} /></td>
+              <td className={td + " text-right"}>{qtyOf(i)}</td>
+              <td className={td + " text-right"}>{n(i.price)}</td>
+              <td className={td + " text-right"}>{Number(i.line_disc) > 0 ? n(i.line_disc) : ""}</td>
+              <td className={td + " text-right font-semibold"}>{n(i.qty * i.price - i.line_disc)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="mt-2 flex items-start justify-between gap-6">
+        <p className="text-[10px] text-gray-600">Printed {printedAt}</p>
+        <div className="w-[72mm] text-[12px]">
+          {line("Items total", n(gross))}
+          {discount > 0 && line("Discount", "-" + n(discount))}
+          {Number(s.local_charges) > 0 && line("Local charges", n(s.local_charges))}
+          {Number(s.bilti) > 0 && line("Bilti", n(s.bilti))}
+          {line("Net", n(s.total), true)}
+          {line("Received", n(s.paid))}
+          {d.payments.length > 0 && <p className="text-right text-[10px] text-gray-600">{d.payments.map((p) => p.method + " " + n(p.amount)).join(" + ")}</p>}
+          {showBal && line("Previous balance", n(d.prev_balance))}
+          {showBal && line("Final balance", n(d.final_balance), true)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GateA4({ d }: { d: Detail }) {
+  const s = d.sale;
+  const pieces = d.items.reduce((x, i) => x + Number(i.qty) + Number(i.free), 0);
+  return (
+    <div className="text-[12px] text-black">
+      <A4Head title="GATE-OUT SLIP" d={d} />
+      <div className="mt-2">
+        <p className="text-[10px] uppercase text-gray-600">Customer</p>
+        <p className="text-[16px] font-bold">{custName(d)}</p>
+        {phoneOf(d) && <p>Phone: {phoneOf(d)}</p>}
+      </div>
+      <table className="mt-2 w-full border-collapse">
+        <thead><tr><th className={th + " w-8 text-center"}>#</th><th className={th + " w-16 text-right"}>Qty</th><th className={th + " text-right"}>Item</th><th className={th + " text-left"}>Location and rack</th></tr></thead>
+        <tbody>
+          {d.items.map((i, k) => (
+            <tr key={i.id} className="align-top">
+              <td className={td + " text-center"}>{k + 1}</td>
+              <td className={td + " text-right text-[15px] font-bold"}>{qtyOf(i)}</td>
+              <td className={td + " text-right text-[14px] font-semibold"}><Name i={i} /></td>
+              <td className={td}>{i.allocs.map((a, j) => <p key={j}><b>{a.location}</b>{a.racks.length ? " · Rack " + a.racks.join(", ") : " · no rack"} × {n(a.qty)}</p>)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="mt-1 text-right font-semibold">{d.items.length} items · {n(pieces)} pieces</p>
+      {s.remarks && <p>Remarks: {s.remarks}</p>}
+      <div className="mt-6 grid grid-cols-3 gap-6 text-[11px]"><p className="border-t border-black pt-1">Packed by</p><p className="border-t border-black pt-1">Checked by</p><p className="border-t border-black pt-1">Gate keeper</p></div>
+    </div>
+  );
+}
+
+function DeliveryA4({ d }: { d: Detail }) {
+  const { sale: s, customer: c } = d;
+  const due = Number(s.total) - Number(s.paid);
+  const pieces = d.items.reduce((x, i) => x + Number(i.qty) + Number(i.free), 0);
+  const cash = saleKind(s).key === "cash" && due > 0;
+  return (
+    <div className="text-[12px] text-black">
+      <A4Head title="DELIVERY SLIP" d={d} />
+      <div className="mt-2 grid grid-cols-[1fr_auto] gap-4">
+        <div className="rounded border border-black p-2">
+          <p className="text-[10px] uppercase text-gray-600">Deliver to</p>
+          <p className="text-[16px] font-bold">{custName(d)}</p>
+          {phoneOf(d) && <p>Phone: <b>{phoneOf(d)}</b></p>}
+          {c?.address && <p>{c.address}</p>}
+          {c?.route && <p className="text-[11px] text-gray-700">Route: {c.route.name}</p>}
+        </div>
+        <div className="flex min-w-[52mm] flex-col items-center justify-center rounded border-2 border-black px-3 text-center">
+          {cash ? <><p className="text-[10px] uppercase">Collect cash</p><p className="text-[22px] font-bold">Rs {n(due)}</p></> : <p className="text-[13px] font-bold">{due > 0 ? "On credit" : "Paid"}<br /><span className="text-[11px] font-normal">{due > 0 ? "Nothing to collect" : "Nothing to collect"}</span></p>}
+        </div>
+      </div>
+      <table className="mt-2 w-full border-collapse">
+        <thead><tr><th className={th + " w-8 text-center"}>#</th><th className={th + " text-right"}>Item</th><th className={th + " w-20 text-right"}>Qty</th></tr></thead>
+        <tbody>
+          {d.items.map((i, k) => (
+            <tr key={i.id}><td className={td + " text-center"}>{k + 1}</td><td className={td + " text-right text-[14px] font-semibold"}><Name i={i} /></td><td className={td + " text-right text-[15px] font-bold"}>{qtyOf(i)}</td></tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="mt-1 text-right font-semibold">{d.items.length} items · {n(pieces)} pieces</p>
+      {s.remarks && <p>Remarks: {s.remarks}</p>}
+      <div className="mt-3 grid grid-cols-[1fr_auto] gap-4 rounded border border-black p-2 text-[11px]">
+        <div>
+          <p className="text-[13px]" style={urdu}>مال مکمل اور درست حالت میں وصول کیا</p>
+          <p className="text-[10px]">Goods received complete and in good condition</p>
+          <p className="mt-5">Received by: ______________________________</p>
+        </div>
+        <div className="flex flex-col justify-end gap-5"><p>Signature / stamp: ________________</p><p>Date and time: ________________</p></div>
+      </div>
+      <p className="mt-6 border-t border-black pt-1 text-[11px]">Delivery man: ______________________</p>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ the page ------------------------------------------------------------------- */
+
+/**
+ * Invoices, gate-out slips or delivery slips for one or many invoices.
+ * roll = 80mm thermal. a4 = its own wider layout, slips stacked on the page with a dashed line between them.
+ * embed = shown inside the print popup: the popup has the buttons and starts the print dialog.
+ */
+export default function SalePrint({ ids, type, layout: first, embed = false }: { ids: string[]; type: PrintType; layout: "a4" | "roll"; embed?: boolean }) {
   const [docs, setDocs] = useState<Detail[] | null>(null);
   const [error, setError] = useState("");
   const [layout, setLayout] = useState(first);
@@ -199,32 +353,37 @@ export default function SalePrint({ ids, type, layout: first }: { ids: string[];
         }));
         setDocs(all);
         await document.fonts?.ready;
-        setTimeout(() => window.print(), 400);
+        if (embed) setTimeout(() => window.parent.postMessage({ type: "sale-print-ready" }, location.origin), 300);
+        else setTimeout(() => window.print(), 400);
       } catch (e) { setError((e as Error).message); }
     })();
-  }, [ids]);
+  }, [ids, embed]);
 
   if (error) return <p className="p-4 text-red">{error}</p>;
   if (!docs) return <p className="p-4 text-muted">Preparing…</p>;
   const roll = layout === "roll";
-  const Slip = ({ d }: { d: Detail }) => (type === "invoice" ? <InvoiceSlip d={d} printedAt={printedAt} /> : type === "gateout" ? <GateSlip d={d} /> : <DeliverySlip d={d} />);
+  const slip = (d: Detail) => {
+    if (roll) return type === "invoice" ? <InvoiceRoll d={d} printedAt={printedAt} /> : type === "gateout" ? <GateRoll d={d} /> : <DeliveryRoll d={d} />;
+    return type === "invoice" ? <InvoiceA4 d={d} printedAt={printedAt} /> : type === "gateout" ? <GateA4 d={d} /> : <DeliveryA4 d={d} />;
+  };
 
   return (
     <div className="min-h-dvh bg-white text-black">
-      <style>{`@page { size: ${roll ? "80mm auto" : "A4"}; margin: ${roll ? "2mm" : "8mm"}; } @media print { html, body { background: #fff !important; } }`}</style>
-      <div data-noprint className="flex flex-wrap items-center gap-2 border-b border-gray-300 bg-white p-3">
-        <button className="btn btn-primary" onClick={() => window.print()}>Print</button>
-        <button className="btn" onClick={() => setLayout(roll ? "a4" : "roll")}>{roll ? "Switch to A4 page" : "Switch to 80mm roll"}</button>
-        <button className="btn" onClick={() => window.close()}>Close</button>
-        <span className="text-sm text-gray-600">{docs.length} slip{docs.length === 1 ? "" : "s"} · {roll ? "80mm roll" : "A4, several per page"}</span>
-      </div>
+      <style>{`@page { size: ${roll ? "80mm auto" : "A4"}; margin: ${roll ? "2mm" : "10mm"}; } @media print { html, body { background: #fff !important; } }`}</style>
+      {!embed && (
+        <div data-noprint className="flex flex-wrap items-center gap-2 border-b border-gray-300 bg-white p-3">
+          <button className="btn btn-primary" onClick={() => window.print()}>Print</button>
+          <button className="btn" onClick={() => setLayout(roll ? "a4" : "roll")}>{roll ? "Switch to A4 page" : "Switch to 80mm roll"}</button>
+          <button className="btn" onClick={() => window.close()}>Close</button>
+        </div>
+      )}
       {roll ? (
         <div className="mx-auto w-[72mm]">
-          {docs.map((d, k) => <section key={d.sale.id} className="py-1" style={{ breakAfter: k < docs.length - 1 ? "page" : "auto" }}><Slip d={d} /></section>)}
+          {docs.map((d, k) => <section key={d.sale.id} className="py-1" style={{ breakAfter: k < docs.length - 1 ? "page" : "auto" }}>{slip(d)}</section>)}
         </div>
       ) : (
-        <div className="mx-auto grid max-w-[194mm] grid-cols-2 print:max-w-none">
-          {docs.map((d) => <section key={d.sale.id} className="break-inside-avoid border-b border-dashed border-black p-3 odd:border-r" style={{ breakInside: "avoid" }}><Slip d={d} /></section>)}
+        <div className="mx-auto max-w-[190mm] print:max-w-none">
+          {docs.map((d) => <section key={d.sale.id} className="border-b border-dashed border-black py-4 last:border-0" style={{ breakInside: "avoid" }}>{slip(d)}</section>)}
         </div>
       )}
     </div>

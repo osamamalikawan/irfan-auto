@@ -4,7 +4,7 @@ import { getUser } from "@/lib/auth";
 import { hasAny } from "@/lib/permissions";
 
 // Printing page: no menus, just the slips. type = invoice | gateout | delivery, layout = roll (80mm) | a4.
-export default async function Page({ searchParams }: { searchParams: Promise<{ ids?: string; type?: string; layout?: string }> }) {
+export default async function Page({ searchParams }: { searchParams: Promise<{ ids?: string; type?: string; layout?: string; embed?: string }> }) {
   const user = await getUser();
   if (!user) redirect("/login");
   if (!hasAny(user, ["sales.create", "payments.receive", "stock.view", "stock.transfer"])) redirect("/dashboard");
@@ -13,5 +13,5 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ i
   if (!ids.length) redirect("/sales");
   const type: PrintType = sp.type === "gateout" || sp.type === "delivery" ? sp.type : "invoice";
   const layout = sp.layout === "a4" ? "a4" : "roll";
-  return <SalePrint ids={ids} type={type} layout={layout} />;
+  return <SalePrint ids={ids} type={type} layout={layout} embed={sp.embed === "1"} />;
 }
