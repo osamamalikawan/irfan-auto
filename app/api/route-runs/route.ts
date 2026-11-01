@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
   const routeIds = [...new Set(rows.map((r: { route_id: string }) => r.route_id))];
   const [vs, ss, ps] = await Promise.all([
     sb.from("visits").select("customer_id,route_id,visit_date,outcome").in("route_id", routeIds).gte("visit_date", from).lte("visit_date", to).limit(20000),
-    sb.from("sales").select("route_id,sale_date,total,bilti").in("route_id", routeIds).eq("status", "confirmed").gte("sale_date", from).lte("sale_date", to).limit(20000),
+    sb.from("sales").select("route_id,sale_date,total,bilti,local_charges").in("route_id", routeIds).eq("status", "confirmed").gte("sale_date", from).lte("sale_date", to).limit(20000),
     sb.from("payments").select("route_id,pay_date,amount").in("route_id", routeIds).eq("reversed", false).gte("pay_date", from).lte("pay_date", to).limit(20000),
   ]);
   const err = vs.error ?? ss.error ?? ps.error;
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
     (visited.get(k) ?? visited.set(k, new Set()).get(k)!).add(v.customer_id);
     if (v.outcome === "Order placed" || v.outcome === "Payment collected") productive.set(k, (productive.get(k) ?? 0) + 1);
   }
-  for (const s of ss.data ?? []) { const k = s.route_id + "|" + s.sale_date; sales.set(k, (sales.get(k) ?? 0) + Number(s.total) - Number(s.bilti)); }
+  for (const s of ss.data ?? []) { const k = s.route_id + "|" + s.sale_date; sales.set(k, (sales.get(k) ?? 0) + Number(s.total) - Number(s.bilti) - Number(s.local_charges)); }
   for (const p of ps.data ?? []) { const k = p.route_id + "|" + p.pay_date; coll.set(k, (coll.get(k) ?? 0) + Number(p.amount)); }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return NextResponse.json({ items: rows.map((r: any) => {

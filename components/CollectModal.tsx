@@ -4,6 +4,7 @@ import { spreadPayment } from "@/lib/bills";
 import { rs } from "@/lib/format";
 import CustomerPicker, { type PickedCustomer } from "./CustomerPicker";
 import { Loading, Spinner } from "./Loading";
+import { usePaymentMethods } from "./PaySplit";
 
 type Ledger = { balance: number; unpaid: { no: string; due: number }[] };
 
@@ -15,6 +16,9 @@ export default function CollectModal({ customer: given, onClose, onDone }: { cus
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [idem] = useState(() => crypto.randomUUID());
+  const { methods } = usePaymentMethods();
+  const [methodId, setMethodId] = useState("");
+  const method = methodId || (methods.find((m) => m.name.toLowerCase() === "cash") ?? methods[0])?.id || "";
 
   useEffect(() => {
     if (!customer) return;
@@ -25,10 +29,10 @@ export default function CollectModal({ customer: given, onClose, onDone }: { cus
   if (!customer) return <CustomerPicker onlyWithBalance onPick={setCustomer} onClose={onClose} />;
 
   const n = Number(amount);
-  const valid = led != null && n > 0 && n <= led.balance;
+  const valid = led != null && n > 0 && n <= led.balance && !!method;
   async function save() {
     setBusy(true); setError("");
-    const r = await fetch("/api/payments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ customer_id: customer!.id, amount: n, idem_key: idem }) });
+    const r = await fetch("/api/payments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ customer_id: customer!.id, amount: n, method_id: method, idem_key: idem }) });
     const j = await r.json().catch(() => ({}));
     setBusy(false);
     if (!r.ok) return setError(j.error || "Could not save the payment");
@@ -53,6 +57,10 @@ export default function CollectModal({ customer: given, onClose, onDone }: { cus
                 <div className="flex gap-2">
                   <input id="col-amt" className="input text-xl font-semibold" type="number" inputMode="decimal" min="0" step="any" autoFocus value={amount} onChange={(e) => setAmount(e.target.value)} />
                   <button className="btn shrink-0" onClick={() => setAmount(String(led.balance))}>Full</button>
+                </div>
+                <p className="label mt-3">Received by</p>
+                <div role="radiogroup" aria-label="Payment method" className="flex flex-wrap gap-2">
+                  {methods.map((m) => <button key={m.id} type="button" role="radio" aria-checked={method === m.id} className={"chip " + (method === m.id ? "chip-on" : "")} onClick={() => setMethodId(m.id)}>{m.name}</button>)}
                 </div>
                 {n > led.balance && <p className="mt-1 text-sm text-red">More than the balance of {rs(led.balance)}.</p>}
                 {valid && (

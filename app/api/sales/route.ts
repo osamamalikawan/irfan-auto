@@ -4,10 +4,12 @@ import { authorize } from "@/lib/auth";
 import { allowedRouteIds, safeWord } from "@/lib/customer-scope";
 import { hasPerm } from "@/lib/permissions";
 import { dbError } from "@/lib/sql-error";
+import { cleanPays } from "@/lib/pays";
 
 export const dynamic = "force-dynamic";
 
-/** ?q=&from=YYYY-MM-DD&to=&customer=&status=&offset=&limit= */
+/** ?q=&from=YYYY-MM-DD&to=&customer=&status=active|packed|delivered|completed|cancelled&kind=counter|cash|credit&offset=&limit=
+ *  Active invoices come first, then the newest. */
 export async function GET(req: NextRequest) {
   const a = await authorize("sales.create", "payments.receive");
   if (a.error) return a.error;
@@ -18,13 +20,18 @@ export async function GET(req: NextRequest) {
   const mine = await allowedRouteIds(sb, a.user);
   if (mine && !mine.length) return NextResponse.json({ items: [], total: 0 });
 
-  let q = sb.from("sales").select("id,no,sale_date,customer_id,customer_name,total,paid,status,created_at,sale_items(count)", { count: "exact" })
-    .order("created_at", { ascending: false }).range(offset, offset + limit - 1);
+  let q = sb.from("sales").select("id,no,sale_date,customer_id,customer_name,total,paid,status,fulfil_status,sale_kind,pay_term,local_charges,created_at,sale_items(count)", { count: "exact" })
+    .order("active_first", { ascending: true }).order("created_at", { ascending: false }).range(offset, offset + limit - 1);
   if (mine) q = q.in("route_id", mine);
   if (sp.get("from")) q = q.gte("sale_date", sp.get("from")!);
   if (sp.get("to")) q = q.lte("sale_date", sp.get("to")!);
   if (sp.get("customer")) q = q.eq("customer_id", sp.get("customer")!);
-  if (["confirmed", "cancelled"].includes(sp.get("status") ?? "")) q = q.eq("status", sp.get("status")!);
+  const st = sp.get("status") ?? "";
+  if (st === "cancelled") q = q.eq("status", "cancelled");
+  else if (["active", "packed", "delivered", "completed"].includes(st)) q = q.eq("status", "confirmed").eq("fulfil_status", st);
+  const kind = sp.get("kind") ?? "";
+  if (kind === "counter") q = q.eq("sale_kind", "counter");
+  else if (kind === "cash" || kind === "credit") q = q.eq("sale_kind", "ledger").eq("pay_term", kind);
   for (const raw of (sp.get("q") ?? "").split(/\s+/)) {
     const w = safeWord(raw);
     if (w) q = q.or("no.ilike.%" + w + "%,customer_name.ilike.%" + w + "%");
@@ -36,7 +43,8 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ items, total: count ?? 0 });
 }
 
-/** Body: { customer_id, location_id?, lines: [{ product_id, qty, price?, disc_pct?, location_id? }], discount?, bilti?, paid?, remarks?, idem_key? } */
+/** Body: { customer_id, kind: "counter"|"ledger", term?: "cash"|"credit", hold?, location_id?, lines: [{ product_id, qty, price?, disc_pct?, location_id? }],
+ *  discount?, bilti? (outside the city), local_charges? (inside the city), payments?: [{ method_id, amount }], contact_name?, contact_phone?, remarks?, idem_key? } */
 export async function POST(req: NextRequest) {
   const a = await authorize("sales.create");
   if (a.error) return a.error;
@@ -57,9 +65,13 @@ export async function POST(req: NextRequest) {
   })) : [];
   const { data, error } = await sb.rpc("create_sale", {
     p_customer: b.customer_id, p_location: b.location_id || null, p_lines: lines,
-    p_discount: Number(b.discount) || 0, p_bilti: Number(b.bilti) || 0, p_paid: Number(b.paid) || 0,
+    p_discount: Number(b.discount) || 0, p_bilti: Number(b.bilti) || 0,
     p_remarks: String(b.remarks ?? "").slice(0, 500), p_idem: b.idem_key ? String(b.idem_key) : null,
     p_user: a.user.id, p_can_discount: hasPerm(a.user, "sales.discount"), p_allowed: a.user.locationIds,
+    p_kind: b.kind === "counter" ? "counter" : "ledger", p_term: b.term === "cash" ? "cash" : "credit", p_hold: b.hold === true,
+    p_local: Number(b.local_charges) || 0,
+    p_contact_name: String(b.contact_name ?? "").trim().slice(0, 80) || null, p_contact_phone: String(b.contact_phone ?? "").trim().slice(0, 30) || null,
+    p_pays: cleanPays(b.payments),
   });
   if (error) return dbError(error);
   return NextResponse.json({ id: data }, { status: 201 });

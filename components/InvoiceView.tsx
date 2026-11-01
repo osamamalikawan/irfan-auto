@@ -5,18 +5,19 @@ import { niceDate } from "@/lib/dates";
 import { qty as fmtQty, rs } from "@/lib/format";
 import CollectModal from "./CollectModal";
 import { useMe } from "./Me";
-import { saleState } from "./SalesList";
+import { FULFIL, saleKind, statusPill } from "@/lib/sale-types";
+import PayInvoiceModal from "./PayInvoiceModal";
 import Toast from "./Toast";
-import { PageLoading } from "./Loading";
+import { PageLoading, Spinner } from "./Loading";
 
 type Item = {
   id: string; name: string; code_name: string | null; name_ur: string | null; unit: string; qty: number; free: number; price: number; disc_pct: number; line_disc: number;
   allocs: { qty: number; location: string; racks: string[] }[];
 };
 type Detail = {
-  sale: { id: string; no: string; sale_date: string; created_at: string; customer_id: string; customer_name: string; discount: number; line_discount: number; bilti: number; total: number; paid: number; status: string; remarks: string | null };
+  sale: { fulfil_status: string; sale_kind: string; pay_term: string; local_charges: number; contact_phone: string | null; id: string; no: string; sale_date: string; created_at: string; customer_id: string; customer_name: string; discount: number; line_discount: number; bilti: number; total: number; paid: number; status: string; remarks: string | null };
   customer: { id: string; code: string; name: string; phone: string | null; address: string | null; is_walk_in: boolean; area: { name: string } | null; route: { name: string } | null } | null;
-  items: Item[]; prev_balance: number; final_balance: number;
+  items: Item[]; payments: { method: string; amount: number }[]; prev_balance: number; final_balance: number;
 };
 
 export default function InvoiceView({ id }: { id: string }) {
@@ -24,6 +25,8 @@ export default function InvoiceView({ id }: { id: string }) {
   const [d, setD] = useState<Detail | null>(null);
   const [error, setError] = useState("");
   const [collect, setCollect] = useState(false);
+  const [payInv, setPayInv] = useState(false);
+  const [changing, setChanging] = useState(false);
   const [toast, setToast] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -45,10 +48,19 @@ export default function InvoiceView({ id }: { id: string }) {
     setToast("Invoice cancelled"); load();
   }
 
+  async function changeStatus(next: string) {
+    setChanging(true);
+    const r = await fetch("/api/sales/" + id + "/status", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: next }) });
+    const j = await r.json().catch(() => ({}));
+    setChanging(false);
+    if (!r.ok) return setToast(j.error || "Could not change the status");
+    setToast("Status changed"); load();
+  }
+
   if (error) return <p className="p-4 text-red">{error} <Link href="/sales" className="underline">Back</Link></p>;
   if (!d) return <PageLoading />;
   const { sale: s, customer: c } = d;
-  const st = saleState(s);
+  const st = statusPill(s), kd = saleKind(s);
   const due = s.status === "confirmed" ? Number(s.total) - Number(s.paid) : 0;
   const pieces = d.items.reduce((x, i) => x + Number(i.qty), 0), free = d.items.reduce((x, i) => x + Number(i.free), 0);
 
@@ -67,6 +79,7 @@ export default function InvoiceView({ id }: { id: string }) {
       <header data-noprint className="sticky top-0 z-20 flex items-center gap-2 border-b border-line bg-bg px-2 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-4 lg:pt-4">
         <Link href="/sales" className="btn border-0 bg-transparent px-3 text-xl" aria-label="Back">←</Link>
         <h1 className="min-w-0 flex-1 truncate text-base font-bold">{s.no}</h1>
+        <span className={"pill " + kd.pill}>{kd.label}</span>
         <span className={"pill " + st.cls}>{st.label}</span>
       </header>
 
@@ -81,6 +94,16 @@ export default function InvoiceView({ id }: { id: string }) {
             <div className="text-right text-sm"><p className="font-semibold">{s.no}</p><p className="text-muted">{niceDate(s.sale_date)}</p></div>
           </div>
         </section>
+
+        {s.status === "confirmed" && can("sales.status") && (
+          <section data-noprint className="card flex items-center gap-3 p-3">
+            <label className="text-sm font-semibold" htmlFor="inv-status">Status</label>
+            <select id="inv-status" className="input max-w-48" value={s.fulfil_status} disabled={changing} onChange={(e) => changeStatus(e.target.value)}>
+              {FULFIL.map(([k, label]) => <option key={k} value={k}>{k === "active" && s.sale_kind === "counter" && due > 0 ? "Active (Hold)" : label}</option>)}
+            </select>
+            {changing && <Spinner />}
+          </section>
+        )}
 
         <section className="card p-4">
           <ul className="divide-y divide-line">
@@ -108,9 +131,11 @@ export default function InvoiceView({ id }: { id: string }) {
             <div className="flex justify-between"><dt className="text-muted">Items</dt><dd>{rs(d.items.reduce((x, i) => x + i.qty * i.price, 0))}</dd></div>
             {Number(s.line_discount) > 0 && <div className="flex justify-between"><dt className="text-muted">Item discounts</dt><dd>− {rs(s.line_discount)}</dd></div>}
             {Number(s.discount) > 0 && <div className="flex justify-between"><dt className="text-muted">Invoice discount</dt><dd>− {rs(s.discount)}</dd></div>}
+            {Number(s.local_charges) > 0 && <div className="flex justify-between"><dt className="text-muted">Local charges</dt><dd>+ {rs(s.local_charges)}</dd></div>}
             {Number(s.bilti) > 0 && <div className="flex justify-between"><dt className="text-muted">Bilti</dt><dd>+ {rs(s.bilti)}</dd></div>}
             <div className="flex justify-between border-t border-line pt-1 text-lg font-bold"><dt>Total</dt><dd>{rs(s.total)}</dd></div>
             <div className="flex justify-between"><dt className="text-muted">Paid</dt><dd>{rs(s.paid)}</dd></div>
+            {d.payments.length > 0 && <p className="text-right text-xs text-muted">{d.payments.map((p) => p.method + " " + rs(p.amount)).join(" · ")}</p>}
             {due > 0 && <div className="flex justify-between font-semibold text-red"><dt>Due on this invoice</dt><dd>{rs(due)}</dd></div>}
             {!c?.is_walk_in && s.status === "confirmed" && (
               <>
@@ -123,14 +148,18 @@ export default function InvoiceView({ id }: { id: string }) {
         </section>
 
         <div data-noprint className="grid grid-cols-2 gap-2 lg:flex">
-          <button className="btn" onClick={() => window.print()}>Print</button>
+          <a className="btn" href={"/print/sales?type=invoice&layout=roll&ids=" + id} target="_blank" rel="noreferrer">Print invoice (80mm)</a>
+          {s.status === "confirmed" && <a className="btn" href={"/print/sales?type=gateout&layout=roll&ids=" + id} target="_blank" rel="noreferrer">Gate-out slip (80mm)</a>}
+          {s.status === "confirmed" && <a className="btn" href={"/print/sales?type=delivery&layout=a4&ids=" + id} target="_blank" rel="noreferrer">Delivery slip (A4)</a>}
           <button className="btn" onClick={share}>Share</button>
-          {can("payments.receive") && !c?.is_walk_in && s.status === "confirmed" && d.final_balance > 0 && <button className="btn btn-primary" onClick={() => setCollect(true)}>Collect payment</button>}
+          {(can("payments.receive") || can("sales.create")) && due > 0 && <button className="btn btn-primary" onClick={() => setPayInv(true)}>Receive payment ({rs(due)})</button>}
+          {can("payments.receive") && !c?.is_walk_in && s.status === "confirmed" && d.final_balance > 0 && <button className="btn" onClick={() => setCollect(true)}>Collect from customer</button>}
           {can("sales.cancel") && s.status === "confirmed" && <button className="btn text-red" disabled={busy} onClick={cancel}>Cancel invoice</button>}
           {c && <Link href={"/customers/" + c.id} className="btn">Customer</Link>}
         </div>
       </div>
 
+      {payInv && <PayInvoiceModal saleId={id} no={s.no} due={due} onClose={() => setPayInv(false)} onDone={(m) => { setPayInv(false); setToast(m); load(); }} />}
       {collect && c && <CollectModal customer={{ id: c.id, name: c.name }} onClose={() => setCollect(false)} onDone={(m) => { setCollect(false); setToast(m); load(); }} />}
       {toast && <Toast msg={toast} onHide={() => setToast("")} />}
     </div>

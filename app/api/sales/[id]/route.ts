@@ -22,11 +22,12 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
   if (items.error) return NextResponse.json({ error: items.error.message }, { status: 500 });
   const pids = [...new Set((items.data ?? []).map((i: { product_id: string }) => i.product_id))];
   const none = { data: [] as unknown[], error: null };
-  const [racks, prods, before] = await Promise.all([
+  const [racks, prods, before, pays] = await Promise.all([
     pids.length ? sb.from("product_racks").select("product_id,rack:racks(code,location_id)").in("product_id", pids) : Promise.resolve(none),
-    pids.length ? sb.from("products").select("id,code_name,name_ur,unit").in("id", pids) : Promise.resolve(none),
+    pids.length ? sb.from("products").select("id,code_name,name_ur,unit,brand:brands(name)").in("id", pids) : Promise.resolve(none),
     // previous balance = every ledger entry made before this invoice (entries of one transaction share one timestamp)
     sb.from("customer_ledger").select("amount").eq("customer_id", s.data.customer_id).lt("ts", s.data.created_at),
+    sb.from("payments").select("amount,method,kind,pay_date").eq("sale_id", id).eq("reversed", false).order("created_at"),
   ]);
   const prevBal = (before.data ?? []).reduce((x: number, e: { amount: number }) => x + Number(e.amount), 0);
 
@@ -37,13 +38,13 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
   const pmap = new Map(((prods.data ?? []) as any[]).map((p) => [p.id, p]));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const lines = (items.data ?? []).map((i: any) => ({
-    ...i, sale_item_allocs: undefined, code_name: pmap.get(i.product_id)?.code_name ?? null, name_ur: pmap.get(i.product_id)?.name_ur ?? null, unit: pmap.get(i.product_id)?.unit ?? "pc",
+    ...i, sale_item_allocs: undefined, code_name: pmap.get(i.product_id)?.code_name ?? null, brand: one(pmap.get(i.product_id)?.brand)?.name ?? null, name_ur: pmap.get(i.product_id)?.name_ur ?? null, unit: pmap.get(i.product_id)?.unit ?? "pc",
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     allocs: (i.sale_item_allocs ?? []).map((al: any) => { const loc = one(al.location); return { qty: Number(al.qty), location: loc?.name ?? "?", racks: (rackMap.get(i.product_id + "|" + loc?.id) ?? []).sort() }; }),
   }));
   const cust = one(s.data.customer) as Record<string, unknown> | null;
   return NextResponse.json({
     sale: { ...s.data, customer: undefined }, customer: cust ? { ...cust, area: one(cust.area as never), route: one(cust.route as never) } : null,
-    items: lines, prev_balance: prevBal, final_balance: prevBal + (s.data.status === "confirmed" ? Number(s.data.total) - Number(s.data.paid) : 0),
+    items: lines, payments: (pays.data ?? []).map((p: { amount: number; method: string | null }) => ({ method: p.method ?? "Cash", amount: Number(p.amount) })), prev_balance: prevBal, final_balance: prevBal + (s.data.status === "confirmed" ? Number(s.data.total) - Number(s.data.paid) : 0),
   });
 }

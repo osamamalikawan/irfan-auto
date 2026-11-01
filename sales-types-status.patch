@@ -1,0 +1,1837 @@
+diff --git a/app/api/payment-methods/[id]/route.ts b/app/api/payment-methods/[id]/route.ts
+new file mode 100644
+index 0000000..288f9a0
+--- /dev/null
++++ b/app/api/payment-methods/[id]/route.ts
+@@ -0,0 +1,30 @@
++import { NextRequest, NextResponse } from "next/server";
++import { db } from "@/lib/supabase";
++import { authorize } from "@/lib/auth";
++
++type Ctx = { params: Promise<{ id: string }> };
++
++/** Body: { name?, active? }. Methods are hidden, never deleted, so old payments keep their name. */
++export async function PATCH(req: NextRequest, { params }: Ctx) {
++  const a = await authorize("settings.edit");
++  if (a.error) return a.error;
++  const { id } = await params;
++  const b = await req.json().catch(() => null);
++  const patch: { name?: string; active?: boolean } = {};
++  if (typeof b?.name === "string") {
++    const name = b.name.trim().replace(/\s+/g, " ").slice(0, 40);
++    if (!name) return NextResponse.json({ error: "Enter a name for the payment method." }, { status: 400 });
++    patch.name = name;
++  }
++  if (typeof b?.active === "boolean") patch.active = b.active;
++  if (!Object.keys(patch).length) return NextResponse.json({ error: "Nothing to change." }, { status: 400 });
++  const sb = db();
++  if (patch.active === false) {
++    const others = await sb.from("payment_methods").select("id", { count: "exact", head: true }).eq("active", true).neq("id", id);
++    if (!others.count) return NextResponse.json({ error: "Keep at least one payment method visible." }, { status: 400 });
++  }
++  const { data, error } = await sb.from("payment_methods").update(patch).eq("id", id).select("id,name,active,sort").maybeSingle();
++  if (error) return NextResponse.json({ error: error.code === "23505" ? "A payment method with that name already exists." : error.message }, { status: error.code === "23505" ? 409 : 500 });
++  if (!data) return NextResponse.json({ error: "Payment method not found." }, { status: 404 });
++  return NextResponse.json({ method: data });
++}
+diff --git a/app/api/payment-methods/route.ts b/app/api/payment-methods/route.ts
+new file mode 100644
+index 0000000..3f97351
+--- /dev/null
++++ b/app/api/payment-methods/route.ts
+@@ -0,0 +1,32 @@
++import { NextRequest, NextResponse } from "next/server";
++import { db } from "@/lib/supabase";
++import { authorize } from "@/lib/auth";
++import { hasPerm } from "@/lib/permissions";
++
++export const dynamic = "force-dynamic";
++
++/** Active payment methods for the sales and payment screens. ?all=1 (settings only) also lists hidden ones. */
++export async function GET(req: NextRequest) {
++  const a = await authorize("sales.create", "payments.receive", "settings.edit");
++  if (a.error) return a.error;
++  const all = req.nextUrl.searchParams.get("all") === "1" && hasPerm(a.user, "settings.edit");
++  let q = db().from("payment_methods").select("id,name,active,sort").order("sort").order("name");
++  if (!all) q = q.eq("active", true);
++  const { data, error } = await q;
++  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
++  return NextResponse.json({ methods: data ?? [] });
++}
++
++/** Body: { name } adds a payment method. */
++export async function POST(req: NextRequest) {
++  const a = await authorize("settings.edit");
++  if (a.error) return a.error;
++  const b = await req.json().catch(() => null);
++  const name = String(b?.name ?? "").trim().replace(/\s+/g, " ").slice(0, 40);
++  if (!name) return NextResponse.json({ error: "Enter a name for the payment method." }, { status: 400 });
++  const sb = db();
++  const last = await sb.from("payment_methods").select("sort").order("sort", { ascending: false }).limit(1).maybeSingle();
++  const { data, error } = await sb.from("payment_methods").insert({ name, sort: Number(last.data?.sort ?? 0) + 10 }).select("id,name,active,sort").single();
++  if (error) return NextResponse.json({ error: error.code === "23505" ? "A payment method with that name already exists." : error.message }, { status: error.code === "23505" ? 409 : 500 });
++  return NextResponse.json({ method: data }, { status: 201 });
++}
+diff --git a/app/api/payments/route.ts b/app/api/payments/route.ts
+index 9d9b7ac..fc699a2 100644
+--- a/app/api/payments/route.ts
++++ b/app/api/payments/route.ts
+@@ -4,12 +4,13 @@ import { authorize } from "@/lib/auth";
+ import { allowedRouteIds } from "@/lib/customer-scope";
+ import { dbError } from "@/lib/sql-error";
+ 
+-/** Collect money from a customer. Body: { customer_id, amount, idem_key? } */
++/** Collect money from a customer. Body: { customer_id, amount, method_id, idem_key? } */
+ export async function POST(req: NextRequest) {
+   const a = await authorize("payments.receive");
+   if (a.error) return a.error;
+   const b = await req.json().catch(() => null);
+   if (!b?.customer_id) return NextResponse.json({ error: "Choose a customer." }, { status: 400 });
++  if (!b?.method_id) return NextResponse.json({ error: "Choose how the money was received." }, { status: 400 });
+   const sb = db();
+   const mine = await allowedRouteIds(sb, a.user);
+   if (mine) {
+@@ -17,7 +18,7 @@ export async function POST(req: NextRequest) {
+     if (!c.data?.route_id || !mine.includes(c.data.route_id)) return NextResponse.json({ error: "That customer is not on your routes." }, { status: 403 });
+   }
+   const { data, error } = await sb.rpc("collect_payment", {
+-    p_customer: b.customer_id, p_amount: Number(b.amount), p_idem: b.idem_key ? String(b.idem_key) : null, p_user: a.user.id,
++    p_customer: b.customer_id, p_amount: Number(b.amount), p_method: String(b.method_id), p_idem: b.idem_key ? String(b.idem_key) : null, p_user: a.user.id,
+   });
+   if (error) return dbError(error);
+   return NextResponse.json({ id: data }, { status: 201 });
+diff --git a/app/api/route-runs/route.ts b/app/api/route-runs/route.ts
+index 2b3c509..02eb4ae 100644
+--- a/app/api/route-runs/route.ts
++++ b/app/api/route-runs/route.ts
+@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
+   const routeIds = [...new Set(rows.map((r: { route_id: string }) => r.route_id))];
+   const [vs, ss, ps] = await Promise.all([
+     sb.from("visits").select("customer_id,route_id,visit_date,outcome").in("route_id", routeIds).gte("visit_date", from).lte("visit_date", to).limit(20000),
+-    sb.from("sales").select("route_id,sale_date,total,bilti").in("route_id", routeIds).eq("status", "confirmed").gte("sale_date", from).lte("sale_date", to).limit(20000),
++    sb.from("sales").select("route_id,sale_date,total,bilti,local_charges").in("route_id", routeIds).eq("status", "confirmed").gte("sale_date", from).lte("sale_date", to).limit(20000),
+     sb.from("payments").select("route_id,pay_date,amount").in("route_id", routeIds).eq("reversed", false).gte("pay_date", from).lte("pay_date", to).limit(20000),
+   ]);
+   const err = vs.error ?? ss.error ?? ps.error;
+@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
+     (visited.get(k) ?? visited.set(k, new Set()).get(k)!).add(v.customer_id);
+     if (v.outcome === "Order placed" || v.outcome === "Payment collected") productive.set(k, (productive.get(k) ?? 0) + 1);
+   }
+-  for (const s of ss.data ?? []) { const k = s.route_id + "|" + s.sale_date; sales.set(k, (sales.get(k) ?? 0) + Number(s.total) - Number(s.bilti)); }
++  for (const s of ss.data ?? []) { const k = s.route_id + "|" + s.sale_date; sales.set(k, (sales.get(k) ?? 0) + Number(s.total) - Number(s.bilti) - Number(s.local_charges)); }
+   for (const p of ps.data ?? []) { const k = p.route_id + "|" + p.pay_date; coll.set(k, (coll.get(k) ?? 0) + Number(p.amount)); }
+   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   return NextResponse.json({ items: rows.map((r: any) => {
+diff --git a/app/api/sales/[id]/pay/route.ts b/app/api/sales/[id]/pay/route.ts
+new file mode 100644
+index 0000000..25ef204
+--- /dev/null
++++ b/app/api/sales/[id]/pay/route.ts
+@@ -0,0 +1,27 @@
++import { NextRequest, NextResponse } from "next/server";
++import { db } from "@/lib/supabase";
++import { authorize } from "@/lib/auth";
++import { allowedRouteIds } from "@/lib/customer-scope";
++import { cleanPays } from "@/lib/pays";
++import { dbError } from "@/lib/sql-error";
++
++type Ctx = { params: Promise<{ id: string }> };
++
++/** Receive money against one invoice (a held counter sale, or cash on delivery). Body: { payments: [{ method_id, amount }] } */
++export async function POST(req: NextRequest, { params }: Ctx) {
++  const a = await authorize("payments.receive", "sales.create");
++  if (a.error) return a.error;
++  const { id } = await params;
++  const b = await req.json().catch(() => null);
++  const pays = cleanPays(b?.payments);
++  if (!pays.length) return NextResponse.json({ error: "Enter an amount and choose how it was received." }, { status: 400 });
++  const sb = db();
++  const mine = await allowedRouteIds(sb, a.user);
++  if (mine) {
++    const s = await sb.from("sales").select("route_id").eq("id", id).maybeSingle();
++    if (!s.data?.route_id || !mine.includes(s.data.route_id)) return NextResponse.json({ error: "Invoice not found." }, { status: 404 });
++  }
++  const { error } = await sb.rpc("pay_sale", { p_sale: id, p_pays: pays, p_user: a.user.id });
++  if (error) return dbError(error);
++  return NextResponse.json({ ok: true });
++}
+diff --git a/app/api/sales/[id]/route.ts b/app/api/sales/[id]/route.ts
+index 1d777ed..881111b 100644
+--- a/app/api/sales/[id]/route.ts
++++ b/app/api/sales/[id]/route.ts
+@@ -22,11 +22,12 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
+   if (items.error) return NextResponse.json({ error: items.error.message }, { status: 500 });
+   const pids = [...new Set((items.data ?? []).map((i: { product_id: string }) => i.product_id))];
+   const none = { data: [] as unknown[], error: null };
+-  const [racks, prods, before] = await Promise.all([
++  const [racks, prods, before, pays] = await Promise.all([
+     pids.length ? sb.from("product_racks").select("product_id,rack:racks(code,location_id)").in("product_id", pids) : Promise.resolve(none),
+-    pids.length ? sb.from("products").select("id,code_name,name_ur,unit").in("id", pids) : Promise.resolve(none),
++    pids.length ? sb.from("products").select("id,code_name,name_ur,unit,brand:brands(name)").in("id", pids) : Promise.resolve(none),
+     // previous balance = every ledger entry made before this invoice (entries of one transaction share one timestamp)
+     sb.from("customer_ledger").select("amount").eq("customer_id", s.data.customer_id).lt("ts", s.data.created_at),
++    sb.from("payments").select("amount,method,kind,pay_date").eq("sale_id", id).eq("reversed", false).order("created_at"),
+   ]);
+   const prevBal = (before.data ?? []).reduce((x: number, e: { amount: number }) => x + Number(e.amount), 0);
+ 
+@@ -37,13 +38,13 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
+   const pmap = new Map(((prods.data ?? []) as any[]).map((p) => [p.id, p]));
+   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   const lines = (items.data ?? []).map((i: any) => ({
+-    ...i, sale_item_allocs: undefined, code_name: pmap.get(i.product_id)?.code_name ?? null, name_ur: pmap.get(i.product_id)?.name_ur ?? null, unit: pmap.get(i.product_id)?.unit ?? "pc",
++    ...i, sale_item_allocs: undefined, code_name: pmap.get(i.product_id)?.code_name ?? null, brand: one(pmap.get(i.product_id)?.brand)?.name ?? null, name_ur: pmap.get(i.product_id)?.name_ur ?? null, unit: pmap.get(i.product_id)?.unit ?? "pc",
+     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     allocs: (i.sale_item_allocs ?? []).map((al: any) => { const loc = one(al.location); return { qty: Number(al.qty), location: loc?.name ?? "?", racks: (rackMap.get(i.product_id + "|" + loc?.id) ?? []).sort() }; }),
+   }));
+   const cust = one(s.data.customer) as Record<string, unknown> | null;
+   return NextResponse.json({
+     sale: { ...s.data, customer: undefined }, customer: cust ? { ...cust, area: one(cust.area as never), route: one(cust.route as never) } : null,
+-    items: lines, prev_balance: prevBal, final_balance: prevBal + (s.data.status === "confirmed" ? Number(s.data.total) - Number(s.data.paid) : 0),
++    items: lines, payments: (pays.data ?? []).map((p: { amount: number; method: string | null }) => ({ method: p.method ?? "Cash", amount: Number(p.amount) })), prev_balance: prevBal, final_balance: prevBal + (s.data.status === "confirmed" ? Number(s.data.total) - Number(s.data.paid) : 0),
+   });
+ }
+diff --git a/app/api/sales/[id]/status/route.ts b/app/api/sales/[id]/status/route.ts
+new file mode 100644
+index 0000000..016f1d4
+--- /dev/null
++++ b/app/api/sales/[id]/status/route.ts
+@@ -0,0 +1,29 @@
++import { NextRequest, NextResponse } from "next/server";
++import { db } from "@/lib/supabase";
++import { authorize } from "@/lib/auth";
++import { allowedRouteIds } from "@/lib/customer-scope";
++import { FULFIL_KEYS } from "@/lib/sale-types";
++
++type Ctx = { params: Promise<{ id: string }> };
++
++/** Body: { status: "active" | "packed" | "delivered" | "completed" } */
++export async function PATCH(req: NextRequest, { params }: Ctx) {
++  const a = await authorize("sales.status");
++  if (a.error) return a.error;
++  const { id } = await params;
++  const b = await req.json().catch(() => null);
++  const status = String(b?.status ?? "");
++  if (!FULFIL_KEYS.includes(status)) return NextResponse.json({ error: "Choose a valid status." }, { status: 400 });
++  const sb = db();
++  const s = await sb.from("sales").select("id,status,sale_kind,total,paid,route_id").eq("id", id).maybeSingle();
++  if (s.error) return NextResponse.json({ error: s.error.message }, { status: 500 });
++  const mine = await allowedRouteIds(sb, a.user);
++  if (!s.data || (mine && !(s.data.route_id && mine.includes(s.data.route_id)))) return NextResponse.json({ error: "Invoice not found." }, { status: 404 });
++  if (s.data.status !== "confirmed") return NextResponse.json({ error: "A cancelled invoice cannot change status." }, { status: 400 });
++  if (s.data.sale_kind === "counter" && status !== "active" && Number(s.data.paid) < Number(s.data.total)) {
++    return NextResponse.json({ error: "A counter sale on hold stays Active until it is paid. Receive the payment first." }, { status: 400 });
++  }
++  const { error } = await sb.from("sales").update({ fulfil_status: status, status_changed_at: new Date().toISOString(), status_changed_by: a.user.id }).eq("id", id);
++  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
++  return NextResponse.json({ ok: true, status });
++}
+diff --git a/app/api/sales/route.ts b/app/api/sales/route.ts
+index 3add1ba..cabb4dc 100644
+--- a/app/api/sales/route.ts
++++ b/app/api/sales/route.ts
+@@ -4,10 +4,12 @@ import { authorize } from "@/lib/auth";
+ import { allowedRouteIds, safeWord } from "@/lib/customer-scope";
+ import { hasPerm } from "@/lib/permissions";
+ import { dbError } from "@/lib/sql-error";
++import { cleanPays } from "@/lib/pays";
+ 
+ export const dynamic = "force-dynamic";
+ 
+-/** ?q=&from=YYYY-MM-DD&to=&customer=&status=&offset=&limit= */
++/** ?q=&from=YYYY-MM-DD&to=&customer=&status=active|packed|delivered|completed|cancelled&kind=counter|cash|credit&offset=&limit=
++ *  Active invoices come first, then the newest. */
+ export async function GET(req: NextRequest) {
+   const a = await authorize("sales.create", "payments.receive");
+   if (a.error) return a.error;
+@@ -18,13 +20,18 @@ export async function GET(req: NextRequest) {
+   const mine = await allowedRouteIds(sb, a.user);
+   if (mine && !mine.length) return NextResponse.json({ items: [], total: 0 });
+ 
+-  let q = sb.from("sales").select("id,no,sale_date,customer_id,customer_name,total,paid,status,created_at,sale_items(count)", { count: "exact" })
+-    .order("created_at", { ascending: false }).range(offset, offset + limit - 1);
++  let q = sb.from("sales").select("id,no,sale_date,customer_id,customer_name,total,paid,status,fulfil_status,sale_kind,pay_term,local_charges,created_at,sale_items(count)", { count: "exact" })
++    .order("active_first", { ascending: true }).order("created_at", { ascending: false }).range(offset, offset + limit - 1);
+   if (mine) q = q.in("route_id", mine);
+   if (sp.get("from")) q = q.gte("sale_date", sp.get("from")!);
+   if (sp.get("to")) q = q.lte("sale_date", sp.get("to")!);
+   if (sp.get("customer")) q = q.eq("customer_id", sp.get("customer")!);
+-  if (["confirmed", "cancelled"].includes(sp.get("status") ?? "")) q = q.eq("status", sp.get("status")!);
++  const st = sp.get("status") ?? "";
++  if (st === "cancelled") q = q.eq("status", "cancelled");
++  else if (["active", "packed", "delivered", "completed"].includes(st)) q = q.eq("status", "confirmed").eq("fulfil_status", st);
++  const kind = sp.get("kind") ?? "";
++  if (kind === "counter") q = q.eq("sale_kind", "counter");
++  else if (kind === "cash" || kind === "credit") q = q.eq("sale_kind", "ledger").eq("pay_term", kind);
+   for (const raw of (sp.get("q") ?? "").split(/\s+/)) {
+     const w = safeWord(raw);
+     if (w) q = q.or("no.ilike.%" + w + "%,customer_name.ilike.%" + w + "%");
+@@ -36,7 +43,8 @@ export async function GET(req: NextRequest) {
+   return NextResponse.json({ items, total: count ?? 0 });
+ }
+ 
+-/** Body: { customer_id, location_id?, lines: [{ product_id, qty, price?, disc_pct?, location_id? }], discount?, bilti?, paid?, remarks?, idem_key? } */
++/** Body: { customer_id, kind: "counter"|"ledger", term?: "cash"|"credit", hold?, location_id?, lines: [{ product_id, qty, price?, disc_pct?, location_id? }],
++ *  discount?, bilti? (outside the city), local_charges? (inside the city), payments?: [{ method_id, amount }], contact_name?, contact_phone?, remarks?, idem_key? } */
+ export async function POST(req: NextRequest) {
+   const a = await authorize("sales.create");
+   if (a.error) return a.error;
+@@ -57,9 +65,13 @@ export async function POST(req: NextRequest) {
+   })) : [];
+   const { data, error } = await sb.rpc("create_sale", {
+     p_customer: b.customer_id, p_location: b.location_id || null, p_lines: lines,
+-    p_discount: Number(b.discount) || 0, p_bilti: Number(b.bilti) || 0, p_paid: Number(b.paid) || 0,
++    p_discount: Number(b.discount) || 0, p_bilti: Number(b.bilti) || 0,
+     p_remarks: String(b.remarks ?? "").slice(0, 500), p_idem: b.idem_key ? String(b.idem_key) : null,
+     p_user: a.user.id, p_can_discount: hasPerm(a.user, "sales.discount"), p_allowed: a.user.locationIds,
++    p_kind: b.kind === "counter" ? "counter" : "ledger", p_term: b.term === "cash" ? "cash" : "credit", p_hold: b.hold === true,
++    p_local: Number(b.local_charges) || 0,
++    p_contact_name: String(b.contact_name ?? "").trim().slice(0, 80) || null, p_contact_phone: String(b.contact_phone ?? "").trim().slice(0, 30) || null,
++    p_pays: cleanPays(b.payments),
+   });
+   if (error) return dbError(error);
+   return NextResponse.json({ id: data }, { status: 201 });
+diff --git a/app/print/sales/page.tsx b/app/print/sales/page.tsx
+new file mode 100644
+index 0000000..e3069e0
+--- /dev/null
++++ b/app/print/sales/page.tsx
+@@ -0,0 +1,17 @@
++import { redirect } from "next/navigation";
++import SalePrint, { type PrintType } from "@/components/SalePrint";
++import { getUser } from "@/lib/auth";
++import { hasAny } from "@/lib/permissions";
++
++// Printing page: no menus, just the slips. type = invoice | gateout | delivery, layout = roll (80mm) | a4.
++export default async function Page({ searchParams }: { searchParams: Promise<{ ids?: string; type?: string; layout?: string }> }) {
++  const user = await getUser();
++  if (!user) redirect("/login");
++  if (!hasAny(user, ["sales.create", "payments.receive", "stock.view", "stock.transfer"])) redirect("/dashboard");
++  const sp = await searchParams;
++  const ids = (sp.ids ?? "").split(",").filter((x) => /^[0-9a-f-]{36}$/i.test(x)).slice(0, 60);
++  if (!ids.length) redirect("/sales");
++  const type: PrintType = sp.type === "gateout" || sp.type === "delivery" ? sp.type : "invoice";
++  const layout = sp.layout === "a4" ? "a4" : "roll";
++  return <SalePrint ids={ids} type={type} layout={layout} />;
++}
+diff --git a/app/sales/page.tsx b/app/sales/page.tsx
+index f1604ed..dd2e162 100644
+--- a/app/sales/page.tsx
++++ b/app/sales/page.tsx
+@@ -6,7 +6,7 @@ import { hasAny } from "@/lib/permissions";
+ export default async function Page({ searchParams }: { searchParams: Promise<{ status?: string; range?: string }> }) {
+   if (!hasAny(await getUser(), ["sales.create", "payments.receive"])) redirect("/dashboard");
+   const sp = await searchParams;
+-  const status = ["confirmed", "cancelled"].includes(sp.status ?? "") ? sp.status! : "";
++  const status = ["active", "packed", "delivered", "completed", "cancelled"].includes(sp.status ?? "") ? sp.status! : "";
+   const range = ["today", "week", "month", "all"].includes(sp.range ?? "") ? sp.range! : "today";
+   return <SalesList key={status + range} initialStatus={status} initialRange={range} />;
+ }
+diff --git a/components/CollectModal.tsx b/components/CollectModal.tsx
+index 4b1512b..b119d99 100644
+--- a/components/CollectModal.tsx
++++ b/components/CollectModal.tsx
+@@ -4,6 +4,7 @@ import { spreadPayment } from "@/lib/bills";
+ import { rs } from "@/lib/format";
+ import CustomerPicker, { type PickedCustomer } from "./CustomerPicker";
+ import { Loading, Spinner } from "./Loading";
++import { usePaymentMethods } from "./PaySplit";
+ 
+ type Ledger = { balance: number; unpaid: { no: string; due: number }[] };
+ 
+@@ -15,6 +16,9 @@ export default function CollectModal({ customer: given, onClose, onDone }: { cus
+   const [busy, setBusy] = useState(false);
+   const [error, setError] = useState("");
+   const [idem] = useState(() => crypto.randomUUID());
++  const { methods } = usePaymentMethods();
++  const [methodId, setMethodId] = useState("");
++  const method = methodId || (methods.find((m) => m.name.toLowerCase() === "cash") ?? methods[0])?.id || "";
+ 
+   useEffect(() => {
+     if (!customer) return;
+@@ -25,10 +29,10 @@ export default function CollectModal({ customer: given, onClose, onDone }: { cus
+   if (!customer) return <CustomerPicker onlyWithBalance onPick={setCustomer} onClose={onClose} />;
+ 
+   const n = Number(amount);
+-  const valid = led != null && n > 0 && n <= led.balance;
++  const valid = led != null && n > 0 && n <= led.balance && !!method;
+   async function save() {
+     setBusy(true); setError("");
+-    const r = await fetch("/api/payments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ customer_id: customer!.id, amount: n, idem_key: idem }) });
++    const r = await fetch("/api/payments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ customer_id: customer!.id, amount: n, method_id: method, idem_key: idem }) });
+     const j = await r.json().catch(() => ({}));
+     setBusy(false);
+     if (!r.ok) return setError(j.error || "Could not save the payment");
+@@ -54,6 +58,10 @@ export default function CollectModal({ customer: given, onClose, onDone }: { cus
+                   <input id="col-amt" className="input text-xl font-semibold" type="number" inputMode="decimal" min="0" step="any" autoFocus value={amount} onChange={(e) => setAmount(e.target.value)} />
+                   <button className="btn shrink-0" onClick={() => setAmount(String(led.balance))}>Full</button>
+                 </div>
++                <p className="label mt-3">Received by</p>
++                <div role="radiogroup" aria-label="Payment method" className="flex flex-wrap gap-2">
++                  {methods.map((m) => <button key={m.id} type="button" role="radio" aria-checked={method === m.id} className={"chip " + (method === m.id ? "chip-on" : "")} onClick={() => setMethodId(m.id)}>{m.name}</button>)}
++                </div>
+                 {n > led.balance && <p className="mt-1 text-sm text-red">More than the balance of {rs(led.balance)}.</p>}
+                 {valid && (
+                   <p className="mt-2 text-sm text-muted">Settles: {spreadPayment(led.unpaid, n).map((x) => x.no + " (" + rs(x.amount) + ")").join(", ")}. Balance after: <b className="text-ink">{rs(led.balance - n)}</b></p>
+diff --git a/components/InvoiceBuilder.tsx b/components/InvoiceBuilder.tsx
+index c98d9db..3948915 100644
+--- a/components/InvoiceBuilder.tsx
++++ b/components/InvoiceBuilder.tsx
+@@ -6,6 +6,7 @@ import { qty as fmtQty, rs } from "@/lib/format";
+ import CustomerPicker, { type PickedCustomer } from "./CustomerPicker";
+ import { useMe } from "./Me";
+ import { Loading, LoadingBar, Spinner } from "./Loading";
++import PaySplit, { newRow, paysTotal, toPayments, usePaymentMethods, type PayRow } from "./PaySplit";
+ 
+ export type Prod = { id: string; name_en: string; code_name: string | null; name_ur: string | null; unit: string; cp: number; scheme: string | null; on_hand: number; racks: string[] };
+ type Line = { key: string; p: Prod; qty: string; price: string; disc: string };
+@@ -21,6 +22,9 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string })
+   const router = useRouter();
+   const { can } = useMe();
+   const canDiscount = can("sales.discount");
++  const { methods } = usePaymentMethods();
++  const [kind, setKind] = useState<"counter" | "ledger">(customerId ? "ledger" : "counter");
++  const [term, setTerm] = useState<"credit" | "cash">("credit");
+   const [cust, setCust] = useState<Cust | null>(null);
+   const [pickCust, setPickCust] = useState(false);
+   const [pickProd, setPickProd] = useState(false);
+@@ -28,12 +32,21 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string })
+   const [defPct, setDefPct] = useState<Record<string, number>>({});
+   const [discount, setDiscount] = useState("");
+   const [bilti, setBilti] = useState("");
+-  const [paid, setPaid] = useState("");
++  const [local, setLocal] = useState("");
++  const [contactName, setContactName] = useState("");
++  const [contactPhone, setContactPhone] = useState("");
++  const [rows, setRows] = useState<PayRow[]>([]);
++  const [split, setSplit] = useState(false);
++  const [receiveNow, setReceiveNow] = useState(false);
+   const [remarks, setRemarks] = useState("");
+-  const [busy, setBusy] = useState(false);
++  const [busy, setBusy] = useState<"" | "hold" | "pay" | "save">("");
+   const [error, setError] = useState("");
+   const [idem] = useState(() => crypto.randomUUID());
+ 
++  const cashId = (methods.find((m) => m.name.toLowerCase() === "cash") ?? methods[0])?.id ?? "";
++  useEffect(() => { if (cashId && !rows.length) setRows([newRow(cashId)]); }, [cashId, rows.length]);
++  function resetPay() { setRows(cashId ? [newRow(cashId)] : []); setSplit(false); setReceiveNow(false); }
++
+   async function chooseCustomer(c: PickedCustomer) {
+     setPickCust(false); setError("");
+     const r = await fetch("/api/customers/" + c.id);
+@@ -41,14 +54,27 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string })
+     if (!r.ok) return setError(j.error || "Could not load the customer");
+     const x = j.customer;
+     setCust({ id: x.id, name: x.name, is_walk_in: !!x.is_walk_in, credit_limit: Number(x.credit_limit), balance: Number(x.balance), route: x.route?.name ?? null });
+-    setPaid("");
++  }
++  async function useWalkIn() {
++    setError("");
++    const r = await fetch("/api/customers/walkin");
++    const j = await r.json().catch(() => ({}));
++    if (!r.ok) return setError(j.error || "Could not find the walk-in customer");
++    await chooseCustomer({ id: j.customer.id, name: j.customer.name });
+   }
+   const started = useRef(false);
+   useEffect(() => {
+-    if (started.current || !customerId) return;
++    if (started.current) return;
+     started.current = true;
+-    chooseCustomer({ id: customerId, name: "" });
+-  }, [customerId]);
++    if (customerId) chooseCustomer({ id: customerId, name: "" }); else useWalkIn();
++  }, [customerId]); // eslint-disable-line react-hooks/exhaustive-deps
++
++  function pickKind(k: "counter" | "ledger") {
++    if (k === kind) return;
++    setKind(k); setError(""); resetPay();
++    if (k === "counter") { if (!cust || !cust.is_walk_in) useWalkIn(); }
++    else if (cust?.is_walk_in) setCust(null);
++  }
+ 
+   // default discounts for this customer (brand discount, or the customer's own deal)
+   useEffect(() => {
+@@ -72,22 +98,32 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string })
+     return { q, price, pct, free, ld, amount: q * price - ld, short: q + free > l.p.on_hand };
+   });
+   const gross = calc.reduce((s, c) => s + c.q * c.price, 0), ldisc = calc.reduce((s, c) => s + c.ld, 0);
+-  const total = gross - ldisc - money(discount) + Math.round(money(bilti));
+-  const paidNow = cust?.is_walk_in ? total : money(paid);
+-  const due = total - paidNow;
+-  const overLimit = !!cust && !cust.is_walk_in && cust.credit_limit > 0 && due > 0 && cust.balance + due > cust.credit_limit;
+-  const ready = !!cust && lines.length > 0 && calc.every((c) => c.q > 0 && c.price > 0) && total >= 0 && paidNow <= total && !busy;
++  const total = gross - ldisc - money(discount) + Math.round(money(bilti)) + Math.round(money(local));
+ 
+-  async function save() {
++  const counter = kind === "counter";
++  const walkIn = !!cust?.is_walk_in;
++  // counter: the whole total is paid now.  ledger: optional money received now.
++  const counterPays = toPayments(rows, split, total);
++  const counterPaid = split ? Math.abs(paysTotal(rows) - total) < 0.005 && counterPays.length > 0 : counterPays.length > 0;
++  const ledgerPaid = receiveNow ? paysTotal(rows) : 0;
++  const due = counter ? 0 : total - ledgerPaid;
++  const overLimit = !counter && !!cust && !walkIn && cust.credit_limit > 0 && due > 0 && cust.balance + due > cust.credit_limit;
++  const baseReady = !!cust && lines.length > 0 && calc.every((c) => c.q > 0 && c.price > 0) && total >= 0 && !busy && (counter || !walkIn);
++  const canPay = baseReady && total > 0 && counterPaid;
++  const canSave = baseReady && ledgerPaid <= total && (!receiveNow || toPayments(rows, true, 0).length > 0 || ledgerPaid === 0);
++
++  async function save(mode: "hold" | "pay" | "save") {
+     if (!cust) return;
+-    setBusy(true); setError("");
++    setBusy(mode); setError("");
+     const body = {
+-      customer_id: cust.id, idem_key: idem, discount: money(discount), bilti: money(bilti), paid: paidNow, remarks,
++      customer_id: cust.id, kind, term, hold: mode === "hold", idem_key: idem, discount: money(discount), bilti: money(bilti), local_charges: money(local), remarks,
++      contact_name: walkIn ? contactName : "", contact_phone: walkIn ? contactPhone : "",
++      payments: mode === "hold" ? [] : counter ? counterPays : receiveNow ? toPayments(rows, true, 0) : [],
+       lines: lines.map((l) => ({ product_id: l.p.id, qty: money(l.qty), price: l.price !== "" ? money(l.price) : undefined, disc_pct: l.disc !== "" ? money(l.disc) : undefined })),
+     };
+     const r = await fetch("/api/sales", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+     const j = await r.json().catch(() => ({}));
+-    setBusy(false);
++    setBusy("");
+     if (!r.ok) return setError(j.error || "Could not save the invoice");
+     router.replace("/sales/" + j.id);
+   }
+@@ -96,28 +132,68 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string })
+     <div>
+       <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-line bg-bg px-2 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-4 lg:pt-4">
+         <Link href="/sales" className="btn border-0 bg-transparent px-3 text-xl" aria-label="Back">←</Link>
+-        <div className="min-w-0 flex-1"><h1 className="text-base font-bold leading-tight">New invoice</h1><p className="text-xs text-muted">Total {rs(total)}</p></div>
+-        <button className="btn btn-primary" disabled={!ready} onClick={save}>{busy ? <><Spinner /> Saving…</> : "Save invoice"}</button>
++        <div className="min-w-0 flex-1"><h1 className="text-base font-bold leading-tight">{counter ? "Counter sale" : "Ledger sale"}</h1><p className="text-xs text-muted">Total {rs(total)}</p></div>
++        {counter ? (
++          <>
++            <button className="btn" disabled={!baseReady} onClick={() => save("hold")}>{busy === "hold" ? <><Spinner /> Holding…</> : "Hold"}</button>
++            <button className="btn btn-primary" disabled={!canPay} onClick={() => save("pay")}>{busy === "pay" ? <><Spinner /> Saving…</> : "Pay & complete"}</button>
++          </>
++        ) : (
++          <button className="btn btn-primary" disabled={!baseReady || !canSave} onClick={() => save("save")}>{busy === "save" ? <><Spinner /> Saving…</> : "Save invoice"}</button>
++        )}
+       </header>
+ 
+       <div className="space-y-3 p-3 lg:max-w-3xl lg:px-5">
+         {error && <p role="alert" className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+ 
++        <div role="radiogroup" aria-label="Sale type" className="grid grid-cols-2 gap-2">
++          {([["counter", "Counter sale", "Paid now. Can be put on hold."], ["ledger", "Ledger sale", "Delivered later, cash or credit."]] as const).map(([k, label, note]) => (
++            <button key={k} type="button" role="radio" aria-checked={kind === k} onClick={() => pickKind(k)}
++              className={"rounded-xl border p-3 text-left active:opacity-70 " + (kind === k ? "border-accent ring-2 ring-accent" : "border-line bg-surface")}>
++              <span className="block font-semibold">{label}</span><span className="block text-xs text-muted">{note}</span>
++            </button>
++          ))}
++        </div>
++
+         <section className="card p-4">
+           <h2 className="mb-2 font-semibold">Customer</h2>
+           {cust ? (
+-            <div className="flex items-start gap-2">
+-              <div className="min-w-0 flex-1">
+-                <p className="font-semibold">{cust.name}{cust.is_walk_in && <span className="ml-2 pill bg-bg text-muted">Cash</span>}</p>
+-                {!cust.is_walk_in && (
+-                  <p className="text-sm text-muted">{cust.route ? cust.route + " · " : ""}Balance <b className={cust.balance > 0 ? "text-red" : "text-ink"}>{rs(cust.balance)}</b>{cust.credit_limit > 0 ? " · limit " + rs(cust.credit_limit) : ""}</p>
+-                )}
++            <div className="space-y-3">
++              <div className="flex items-start gap-2">
++                <div className="min-w-0 flex-1">
++                  <p className="font-semibold">{walkIn ? "Walk-in customer" : cust.name}{walkIn && <span className="ml-2 pill bg-bg text-muted">Counter</span>}</p>
++                  {!walkIn && (
++                    <p className="text-sm text-muted">{cust.route ? cust.route + " · " : ""}Balance <b className={cust.balance > 0 ? "text-red" : "text-ink"}>{rs(cust.balance)}</b>{cust.credit_limit > 0 ? " · limit " + rs(cust.credit_limit) : ""}</p>
++                  )}
++                </div>
++                {counter && !walkIn ? <button className="btn min-h-9 px-3" onClick={useWalkIn}>Walk-in</button> : null}
++                {(!counter || !walkIn) && <button className="btn min-h-9 px-3" onClick={() => setPickCust(true)}>Change</button>}
++                {counter && walkIn && <button className="btn min-h-9 px-3" onClick={() => setPickCust(true)}>Registered customer</button>}
+               </div>
+-              <button className="btn min-h-9 px-3" onClick={() => setPickCust(true)}>Change</button>
++              {walkIn && (
++                <div className="grid grid-cols-2 gap-3">
++                  <div><label className="label" htmlFor="ct-name">Name (optional)</label><input id="ct-name" className="input" maxLength={80} value={contactName} onChange={(e) => setContactName(e.target.value)} /></div>
++                  <div><label className="label" htmlFor="ct-phone">Phone (optional)</label><input id="ct-phone" className="input" type="tel" inputMode="tel" maxLength={30} value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} /></div>
++                  <p className="col-span-2 -mt-1 text-xs text-muted">Printed on this invoice only. It does not create a customer.</p>
++                </div>
++              )}
+             </div>
++          ) : cust === null && counter && !error ? (
++            <Loading label="Loading…" className="py-2" />
+           ) : (
+             <button className="btn btn-primary w-full" onClick={() => setPickCust(true)}>Choose customer</button>
+           )}
++          {!counter && (
++            <div className="mt-3">
++              <p className="label">This invoice is</p>
++              <div role="radiogroup" aria-label="Cash or credit" className="flex gap-2">
++                {([["credit", "Credit"], ["cash", "Cash"]] as const).map(([k, label]) => (
++                  <button key={k} type="button" role="radio" aria-checked={term === k} className={"chip " + (term === k ? "chip-on" : "")} onClick={() => setTerm(k)}>{label}</button>
++                ))}
++              </div>
++              <p className="mt-1 text-xs text-muted">{term === "cash" ? "Cash: the money is collected when the goods are delivered." : "Credit: the amount goes on the customer's account."}</p>
++            </div>
++          )}
+         </section>
+ 
+         <section className="card p-4">
+@@ -169,31 +245,43 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string })
+             <div className="flex justify-between"><dt className="text-muted">Items</dt><dd>{rs(gross)}</dd></div>
+             {ldisc > 0 && <div className="flex justify-between"><dt className="text-muted">Item discounts</dt><dd>− {rs(ldisc)}</dd></div>}
+             {money(discount) > 0 && <div className="flex justify-between"><dt className="text-muted">Invoice discount</dt><dd>− {rs(money(discount))}</dd></div>}
+-            {money(bilti) > 0 && <div className="flex justify-between"><dt className="text-muted">Bilti (transport)</dt><dd>+ {rs(money(bilti))}</dd></div>}
++            {money(local) > 0 && <div className="flex justify-between"><dt className="text-muted">Local charges (inside city)</dt><dd>+ {rs(Math.round(money(local)))}</dd></div>}
++            {money(bilti) > 0 && <div className="flex justify-between"><dt className="text-muted">Bilti (outside city)</dt><dd>+ {rs(Math.round(money(bilti)))}</dd></div>}
+             <div className="flex justify-between border-t border-line pt-1 text-lg font-bold"><dt>Total</dt><dd>{rs(total)}</dd></div>
+           </dl>
+           <div className="grid grid-cols-2 gap-3">
+-            {canDiscount && <div><label className="label" htmlFor="inv-disc">Invoice discount (Rs)</label><input id="inv-disc" className="input" type="number" inputMode="decimal" min="0" value={discount} onChange={(e) => setDiscount(e.target.value)} /></div>}
+-            <div><label className="label" htmlFor="inv-bilti">Bilti (Rs)</label><input id="inv-bilti" className="input" type="number" inputMode="numeric" min="0" value={bilti} onChange={(e) => setBilti(e.target.value)} /></div>
++            {canDiscount && <div className="col-span-2"><label className="label" htmlFor="inv-disc">Invoice discount (Rs)</label><input id="inv-disc" className="input" type="number" inputMode="decimal" min="0" value={discount} onChange={(e) => setDiscount(e.target.value)} /></div>}
++            <div><label className="label" htmlFor="inv-local">Local charges (Rs)</label><input id="inv-local" className="input" type="number" inputMode="numeric" min="0" placeholder="Delivery in city" value={local} onChange={(e) => setLocal(e.target.value)} /></div>
++            <div><label className="label" htmlFor="inv-bilti">Bilti (Rs)</label><input id="inv-bilti" className="input" type="number" inputMode="numeric" min="0" placeholder="Delivery outside city" value={bilti} onChange={(e) => setBilti(e.target.value)} /></div>
+           </div>
+-          {cust && !cust.is_walk_in && (
++
++          {counter && (
+             <div>
+-              <label className="label" htmlFor="inv-paid">Paid now (Rs)</label>
+-              <div className="flex gap-2">
+-                <input id="inv-paid" className="input text-lg font-semibold" type="number" inputMode="decimal" min="0" placeholder="0 = on credit" value={paid} onChange={(e) => setPaid(e.target.value)} />
+-                <button className="btn shrink-0" onClick={() => setPaid(String(total))}>Paid in full</button>
+-              </div>
+-              <p className="mt-1 text-sm text-muted">Goes on credit: <b className="text-ink">{rs(Math.max(due, 0))}</b></p>
+-              {paidNow > total && <p className="text-sm text-red">More than the invoice total.</p>}
++              <p className="label">Paid by</p>
++              <PaySplit methods={methods} rows={rows} setRows={setRows} split={split} setSplit={setSplit} total={total} mode="full" />
++              <p className="mt-2 text-xs text-muted">“Pay &amp; complete” takes the payment and completes the sale. “Hold” keeps it Active without payment; stock is deducted now and comes back if you cancel.</p>
++            </div>
++          )}
++          {!counter && cust && !walkIn && (
++            <div>
++              {!receiveNow ? (
++                <button type="button" className="btn w-full" onClick={() => { setReceiveNow(true); if (!rows.length && cashId) setRows([newRow(cashId)]); }}>Money received now (optional)</button>
++              ) : (
++                <>
++                  <div className="mb-1 flex items-center justify-between"><p className="label mb-0">Received now</p><button type="button" className="text-sm text-muted underline" onClick={resetPay}>None</button></div>
++                  <PaySplit methods={methods} rows={rows} setRows={setRows} split setSplit={setSplit} total={total} mode="amount" />
++                  {ledgerPaid > total && <p className="mt-1 text-sm text-red">More than the invoice total.</p>}
++                </>
++              )}
++              <p className="mt-2 text-sm text-muted">{term === "cash" ? "To collect on delivery" : "Goes on credit"}: <b className="text-ink">{rs(Math.max(due, 0))}</b></p>
+               {overLimit && <p className="mt-1 rounded-lg bg-amber-bg p-2 text-sm text-amber">This would take the customer over the credit limit of {rs(cust.credit_limit)}. The invoice will be refused.</p>}
+             </div>
+           )}
+-          {cust?.is_walk_in && <p className="rounded-lg bg-bg p-2 text-sm text-muted">Cash customer: the whole total is received now.</p>}
+-          <div><label className="label" htmlFor="inv-rem">Remarks (optional)</label><input id="inv-rem" className="input" maxLength={500} value={remarks} onChange={(e) => setRemarks(e.target.value)} /></div>
++          <div><label className="label" htmlFor="inv-rem">Remarks (optional)</label><input id="inv-rem" className="input" maxLength={500} placeholder="For example: BY HAND" value={remarks} onChange={(e) => setRemarks(e.target.value)} /></div>
+         </section>
+       </div>
+ 
+-      {pickCust && <CustomerPicker allowWalkIn allowAdd onPick={chooseCustomer} onClose={() => setPickCust(false)} />}
++      {pickCust && <CustomerPicker allowAdd onPick={chooseCustomer} onClose={() => setPickCust(false)} />}
+       {pickProd && <ProductPicker onAdd={addProduct} inInvoice={Object.fromEntries(lines.map((l) => [l.p.id, money(l.qty)]))} onClose={() => setPickProd(false)} />}
+     </div>
+   );
+diff --git a/components/InvoiceView.tsx b/components/InvoiceView.tsx
+index 3444ad9..182c399 100644
+--- a/components/InvoiceView.tsx
++++ b/components/InvoiceView.tsx
+@@ -5,18 +5,19 @@ import { niceDate } from "@/lib/dates";
+ import { qty as fmtQty, rs } from "@/lib/format";
+ import CollectModal from "./CollectModal";
+ import { useMe } from "./Me";
+-import { saleState } from "./SalesList";
++import { FULFIL, saleKind, statusPill } from "@/lib/sale-types";
++import PayInvoiceModal from "./PayInvoiceModal";
+ import Toast from "./Toast";
+-import { PageLoading } from "./Loading";
++import { PageLoading, Spinner } from "./Loading";
+ 
+ type Item = {
+   id: string; name: string; code_name: string | null; name_ur: string | null; unit: string; qty: number; free: number; price: number; disc_pct: number; line_disc: number;
+   allocs: { qty: number; location: string; racks: string[] }[];
+ };
+ type Detail = {
+-  sale: { id: string; no: string; sale_date: string; created_at: string; customer_id: string; customer_name: string; discount: number; line_discount: number; bilti: number; total: number; paid: number; status: string; remarks: string | null };
++  sale: { fulfil_status: string; sale_kind: string; pay_term: string; local_charges: number; contact_phone: string | null; id: string; no: string; sale_date: string; created_at: string; customer_id: string; customer_name: string; discount: number; line_discount: number; bilti: number; total: number; paid: number; status: string; remarks: string | null };
+   customer: { id: string; code: string; name: string; phone: string | null; address: string | null; is_walk_in: boolean; area: { name: string } | null; route: { name: string } | null } | null;
+-  items: Item[]; prev_balance: number; final_balance: number;
++  items: Item[]; payments: { method: string; amount: number }[]; prev_balance: number; final_balance: number;
+ };
+ 
+ export default function InvoiceView({ id }: { id: string }) {
+@@ -24,6 +25,8 @@ export default function InvoiceView({ id }: { id: string }) {
+   const [d, setD] = useState<Detail | null>(null);
+   const [error, setError] = useState("");
+   const [collect, setCollect] = useState(false);
++  const [payInv, setPayInv] = useState(false);
++  const [changing, setChanging] = useState(false);
+   const [toast, setToast] = useState("");
+   const [busy, setBusy] = useState(false);
+ 
+@@ -45,10 +48,19 @@ export default function InvoiceView({ id }: { id: string }) {
+     setToast("Invoice cancelled"); load();
+   }
+ 
++  async function changeStatus(next: string) {
++    setChanging(true);
++    const r = await fetch("/api/sales/" + id + "/status", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: next }) });
++    const j = await r.json().catch(() => ({}));
++    setChanging(false);
++    if (!r.ok) return setToast(j.error || "Could not change the status");
++    setToast("Status changed"); load();
++  }
++
+   if (error) return <p className="p-4 text-red">{error} <Link href="/sales" className="underline">Back</Link></p>;
+   if (!d) return <PageLoading />;
+   const { sale: s, customer: c } = d;
+-  const st = saleState(s);
++  const st = statusPill(s), kd = saleKind(s);
+   const due = s.status === "confirmed" ? Number(s.total) - Number(s.paid) : 0;
+   const pieces = d.items.reduce((x, i) => x + Number(i.qty), 0), free = d.items.reduce((x, i) => x + Number(i.free), 0);
+ 
+@@ -67,6 +79,7 @@ export default function InvoiceView({ id }: { id: string }) {
+       <header data-noprint className="sticky top-0 z-20 flex items-center gap-2 border-b border-line bg-bg px-2 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-4 lg:pt-4">
+         <Link href="/sales" className="btn border-0 bg-transparent px-3 text-xl" aria-label="Back">←</Link>
+         <h1 className="min-w-0 flex-1 truncate text-base font-bold">{s.no}</h1>
++        <span className={"pill " + kd.pill}>{kd.label}</span>
+         <span className={"pill " + st.cls}>{st.label}</span>
+       </header>
+ 
+@@ -82,6 +95,16 @@ export default function InvoiceView({ id }: { id: string }) {
+           </div>
+         </section>
+ 
++        {s.status === "confirmed" && can("sales.status") && (
++          <section data-noprint className="card flex items-center gap-3 p-3">
++            <label className="text-sm font-semibold" htmlFor="inv-status">Status</label>
++            <select id="inv-status" className="input max-w-48" value={s.fulfil_status} disabled={changing} onChange={(e) => changeStatus(e.target.value)}>
++              {FULFIL.map(([k, label]) => <option key={k} value={k}>{k === "active" && s.sale_kind === "counter" && due > 0 ? "Active (Hold)" : label}</option>)}
++            </select>
++            {changing && <Spinner />}
++          </section>
++        )}
++
+         <section className="card p-4">
+           <ul className="divide-y divide-line">
+             {d.items.map((i) => (
+@@ -108,9 +131,11 @@ export default function InvoiceView({ id }: { id: string }) {
+             <div className="flex justify-between"><dt className="text-muted">Items</dt><dd>{rs(d.items.reduce((x, i) => x + i.qty * i.price, 0))}</dd></div>
+             {Number(s.line_discount) > 0 && <div className="flex justify-between"><dt className="text-muted">Item discounts</dt><dd>− {rs(s.line_discount)}</dd></div>}
+             {Number(s.discount) > 0 && <div className="flex justify-between"><dt className="text-muted">Invoice discount</dt><dd>− {rs(s.discount)}</dd></div>}
++            {Number(s.local_charges) > 0 && <div className="flex justify-between"><dt className="text-muted">Local charges</dt><dd>+ {rs(s.local_charges)}</dd></div>}
+             {Number(s.bilti) > 0 && <div className="flex justify-between"><dt className="text-muted">Bilti</dt><dd>+ {rs(s.bilti)}</dd></div>}
+             <div className="flex justify-between border-t border-line pt-1 text-lg font-bold"><dt>Total</dt><dd>{rs(s.total)}</dd></div>
+             <div className="flex justify-between"><dt className="text-muted">Paid</dt><dd>{rs(s.paid)}</dd></div>
++            {d.payments.length > 0 && <p className="text-right text-xs text-muted">{d.payments.map((p) => p.method + " " + rs(p.amount)).join(" · ")}</p>}
+             {due > 0 && <div className="flex justify-between font-semibold text-red"><dt>Due on this invoice</dt><dd>{rs(due)}</dd></div>}
+             {!c?.is_walk_in && s.status === "confirmed" && (
+               <>
+@@ -123,14 +148,18 @@ export default function InvoiceView({ id }: { id: string }) {
+         </section>
+ 
+         <div data-noprint className="grid grid-cols-2 gap-2 lg:flex">
+-          <button className="btn" onClick={() => window.print()}>Print</button>
++          <a className="btn" href={"/print/sales?type=invoice&layout=roll&ids=" + id} target="_blank" rel="noreferrer">Print invoice (80mm)</a>
++          {s.status === "confirmed" && <a className="btn" href={"/print/sales?type=gateout&layout=roll&ids=" + id} target="_blank" rel="noreferrer">Gate-out slip (80mm)</a>}
++          {s.status === "confirmed" && <a className="btn" href={"/print/sales?type=delivery&layout=a4&ids=" + id} target="_blank" rel="noreferrer">Delivery slip (A4)</a>}
+           <button className="btn" onClick={share}>Share</button>
+-          {can("payments.receive") && !c?.is_walk_in && s.status === "confirmed" && d.final_balance > 0 && <button className="btn btn-primary" onClick={() => setCollect(true)}>Collect payment</button>}
++          {(can("payments.receive") || can("sales.create")) && due > 0 && <button className="btn btn-primary" onClick={() => setPayInv(true)}>Receive payment ({rs(due)})</button>}
++          {can("payments.receive") && !c?.is_walk_in && s.status === "confirmed" && d.final_balance > 0 && <button className="btn" onClick={() => setCollect(true)}>Collect from customer</button>}
+           {can("sales.cancel") && s.status === "confirmed" && <button className="btn text-red" disabled={busy} onClick={cancel}>Cancel invoice</button>}
+           {c && <Link href={"/customers/" + c.id} className="btn">Customer</Link>}
+         </div>
+       </div>
+ 
++      {payInv && <PayInvoiceModal saleId={id} no={s.no} due={due} onClose={() => setPayInv(false)} onDone={(m) => { setPayInv(false); setToast(m); load(); }} />}
+       {collect && c && <CollectModal customer={{ id: c.id, name: c.name }} onClose={() => setCollect(false)} onDone={(m) => { setCollect(false); setToast(m); load(); }} />}
+       {toast && <Toast msg={toast} onHide={() => setToast("")} />}
+     </div>
+diff --git a/components/PayInvoiceModal.tsx b/components/PayInvoiceModal.tsx
+new file mode 100644
+index 0000000..cd7ed15
+--- /dev/null
++++ b/components/PayInvoiceModal.tsx
+@@ -0,0 +1,48 @@
++"use client";
++import { useEffect, useState } from "react";
++import { rs } from "@/lib/format";
++import { Spinner } from "./Loading";
++import PaySplit, { newRow, paysTotal, toPayments, usePaymentMethods, type PayRow } from "./PaySplit";
++
++/** Receive money against one invoice: a held counter sale, or cash on delivery. */
++export default function PayInvoiceModal({ saleId, no, due, onClose, onDone }: { saleId: string; no: string; due: number; onClose: () => void; onDone: (msg: string) => void }) {
++  const { methods } = usePaymentMethods();
++  const [rows, setRows] = useState<PayRow[]>([]);
++  const [split, setSplit] = useState(true);
++  const [busy, setBusy] = useState(false);
++  const [error, setError] = useState("");
++
++  useEffect(() => {
++    if (methods.length && !rows.length) setRows([newRow((methods.find((m) => m.name.toLowerCase() === "cash") ?? methods[0]).id, String(due))]);
++  }, [methods, rows.length, due]);
++
++  const got = paysTotal(rows);
++  const valid = got > 0 && got <= due;
++  async function save() {
++    setBusy(true); setError("");
++    const r = await fetch("/api/sales/" + saleId + "/pay", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ payments: toPayments(rows, true, got) }) });
++    const j = await r.json().catch(() => ({}));
++    setBusy(false);
++    if (!r.ok) return setError(j.error || "Could not save the payment");
++    onDone(rs(got) + " received for " + no);
++  }
++
++  return (
++    <div className="fixed inset-0 z-50 flex items-end bg-black/50 lg:items-center" onClick={onClose}>
++      <div role="dialog" aria-label="Receive payment" onClick={(e) => e.stopPropagation()}
++        className="mx-auto max-h-[92dvh] w-full max-w-2xl overflow-auto rounded-t-2xl bg-surface p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] lg:max-w-md lg:rounded-2xl lg:pb-4">
++        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line lg:hidden" />
++        <h2 className="text-base font-semibold">Receive payment for {no}</h2>
++        <p className="mb-3 text-sm text-muted">Due on this invoice</p>
++        <p className="mb-3 text-2xl font-bold">{rs(due)}</p>
++        <PaySplit methods={methods} rows={rows} setRows={setRows} split={split} setSplit={setSplit} total={due} mode="amount" />
++        {got > due && <p className="mt-2 text-sm text-red">More than the amount due.</p>}
++        {error && <p role="alert" className="mt-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
++        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end">
++          <button className="btn" onClick={onClose}>Cancel</button>
++          <button className="btn btn-primary" disabled={!valid || busy} onClick={save}>{busy ? <><Spinner /> Saving…</> : "Receive"}</button>
++        </div>
++      </div>
++    </div>
++  );
++}
+diff --git a/components/PaySplit.tsx b/components/PaySplit.tsx
+new file mode 100644
+index 0000000..97823ec
+--- /dev/null
++++ b/components/PaySplit.tsx
+@@ -0,0 +1,78 @@
++"use client";
++import { useEffect, useState } from "react";
++import { rs } from "@/lib/format";
++
++export type Method = { id: string; name: string };
++export type PayRow = { key: string; method_id: string; amount: string };
++
++const num = (v: string) => (v === "" || !Number.isFinite(Number(v)) ? 0 : Number(v));
++export const newRow = (method_id: string, amount = ""): PayRow => ({ key: crypto.randomUUID(), method_id, amount });
++
++/** Active payment methods (Cash, Bank, Easypaisa ... as set in Settings). */
++export function usePaymentMethods() {
++  const [methods, setMethods] = useState<Method[]>([]);
++  const [error, setError] = useState("");
++  useEffect(() => {
++    fetch("/api/payment-methods").then((r) => r.json()).then((j) => (j.error ? setError(j.error) : setMethods(j.methods ?? []))).catch(() => setError("Could not load payment methods"));
++  }, []);
++  return { methods, error, ready: methods.length > 0 };
++}
++
++/** What to send to the server: one payment per method with an amount. */
++export function toPayments(rows: PayRow[], split: boolean, total: number) {
++  if (!split) return rows[0]?.method_id && total > 0 ? [{ method_id: rows[0].method_id, amount: total }] : [];
++  return rows.filter((r) => r.method_id && num(r.amount) > 0).map((r) => ({ method_id: r.method_id, amount: num(r.amount) }));
++}
++export const paysTotal = (rows: PayRow[]) => rows.reduce((s, r) => s + num(r.amount), 0);
++
++/**
++ * mode "full": the whole total is paid. One method by default, or split it between several.
++ * mode "amount": any amounts (money received now on a ledger sale, or part of an invoice).
++ */
++export default function PaySplit({ methods, rows, setRows, split, setSplit, total, mode }: {
++  methods: Method[]; rows: PayRow[]; setRows: (r: PayRow[]) => void; split: boolean; setSplit: (v: boolean) => void; total: number; mode: "full" | "amount";
++}) {
++  const upd = (key: string, patch: Partial<PayRow>) => setRows(rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
++  const entered = paysTotal(rows);
++  const left = total - entered;
++  const showRows = mode === "amount" || split;
++
++  if (!methods.length) return <p className="text-sm text-muted">Loading payment methods…</p>;
++
++  if (!showRows) {
++    return (
++      <div>
++        <div role="radiogroup" aria-label="Payment method" className="flex flex-wrap gap-2">
++          {methods.map((m) => (
++            <button key={m.id} type="button" role="radio" aria-checked={rows[0]?.method_id === m.id} className={"chip " + (rows[0]?.method_id === m.id ? "chip-on" : "")}
++              onClick={() => setRows([{ ...(rows[0] ?? newRow(m.id)), method_id: m.id }])}>{m.name}</button>
++          ))}
++        </div>
++        {methods.length > 1 && <button type="button" className="mt-2 text-sm text-accent underline" onClick={() => { setRows([{ ...(rows[0] ?? newRow(methods[0].id)), amount: String(total) }]); setSplit(true); }}>Split between methods</button>}
++      </div>
++    );
++  }
++
++  return (
++    <div className="space-y-2">
++      {rows.map((r, i) => (
++        <div key={r.key} className="flex items-center gap-2">
++          <select className="input w-40 shrink-0" aria-label="Payment method" value={r.method_id} onChange={(e) => upd(r.key, { method_id: e.target.value })}>
++            {methods.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
++          </select>
++          <input className="input min-w-0 flex-1 text-lg font-semibold" type="number" inputMode="decimal" min="0" step="any" placeholder="Amount" aria-label={"Amount by " + (methods.find((m) => m.id === r.method_id)?.name ?? "method")}
++            value={r.amount} onChange={(e) => upd(r.key, { amount: e.target.value })} />
++          {total > 0 && left > 0 && i === rows.length - 1 && <button type="button" className="btn shrink-0 px-3" onClick={() => upd(r.key, { amount: String(num(r.amount) + left) })}>Rest</button>}
++          {rows.length > 1 && <button type="button" className="btn shrink-0 border-0 bg-transparent px-2 text-muted" aria-label="Remove" onClick={() => setRows(rows.filter((x) => x.key !== r.key))}>✕</button>}
++        </div>
++      ))}
++      <div className="flex flex-wrap items-center gap-3 text-sm">
++        {rows.length < methods.length && <button type="button" className="text-accent underline" onClick={() => setRows([...rows, newRow(methods.find((m) => !rows.some((r) => r.method_id === m.id))?.id ?? methods[0].id)])}>＋ Add method</button>}
++        {mode === "full" && <button type="button" className="text-muted underline" onClick={() => { setRows([{ ...rows[0], amount: "" }]); setSplit(false); }}>One method</button>}
++        <span className="ml-auto text-muted">
++          Entered <b className="text-ink">{rs(entered)}</b>{total > 0 && mode === "full" ? (left === 0 ? " · matches the total" : left > 0 ? " · " + rs(left) + " left" : " · " + rs(-left) + " too much") : ""}
++        </span>
++      </div>
++    </div>
++  );
++}
+diff --git a/components/PaymentMethodsSetting.tsx b/components/PaymentMethodsSetting.tsx
+new file mode 100644
+index 0000000..cd0d2d6
+--- /dev/null
++++ b/components/PaymentMethodsSetting.tsx
+@@ -0,0 +1,65 @@
++"use client";
++import { useCallback, useEffect, useState } from "react";
++import { Loading, Spinner } from "./Loading";
++
++type M = { id: string; name: string; active: boolean };
++
++/** Settings: add, rename, hide or show payment methods. Hidden methods stay on old payments. */
++export default function PaymentMethodsSetting() {
++  const [methods, setMethods] = useState<M[] | null>(null);
++  const [name, setName] = useState("");
++  const [edit, setEdit] = useState<{ id: string; name: string } | null>(null);
++  const [busy, setBusy] = useState(false);
++  const [error, setError] = useState("");
++
++  const load = useCallback(async () => {
++    const r = await fetch("/api/payment-methods?all=1");
++    const j = await r.json().catch(() => ({}));
++    if (!r.ok) return setError(j.error || "Could not load payment methods");
++    setMethods(j.methods);
++  }, []);
++  useEffect(() => { load(); }, [load]);
++
++  async function call(url: string, method: string, body: object) {
++    setBusy(true); setError("");
++    const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
++    const j = await r.json().catch(() => ({}));
++    setBusy(false);
++    if (!r.ok) { setError(j.error || "Could not save"); return false; }
++    await load();
++    return true;
++  }
++
++  return (
++    <div>
++      {!methods && !error && <Loading />}
++      {methods && (
++        <ul className="divide-y divide-line">
++          {methods.map((m) => (
++            <li key={m.id} className="flex items-center gap-2 py-2">
++              {edit?.id === m.id ? (
++                <>
++                  <input className="input min-w-0 flex-1" aria-label="Method name" autoFocus maxLength={40} value={edit.name} onChange={(e) => setEdit({ id: m.id, name: e.target.value })} />
++                  <button className="btn btn-primary min-h-9 px-3" disabled={busy || !edit.name.trim()} onClick={async () => { if (await call("/api/payment-methods/" + m.id, "PATCH", { name: edit.name })) setEdit(null); }}>Save</button>
++                  <button className="btn min-h-9 px-3" onClick={() => setEdit(null)}>Cancel</button>
++                </>
++              ) : (
++                <>
++                  <span className={"min-w-0 flex-1 " + (m.active ? "font-medium" : "text-muted line-through")}>{m.name}</span>
++                  {!m.active && <span className="pill bg-bg text-muted">Hidden</span>}
++                  <button className="btn min-h-9 px-3" onClick={() => setEdit({ id: m.id, name: m.name })}>Rename</button>
++                  <button className="btn min-h-9 px-3" disabled={busy} onClick={() => call("/api/payment-methods/" + m.id, "PATCH", { active: !m.active })}>{m.active ? "Hide" : "Show"}</button>
++                </>
++              )}
++            </li>
++          ))}
++        </ul>
++      )}
++      <div className="mt-3 flex gap-2">
++        <input className="input min-w-0 flex-1" placeholder="New method, for example Meezan Bank" aria-label="New payment method" maxLength={40} value={name} onChange={(e) => setName(e.target.value)} />
++        <button className="btn btn-primary shrink-0" disabled={busy || !name.trim()} onClick={async () => { if (await call("/api/payment-methods", "POST", { name })) setName(""); }}>{busy ? <Spinner /> : "Add"}</button>
++      </div>
++      {error && <p role="alert" className="mt-2 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
++    </div>
++  );
++}
+diff --git a/components/SalePrint.tsx b/components/SalePrint.tsx
+new file mode 100644
+index 0000000..ab92fe3
+--- /dev/null
++++ b/components/SalePrint.tsx
+@@ -0,0 +1,232 @@
++"use client";
++import { useEffect, useMemo, useState } from "react";
++import { BUSINESS } from "@/lib/business";
++import { saleKind } from "@/lib/sale-types";
++
++type Item = {
++  id: string; name: string; name_ur: string | null; code_name: string | null; brand: string | null; qty: number; free: number; price: number; disc_pct: number; line_disc: number;
++  allocs: { qty: number; location: string; racks: string[] }[];
++};
++type Detail = {
++  sale: {
++    id: string; no: string; sale_date: string; customer_name: string; remarks: string | null; status: string; total: number; paid: number; discount: number; line_discount: number;
++    bilti: number; local_charges: number; sale_kind: string; pay_term: string; contact_phone: string | null;
++  };
++  customer: { name: string; name_ur: string | null; phone: string | null; address: string | null; is_walk_in: boolean; area: { name: string } | null; route: { name: string } | null } | null;
++  items: Item[]; payments: { method: string; amount: number }[]; prev_balance: number; final_balance: number;
++};
++export type PrintType = "invoice" | "gateout" | "delivery";
++
++const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
++const dmy = (iso: string) => { const [y, m, d] = iso.slice(0, 10).split("-"); return d + "-" + MONTHS[Number(m) - 1] + "-" + y.slice(2); };
++const n = (x: number | string) => Number(x).toLocaleString("en-US", { maximumFractionDigits: 2 });
++const stamp = () => {
++  const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Karachi", day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(new Date()).map((x) => [x.type, x.value]));
++  return p.day + "-" + MONTHS[Number(p.month) - 1] + "-" + p.year + " " + p.hour + ":" + p.minute;
++};
++const urdu: React.CSSProperties = { fontFamily: "var(--font-urdu), serif", direction: "rtl", lineHeight: 1.9 };
++const qtyOf = (i: Item) => n(i.qty) + (Number(i.free) > 0 ? "+" + n(i.free) : "");
++const termLabel = (s: Detail["sale"]) => { const k = saleKind(s).key; return k === "counter" ? "Counter Sale" : k === "cash" ? "On Cash" : "On Credit"; };
++
++/** Product on every slip: (brand)(code) and the Urdu name. The English name is used only when there is no Urdu name. */
++function ProductName({ i, size = "text-[13px]" }: { i: Item; size?: string }) {
++  const meta = (i.brand ? "(" + i.brand + ")" : "") + (i.code_name ? "(" + i.code_name + ")" : "");
++  return (
++    <div className={"flex flex-wrap items-baseline justify-center gap-x-1.5 font-bold " + size}>
++      {meta && <span dir="ltr">{meta}</span>}
++      {i.name_ur ? <span style={urdu}>{i.name_ur}</span> : <span dir="ltr">{i.name}</span>}
++    </div>
++  );
++}
++
++function Row({ v, l }: { v: string; l: string }) {
++  return <div className="flex items-baseline"><span className="w-[7.5em] text-right font-bold">{v}</span><span className="ml-1 font-bold">:{l}</span></div>;
++}
++
++function InvoiceSlip({ d, printedAt }: { d: Detail; printedAt: string }) {
++  const { sale: s, customer: c } = d;
++  const gross = d.items.reduce((x, i) => x + i.qty * i.price, 0);
++  const discount = Number(s.line_discount) + Number(s.discount);
++  const pieces = d.items.reduce((x, i) => x + Number(i.qty) + Number(i.free), 0);
++  const showBal = !!c && !c.is_walk_in;
++  const odd = d.payments.length > 1 || (d.payments.length === 1 && d.payments[0].method.toLowerCase() !== "cash");
++  return (
++    <div className="text-[12px] leading-snug text-black">
++      <p className="text-center text-[20px] font-bold leading-tight">{BUSINESS.name}</p>
++      <p className="text-center text-[11px] font-bold uppercase">{BUSINESS.address} - {BUSINESS.phone}</p>
++      <p className="text-right text-[11px]">Page 1 of 1</p>
++      <p className="mt-1 border-b-2 border-black text-[13px] font-bold uppercase italic">{s.customer_name}{s.contact_phone ? " · " + s.contact_phone : ""}</p>
++      <div className="mt-1 flex justify-between text-[13px] font-bold"><span>Inv # {s.no}</span><span>Dated {dmy(s.sale_date)}</span></div>
++      {s.remarks && <p className="font-bold">Remarks {s.remarks}</p>}
++      <div className="flex justify-between text-[10px]"><span>{printedAt}</span><span className="text-[12px] italic">{termLabel(s)}</span></div>
++      <table className="mt-0.5 w-full border-collapse border border-black text-[12px]">
++        <colgroup><col style={{ width: "22%" }} /><col style={{ width: "24%" }} /><col /><col style={{ width: "13%" }} /></colgroup>
++        <thead>
++          <tr className="border-b border-black text-center text-[11px]" style={urdu}>
++            <th className="border-r border-black px-0.5 font-normal">ٹوٹل</th><th className="border-r border-black px-0.5 font-normal">ریٹ</th><th className="border-r border-black px-0.5 font-normal">تفصیل آئٹم</th><th className="px-0.5 font-normal">تعداد</th>
++          </tr>
++        </thead>
++        <tbody>
++          {d.items.map((i) => {
++            const net = i.qty > 0 ? (i.qty * i.price - i.line_disc) / i.qty : i.price;
++            return (
++              <tr key={i.id} className="border-b border-black align-middle">
++                <td className="border-r border-black px-1 py-0.5 text-right font-bold">{n(i.qty * i.price)}</td>
++                <td className="border-r border-black px-1 py-0.5 text-center">{n(i.price)}{Number(i.line_disc) > 0 && <><br /><span className="text-[11px]">({n(Math.round(net * 100) / 100)})</span></>}</td>
++                <td className="border-r border-black px-1 py-0.5"><ProductName i={i} /></td>
++                <td className="px-1 py-0.5 text-right font-bold">{qtyOf(i)}</td>
++              </tr>
++            );
++          })}
++        </tbody>
++      </table>
++      <div className="mt-1 flex items-baseline justify-between text-[13px]">
++        <span className="flex items-baseline"><b className="w-[5.4em] text-right">{n(gross)}</b><b className="ml-2">Items: {d.items.length}</b></span><b>{n(pieces)}</b>
++      </div>
++      <div className="flex items-baseline justify-between text-[13px]">
++        <Row v={discount > 0 ? "-" + n(discount) : "0"} l="Discount" /><Row v={n(s.bilti)} l="Bilti" />
++      </div>
++      {Number(s.local_charges) > 0 && <div className="text-[13px]"><Row v={n(s.local_charges)} l="Local" /></div>}
++      <div className="mt-0.5 border-t border-black pt-0.5 text-[13px]">
++        <Row v={n(s.total)} l="Net" />
++        <Row v={n(s.paid)} l="Cash Received" />
++        {odd && <p className="ml-[7.5em] text-[10px]">{d.payments.map((p) => p.method + " " + n(p.amount)).join(" + ")}</p>}
++        {showBal && <><Row v={n(d.prev_balance)} l="Previous Bal" /><div className="border-t border-black"><Row v={n(d.final_balance)} l="Final Bal" /></div></>}
++      </div>
++      <p className="mt-2 text-center text-[9px]">{BUSINESS.credit}</p>
++    </div>
++  );
++}
++
++function Header({ title, d }: { title: string; d: Detail }) {
++  return (
++    <>
++      <p className="text-center text-[18px] font-bold leading-tight">{BUSINESS.name}</p>
++      <p className="mb-1 text-center text-[13px] font-bold tracking-wide">{title}</p>
++      <div className="flex justify-between text-[13px] font-bold"><span>Inv # {d.sale.no}</span><span>{dmy(d.sale.sale_date)}</span></div>
++    </>
++  );
++}
++
++/** Warehouse / gate slip: no prices. Each product shows its location and rack. */
++function GateSlip({ d }: { d: Detail }) {
++  const { sale: s, customer: c } = d;
++  const pieces = d.items.reduce((x, i) => x + Number(i.qty) + Number(i.free), 0);
++  return (
++    <div className="text-[12px] leading-snug text-black">
++      <Header title="GATE-OUT SLIP" d={d} />
++      <p className="mt-1 border-b border-black font-bold uppercase">{s.customer_name}</p>
++      <p className="text-[11px]">{[c?.area?.name, c?.route?.name, s.contact_phone ?? c?.phone].filter(Boolean).join(" · ")}{(c?.area || c?.route || s.contact_phone || c?.phone) ? " · " : ""}<b>{termLabel(s)}</b></p>
++      <table className="mt-1 w-full border-collapse text-[12px]">
++        <tbody>
++          {d.items.map((i) => (
++            <tr key={i.id} className="border-b border-dotted border-black align-top">
++              <td className="w-[3.2em] py-1 pr-1 text-[15px] font-bold">{qtyOf(i)}</td>
++              <td className="py-1">
++                <ProductName i={i} size="text-[13px]" />
++                <div className="mt-0.5 space-y-px text-[11px]">
++                  {i.allocs.map((a, k) => <p key={k}>{a.location}{a.racks.length ? " · Rack " + a.racks.join(", ") : " · no rack"} × {n(a.qty)}</p>)}
++                </div>
++              </td>
++            </tr>
++          ))}
++        </tbody>
++      </table>
++      <p className="mt-1 text-right font-bold">{d.items.length} items · {n(pieces)} pieces</p>
++      {s.remarks && <p>Remarks: {s.remarks}</p>}
++      <p className="mt-4 flex justify-between text-[11px]"><span>Packed by: ______</span><span>Gate: ______</span></p>
++      <p className="mt-2 text-center text-[9px]">{BUSINESS.credit}</p>
++    </div>
++  );
++}
++
++/** For the delivery man: customer details, the goods, and a box for the customer to confirm receipt. */
++function DeliverySlip({ d }: { d: Detail }) {
++  const { sale: s, customer: c } = d;
++  const due = Number(s.total) - Number(s.paid);
++  const pieces = d.items.reduce((x, i) => x + Number(i.qty) + Number(i.free), 0);
++  const cash = saleKind(s).key === "cash" && due > 0;
++  return (
++    <div className="text-[12px] leading-snug text-black">
++      <Header title="DELIVERY SLIP" d={d} />
++      <div className="mt-1 rounded border border-black p-1.5">
++        <p className="text-[14px] font-bold uppercase">{s.customer_name}</p>
++        {c?.name_ur && !c.is_walk_in && <p className="text-[13px]" style={urdu}>{c.name_ur}</p>}
++        {(s.contact_phone ?? c?.phone) && <p>Phone: <b>{s.contact_phone ?? c?.phone}</b></p>}
++        {c?.address && <p>{c.address}</p>}
++        {(c?.area || c?.route) && <p className="text-[11px]">{[c?.area?.name, c?.route?.name].filter(Boolean).join(" · ")}</p>}
++      </div>
++      <table className="mt-1 w-full border-collapse border border-black text-[12px]">
++        <thead><tr className="border-b border-black text-left text-[11px]"><th className="w-[3.2em] border-r border-black px-1">Qty</th><th className="px-1">Item</th></tr></thead>
++        <tbody>
++          {d.items.map((i) => (
++            <tr key={i.id} className="border-b border-black">
++              <td className="border-r border-black px-1 py-0.5 text-[14px] font-bold">{qtyOf(i)}</td>
++              <td className="px-1 py-0.5"><ProductName i={i} /></td>
++            </tr>
++          ))}
++        </tbody>
++      </table>
++      <p className="mt-0.5 text-right text-[11px]">{d.items.length} items · {n(pieces)} pieces</p>
++      <p className="mt-1 text-center text-[14px] font-bold">{cash ? "COLLECT Rs " + n(due) + " (Cash)" : due > 0 ? "On credit. Balance Rs " + n(due) : "Paid. Nothing to collect"}</p>
++      {s.remarks && <p>Remarks: {s.remarks}</p>}
++      <div className="mt-2 rounded border border-black p-1.5 text-[11px]">
++        <p className="text-right text-[12px]" style={urdu}>مال مکمل اور درست حالت میں وصول کیا</p>
++        <p className="text-center text-[10px]">Goods received complete and in good condition</p>
++        <p className="mt-3">Received by: ____________________</p>
++        <p className="mt-3 flex justify-between"><span>Signature / stamp: ____________</span><span>Date: ________</span></p>
++      </div>
++      <p className="mt-1 text-center text-[9px]">{BUSINESS.credit}</p>
++    </div>
++  );
++}
++
++/** Prints invoices (80mm roll or A4), gate-out slips or delivery slips for one or many invoices. A4 puts several slips on a page with dashed dividers. */
++export default function SalePrint({ ids, type, layout: first }: { ids: string[]; type: PrintType; layout: "a4" | "roll" }) {
++  const [docs, setDocs] = useState<Detail[] | null>(null);
++  const [error, setError] = useState("");
++  const [layout, setLayout] = useState(first);
++  const printedAt = useMemo(stamp, []);
++
++  useEffect(() => {
++    (async () => {
++      try {
++        const all = await Promise.all(ids.map(async (id) => {
++          const r = await fetch("/api/sales/" + id);
++          const j = await r.json();
++          if (!r.ok) throw new Error(j.error || "Could not load an invoice");
++          return j as Detail;
++        }));
++        setDocs(all);
++        await document.fonts?.ready;
++        setTimeout(() => window.print(), 400);
++      } catch (e) { setError((e as Error).message); }
++    })();
++  }, [ids]);
++
++  if (error) return <p className="p-4 text-red">{error}</p>;
++  if (!docs) return <p className="p-4 text-muted">Preparing…</p>;
++  const roll = layout === "roll";
++  const Slip = ({ d }: { d: Detail }) => (type === "invoice" ? <InvoiceSlip d={d} printedAt={printedAt} /> : type === "gateout" ? <GateSlip d={d} /> : <DeliverySlip d={d} />);
++
++  return (
++    <div className="min-h-dvh bg-white text-black">
++      <style>{`@page { size: ${roll ? "80mm auto" : "A4"}; margin: ${roll ? "2mm" : "8mm"}; } @media print { html, body { background: #fff !important; } }`}</style>
++      <div data-noprint className="flex flex-wrap items-center gap-2 border-b border-gray-300 bg-white p-3">
++        <button className="btn btn-primary" onClick={() => window.print()}>Print</button>
++        <button className="btn" onClick={() => setLayout(roll ? "a4" : "roll")}>{roll ? "Switch to A4 page" : "Switch to 80mm roll"}</button>
++        <button className="btn" onClick={() => window.close()}>Close</button>
++        <span className="text-sm text-gray-600">{docs.length} slip{docs.length === 1 ? "" : "s"} · {roll ? "80mm roll" : "A4, several per page"}</span>
++      </div>
++      {roll ? (
++        <div className="mx-auto w-[72mm]">
++          {docs.map((d, k) => <section key={d.sale.id} className="py-1" style={{ breakAfter: k < docs.length - 1 ? "page" : "auto" }}><Slip d={d} /></section>)}
++        </div>
++      ) : (
++        <div className="mx-auto grid max-w-[194mm] grid-cols-2 print:max-w-none">
++          {docs.map((d) => <section key={d.sale.id} className="break-inside-avoid border-b border-dashed border-black p-3 odd:border-r" style={{ breakInside: "avoid" }}><Slip d={d} /></section>)}
++        </div>
++      )}
++    </div>
++  );
++}
+diff --git a/components/SalesList.tsx b/components/SalesList.tsx
+index 0b25c35..9998e1f 100644
+--- a/components/SalesList.tsx
++++ b/components/SalesList.tsx
+@@ -3,13 +3,19 @@ import Link from "next/link";
+ import { useCallback, useEffect, useRef, useState } from "react";
+ import { monthStart, niceDate, todayPk, weekStart } from "@/lib/dates";
+ import { rs } from "@/lib/format";
++import { FULFIL, saleKind, statusPill } from "@/lib/sale-types";
+ import CollectModal from "./CollectModal";
+ import { useMe } from "./Me";
+ import Toast from "./Toast";
+ import { ListSkeleton, LoadingBar, Spinner } from "./Loading";
+ 
+-type Sale = { id: string; no: string; sale_date: string; customer_name: string; total: number; paid: number; status: string; items: number };
++type Sale = {
++  id: string; no: string; sale_date: string; customer_name: string; total: number; paid: number; status: string; items: number;
++  fulfil_status: string; sale_kind: string; pay_term: string;
++};
+ const RANGES = [["today", "Today"], ["week", "This week"], ["month", "This month"], ["all", "All"]] as const;
++const STATUSES = [["", "All"], ["active", "Active"], ["packed", "Packed"], ["delivered", "Delivered"], ["completed", "Completed"], ["cancelled", "Cancelled"]] as const;
++const KINDS = [["", "All types"], ["counter", "Counter"], ["cash", "Cash"], ["credit", "Credit"]] as const;
+ const PAGE = 30;
+ 
+ export function saleState(s: { total: number; paid: number; status: string }) {
+@@ -19,10 +25,16 @@ export function saleState(s: { total: number; paid: number; status: string }) {
+   return Number(s.paid) > 0 ? { label: "Part paid", cls: "bg-amber-bg text-amber" } : { label: "On credit", cls: "bg-red-bg text-red" };
+ }
+ 
++/** Opens the print page for the chosen invoices. type: invoice | gateout | delivery. */
++function printSelected(type: string, ids: string[], layout: "a4" | "roll") {
++  window.open("/print/sales?type=" + type + "&layout=" + layout + "&ids=" + ids.join(","), "_blank");
++}
++
+ export default function SalesList({ initialStatus = "", initialRange = "today" }: { initialStatus?: string; initialRange?: string }) {
+   const { can } = useMe();
+-  const [range, setRange] = useState<(typeof RANGES)[number][0]>(initialRange as (typeof RANGES)[number][0])
++  const [range, setRange] = useState<(typeof RANGES)[number][0]>(initialRange as (typeof RANGES)[number][0]);
+   const [status, setStatus] = useState(initialStatus);
++  const [kind, setKind] = useState("");
+   const [q, setQ] = useState("");
+   const [items, setItems] = useState<Sale[]>([]);
+   const [total, setTotal] = useState(0);
+@@ -30,6 +42,8 @@ export default function SalesList({ initialStatus = "", initialRange = "today" }
+   const [error, setError] = useState("");
+   const [collect, setCollect] = useState(false);
+   const [toast, setToast] = useState("");
++  const [sel, setSel] = useState<Set<string>>(new Set());
++  const [changing, setChanging] = useState<string | null>(null);
+   const req = useRef(0);
+ 
+   const load = useCallback(async (offset: number) => {
+@@ -38,6 +52,7 @@ export default function SalesList({ initialStatus = "", initialRange = "today" }
+     const t = todayPk();
+     const p = new URLSearchParams({ q, offset: String(offset), limit: String(PAGE) });
+     if (status) p.set("status", status);
++    if (kind) p.set("kind", kind);
+     if (range === "today") { p.set("from", t); p.set("to", t); }
+     if (range === "week") { p.set("from", weekStart(t)); p.set("to", t); }
+     if (range === "month") { p.set("from", monthStart(t)); p.set("to", t); }
+@@ -50,11 +65,26 @@ export default function SalesList({ initialStatus = "", initialRange = "today" }
+       setTotal(j.total);
+     } catch (e) { if (id === req.current) setError((e as Error).message); }
+     finally { if (id === req.current) setLoading(false); }
+-  }, [q, range, status]);
++  }, [q, range, status, kind]);
+ 
+   useEffect(() => { const t = setTimeout(() => load(0), 250); return () => clearTimeout(t); }, [load]);
++  useEffect(() => { setSel(new Set()); }, [q, range, status, kind]);
+ 
+-  const sum = items.filter((s) => s.status === "confirmed").reduce((x, s) => x + Number(s.total), 0);
++  async function changeStatus(s: Sale, next: string) {
++    setChanging(s.id);
++    const r = await fetch("/api/sales/" + s.id + "/status", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: next }) });
++    const j = await r.json().catch(() => ({}));
++    setChanging(null);
++    if (!r.ok) return setToast(j.error || "Could not change the status");
++    setItems((list) => list.map((x) => (x.id === s.id ? { ...x, fulfil_status: next } : x)));
++    setToast(s.no + " is now " + (FULFIL.find(([k]) => k === next)?.[1] ?? next));
++  }
++
++  const live = items.filter((s) => s.status === "confirmed");
++  const sum = live.reduce((x, s) => x + Number(s.total), 0);
++  const ids = items.filter((s) => sel.has(s.id)).map((s) => s.id);
++  const allOn = items.length > 0 && items.every((s) => sel.has(s.id));
++  const toggle = (id: string) => setSel((c) => { const n = new Set(c); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+ 
+   return (
+     <div>
+@@ -73,25 +103,39 @@ export default function SalesList({ initialStatus = "", initialRange = "today" }
+             {q && <button type="button" className="btn absolute inset-y-0 right-1 min-h-9 border-0 bg-transparent px-2" onClick={() => setQ("")} aria-label="Clear search">✕</button>}
+           </div>
+         </div>
+-        <div className="-mx-3 mt-2 flex gap-2 overflow-x-auto px-3 pb-1 lg:mx-0 lg:mt-3 lg:px-0">
+-          {RANGES.map(([k, label]) => <button key={k} className={"chip " + (range === k ? "chip-on" : "")} onClick={() => setRange(k)}>{label}</button>)}
++        <div className="-mx-3 mt-2 flex gap-2 overflow-x-auto px-3 pb-1 lg:mx-0 lg:mt-3 lg:px-0" role="group" aria-label="Status">
++          {STATUSES.map(([k, label]) => <button key={k} className={"chip " + (status === k ? "chip-on" : "")} onClick={() => setStatus(k)}>{label}</button>)}
+           <span className="mx-1 w-px shrink-0 self-stretch bg-line" aria-hidden />
+-          {([["", "All invoices"], ["confirmed", "Completed"], ["cancelled", "Cancelled"]] as const).map(([k, label]) => <button key={k} className={"chip " + (status === k ? "chip-on" : "")} onClick={() => setStatus(k)}>{label}</button>)}
++          {RANGES.map(([k, label]) => <button key={k} className={"chip " + (range === k ? "chip-on" : "")} onClick={() => setRange(k)}>{label}</button>)}
++        </div>
++        <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 lg:mx-0 lg:px-0" role="group" aria-label="Sale type">
++          {KINDS.map(([k, label]) => <button key={k} className={"chip " + (kind === k ? "chip-on" : "")} onClick={() => setKind(k)}>{label}</button>)}
+         </div>
+         <LoadingBar active={loading} className="mt-2" />
+       </header>
+       {loading && !items.length && !error && <ListSkeleton />}
+ 
+-      {items.length > 0 && <p className="px-3 pt-2 text-sm text-muted lg:px-5">Shown: <b className="text-ink">{rs(sum)}</b> in {items.filter((s) => s.status === "confirmed").length} confirmed invoices</p>}
++      {items.length > 0 && <p className="px-3 pt-2 text-sm text-muted lg:px-5">Shown: <b className="text-ink">{rs(sum)}</b> in {live.length} invoice{live.length === 1 ? "" : "s"} (cancelled not counted)</p>}
++
++      {ids.length > 0 && (
++        <div data-noprint className="mx-3 mt-2 hidden flex-wrap items-center gap-2 rounded-xl border border-accent bg-surface p-2 lg:mx-5 lg:flex">
++          <b className="px-2 text-sm">{ids.length} selected</b>
++          <button className="btn min-h-9 px-3" onClick={() => printSelected("invoice", ids, "a4")}>Print invoices (A4)</button>
++          <button className="btn min-h-9 px-3" onClick={() => printSelected("gateout", ids, "a4")}>Gate-out slips (A4)</button>
++          <button className="btn min-h-9 px-3" onClick={() => printSelected("delivery", ids, "a4")}>Delivery slips (A4)</button>
++          <button className="btn ml-auto min-h-9 border-0 bg-transparent px-3 text-muted" onClick={() => setSel(new Set())}>Clear</button>
++        </div>
++      )}
+ 
+       <ul className="space-y-2 p-3 lg:hidden">
+         {items.map((s) => {
+-          const st = saleState(s);
++          const st = statusPill(s), k = saleKind(s);
+           return (
+             <li key={s.id}>
+-              <Link href={"/sales/" + s.id} className="card block p-3 active:opacity-70">
++              <Link href={"/sales/" + s.id} className={"card block border-l-4 p-3 active:opacity-70 " + k.bar}>
+                 <div className="flex items-start gap-2">
+                   <p className="min-w-0 flex-1 font-semibold leading-snug">{s.customer_name}</p>
++                  <span className={"pill " + k.pill}>{k.label}</span>
+                   <span className={"pill " + st.cls}>{st.label}</span>
+                 </div>
+                 <div className="mt-1 flex items-baseline justify-between text-sm">
+@@ -109,23 +153,40 @@ export default function SalesList({ initialStatus = "", initialRange = "today" }
+         <div className="overflow-x-auto">
+           <table className="w-full border-collapse text-sm">
+             <thead><tr className="text-left text-[12.5px] text-muted">
+-              {["Invoice", "Date", "Customer", "Items"].map((h) => <th key={h} className="border-b border-line px-2 py-1.5 font-semibold">{h}</th>)}
++              <th className="w-8 border-b border-line px-2 py-1.5"><input type="checkbox" aria-label="Select all invoices shown" checked={allOn} onChange={() => setSel(allOn ? new Set() : new Set(items.map((s) => s.id)))} /></th>
++              {["Invoice", "Date", "Customer", "Type", "Items"].map((h) => <th key={h} className="border-b border-line px-2 py-1.5 font-semibold">{h}</th>)}
+               {["Total", "Paid", "Due"].map((h) => <th key={h} className="border-b border-line px-2 py-1.5 text-right font-semibold">{h}</th>)}
+-              <th className="border-b border-line px-2 py-1.5 font-semibold">Status</th><th className="border-b border-line px-2 py-1.5" />
++              <th className="border-b border-line px-2 py-1.5 font-semibold">Status</th>
+             </tr></thead>
+             <tbody>
+-              {items.map((s) => { const st = saleState(s); const due = s.status === "confirmed" ? Number(s.total) - Number(s.paid) : 0; return (
+-                <tr key={s.id} className="hover:bg-bg">
+-                  <td className="whitespace-nowrap border-b border-line px-2 py-2 font-semibold"><Link href={"/sales/" + s.id} className="hover:underline">{s.no}</Link></td>
+-                  <td className="whitespace-nowrap border-b border-line px-2 py-2">{niceDate(s.sale_date)}</td>
+-                  <td className="border-b border-line px-2 py-2">{s.customer_name}</td>
+-                  <td className="border-b border-line px-2 py-2">{s.items}</td>
+-                  <td className="whitespace-nowrap border-b border-line px-2 py-2 text-right">{rs(s.total)}</td>
+-                  <td className="whitespace-nowrap border-b border-line px-2 py-2 text-right">{rs(s.paid)}</td>
+-                  <td className={"whitespace-nowrap border-b border-line px-2 py-2 text-right " + (due > 0 ? "font-semibold text-red" : "")}>{due > 0 ? rs(due) : "—"}</td>
+-                  <td className="border-b border-line px-2 py-2"><span className={"pill " + st.cls}>{st.label}</span></td>
+-                  <td className="border-b border-line px-2 py-2 text-right"><Link href={"/sales/" + s.id} className="btn min-h-8 px-2 text-[13px]">Open</Link></td>
+-                </tr>); })}
++              {items.map((s) => {
++                const st = statusPill(s), k = saleKind(s);
++                const due = s.status === "confirmed" ? Number(s.total) - Number(s.paid) : 0;
++                const editable = can("sales.status") && s.status === "confirmed";
++                return (
++                  <tr key={s.id} className={"hover:bg-bg " + (sel.has(s.id) ? "bg-bg" : "")}>
++                    <td className={"border-b border-l-4 border-line px-2 py-2 " + k.bar}><input type="checkbox" aria-label={"Select " + s.no} checked={sel.has(s.id)} onChange={() => toggle(s.id)} /></td>
++                    <td className="whitespace-nowrap border-b border-line px-2 py-2 font-semibold"><Link href={"/sales/" + s.id} className="hover:underline">{s.no}</Link></td>
++                    <td className="whitespace-nowrap border-b border-line px-2 py-2">{niceDate(s.sale_date)}</td>
++                    <td className="border-b border-line px-2 py-2">{s.customer_name}</td>
++                    <td className="border-b border-line px-2 py-2"><span className={"pill " + k.pill}>{k.label}</span></td>
++                    <td className="border-b border-line px-2 py-2">{s.items}</td>
++                    <td className="whitespace-nowrap border-b border-line px-2 py-2 text-right">{rs(s.total)}</td>
++                    <td className="whitespace-nowrap border-b border-line px-2 py-2 text-right">{rs(s.paid)}</td>
++                    <td className={"whitespace-nowrap border-b border-line px-2 py-2 text-right " + (due > 0 ? "font-semibold text-red" : "")}>{due > 0 ? rs(due) : "—"}</td>
++                    <td className="whitespace-nowrap border-b border-line px-2 py-2">
++                      {editable ? (
++                        <span className="inline-flex items-center gap-1.5">
++                          <select className="input min-h-8 w-32 py-0 text-[13px]" aria-label={"Status of " + s.no} value={s.fulfil_status} disabled={changing === s.id} onChange={(e) => changeStatus(s, e.target.value)}>
++                            {FULFIL.map(([key, label]) => <option key={key} value={key}>{key === "active" && s.sale_kind === "counter" && due > 0 ? "Active (Hold)" : label}</option>)}
++                          </select>
++                          {changing === s.id && <Spinner />}
++                        </span>
++                      ) : <span className={"pill " + st.cls}>{st.label}</span>}
++                    </td>
++                  </tr>
++                );
++              })}
+             </tbody>
+           </table>
+         </div>
+@@ -133,7 +194,7 @@ export default function SalesList({ initialStatus = "", initialRange = "today" }
+ 
+       <div className="px-3 pb-6 text-center text-sm text-muted lg:px-5 lg:pt-3">
+         {error && <p className="mb-2 text-red">{error} <button className="underline" onClick={() => load(0)}>Retry</button></p>}
+-        {!loading && !error && !items.length && <p>No invoices in this period.</p>}
++        {!loading && !error && !items.length && <p>No invoices for this filter.</p>}
+         {items.length < total && <button className="btn w-full lg:w-auto" disabled={loading} onClick={() => load(items.length)}>{loading ? <><Spinner /> Loading…</> : "Load more (" + (total - items.length) + " left)"}</button>}
+       </div>
+ 
+diff --git a/components/SettingsView.tsx b/components/SettingsView.tsx
+index adc9200..9cce0f9 100644
+--- a/components/SettingsView.tsx
++++ b/components/SettingsView.tsx
+@@ -5,6 +5,7 @@ import AddLocationModal from "./AddLocationModal";
+ import { useMe } from "./Me";
+ import Toast from "./Toast";
+ import { Loading } from "./Loading";
++import PaymentMethodsSetting from "./PaymentMethodsSetting";
+ import ThemeSetting from "./ThemeSetting";
+ 
+ type ListRow = { id: string; name: string; visible: boolean; products: number };
+@@ -94,6 +95,12 @@ export default function SettingsView() {
+           <ThemeSetting />
+         </section>
+ 
++        <section className="card p-4">
++          <h2 className="mb-1 font-semibold">Payment methods</h2>
++          <p className="mb-3 text-sm text-muted">Shown when you take payment on a sale or collect money. Hide a method to remove it from those screens; old payments keep their method.</p>
++          <PaymentMethodsSetting />
++        </section>
++
+         <section id="stock-settings" className="card scroll-mt-16 p-4">
+           <div className="mb-1 flex items-center justify-between gap-2">
+             <h2 className="font-semibold">Price lists</h2>
+diff --git a/lib/business.ts b/lib/business.ts
+new file mode 100644
+index 0000000..ce7aa2d
+--- /dev/null
++++ b/lib/business.ts
+@@ -0,0 +1,7 @@
++/** Shop details printed on invoices and slips. */
++export const BUSINESS = {
++  name: "Irfan Autos",
++  address: "AUTO STREET MARKET HUSSAIN AGHAI ROAD MULTAN",
++  phone: "03174187114",
++  credit: "Software by Osama Malik - 0308287001",
++};
+diff --git a/lib/menu.ts b/lib/menu.ts
+index c47a7fb..c849102 100644
+--- a/lib/menu.ts
++++ b/lib/menu.ts
+@@ -21,7 +21,7 @@ export const MENU: MenuGroup[] = [
+     { label: "Sales", href: "/sales", perms: SALES },
+     { label: "Returns", href: "/returns", perms: ["sales.return", "reports.view"] },
+     { label: "Dispatch vouchers", href: "/dispatch", perms: ["sales.create", "stock.view", "stock.transfer"] },
+-    { label: "Completed Sales", href: "/sales?status=confirmed&range=month", perms: SALES },
++    { label: "Completed Sales", href: "/sales?status=completed&range=month", perms: SALES },
+     { label: "Sales Team", href: "/team", perms: ["reports.view", "targets.manage"] },
+   ] },
+   { label: "Stock", items: [
+diff --git a/lib/pays.ts b/lib/pays.ts
+new file mode 100644
+index 0000000..3db1cda
+--- /dev/null
++++ b/lib/pays.ts
+@@ -0,0 +1,6 @@
++/** [{ method_id, amount }] with junk removed. */
++export function cleanPays(x: unknown) {
++  if (!Array.isArray(x)) return [];
++  return x.map((p) => ({ method_id: String(p?.method_id ?? ""), amount: Number(p?.amount) })).filter((p) => p.method_id && p.amount > 0);
++}
++
+diff --git a/lib/permissions.ts b/lib/permissions.ts
+index c2d94b0..4ecdd2c 100644
+--- a/lib/permissions.ts
++++ b/lib/permissions.ts
+@@ -6,7 +6,7 @@ export const PERM_GROUPS: { title: string; perms: [string, string][] }[] = [
+   ] },
+   { title: "Sales", perms: [
+     ["sales.create", "Create sales"], ["sales.discount", "Give discounts"], ["sales.return", "Take returns"],
+-    ["sales.cancel", "Cancel sales"], ["payments.receive", "Receive payments"],
++    ["sales.cancel", "Cancel sales"], ["sales.status", "Change sale status"], ["payments.receive", "Receive payments"],
+   ] },
+   { title: "Customers and routes", perms: [
+     ["customers.view", "View customers"], ["customers.edit", "Add and edit customers"], ["routes.manage", "Manage routes and areas"],
+diff --git a/lib/sale-types.ts b/lib/sale-types.ts
+new file mode 100644
+index 0000000..cfd8116
+--- /dev/null
++++ b/lib/sale-types.ts
+@@ -0,0 +1,27 @@
++/** Sale type (counter / cash ledger / credit ledger) and the four invoice statuses. */
++export const FULFIL = [["active", "Active"], ["packed", "Packed"], ["delivered", "Delivered"], ["completed", "Completed"]] as const;
++export type Fulfil = (typeof FULFIL)[number][0];
++export const FULFIL_KEYS: string[] = FULFIL.map(([k]) => k);
++
++type KindInput = { sale_kind?: string | null; pay_term?: string | null };
++
++/** counter = paid at the counter, cash = ledger sale paid on delivery, credit = ledger sale on the customer's account. */
++export function saleKind(s: KindInput) {
++  if (s.sale_kind === "counter") return { key: "counter" as const, label: "Counter", pill: "border border-accent bg-bg text-accent", bar: "border-l-accent" };
++  if (s.pay_term === "cash") return { key: "cash" as const, label: "Cash", pill: "bg-green-bg text-green", bar: "border-l-green" };
++  return { key: "credit" as const, label: "Credit", pill: "bg-amber-bg text-amber", bar: "border-l-amber" };
++}
++
++export function fulfilLabel(k: string) { return FULFIL.find(([x]) => x === k)?.[1] ?? k; }
++
++/** What to show for an invoice's status: cancelled wins, a counter sale not yet paid is "On hold". */
++export function statusPill(s: { status: string; fulfil_status: string; sale_kind?: string | null; total: number; paid: number }) {
++  if (s.status === "cancelled") return { label: "Cancelled", cls: "bg-bg text-muted" };
++  if (s.fulfil_status === "active") {
++    const hold = s.sale_kind === "counter" && Number(s.total) - Number(s.paid) > 0;
++    return { label: hold ? "Active (Hold)" : "Active", cls: "bg-amber-bg text-amber" };
++  }
++  if (s.fulfil_status === "packed") return { label: "Packed", cls: "border border-accent bg-bg text-accent" };
++  if (s.fulfil_status === "delivered") return { label: "Delivered", cls: "bg-green-bg text-green" };
++  return { label: "Completed", cls: "bg-bg text-muted" };
++}
+diff --git a/supabase/migrations/0013_sale_types_status.sql b/supabase/migrations/0013_sale_types_status.sql
+new file mode 100644
+index 0000000..391c488
+--- /dev/null
++++ b/supabase/migrations/0013_sale_types_status.sql
+@@ -0,0 +1,317 @@
++-- Sale types, sale status, payment methods and local charges.
++-- Needs 0007 (sales), 0008 (returns), 0012 (team dashboard).
++--
++--  * Counter sale (paid at once, can be held) or Ledger sale (cash or credit, delivered later).
++--  * Status of every invoice: Active (hold), Packed, Delivered, Completed. Cancelled stays separate.
++--  * Payment methods (Cash, Bank, Easypaisa, JazzCash ... editable in Settings). Every payment records its method.
++--  * Local charges (delivery inside the city). Bilti stays for delivery outside the city.
++--  * Return numbers become R-0001.
++
++-- ---------- payment methods ----------
++create table if not exists payment_methods (
++  id uuid primary key default gen_random_uuid(),
++  name text not null,
++  active boolean not null default true,
++  sort int not null default 100,
++  created_at timestamptz not null default now()
++);
++create unique index if not exists payment_methods_name_idx on payment_methods (lower(name));
++alter table payment_methods enable row level security;
++insert into payment_methods (name, sort) select v.n, v.s from (values ('Cash', 10), ('Bank', 20), ('Easypaisa', 30), ('JazzCash', 40)) as v(n, s)
++ where not exists (select 1 from payment_methods p where lower(p.name) = lower(v.n));
++
++alter table payments add column if not exists method_id uuid references payment_methods(id) on delete set null;
++alter table payments add column if not exists method text;
++update payments set method = 'Cash', method_id = (select id from payment_methods where lower(name) = 'cash') where method is null;
++
++-- ---------- sale type, status, local charges ----------
++do $mig$
++begin
++  if not exists (select 1 from information_schema.columns where table_name = 'sales' and column_name = 'fulfil_status') then
++    alter table sales add column sale_kind text not null default 'ledger' check (sale_kind in ('counter', 'ledger'));
++    alter table sales add column pay_term text not null default 'credit' check (pay_term in ('cash', 'credit'));
++    alter table sales add column fulfil_status text not null default 'active' check (fulfil_status in ('active', 'packed', 'delivered', 'completed'));
++    alter table sales add column local_charges numeric(14,2) not null default 0;
++    alter table sales add column contact_name text;
++    alter table sales add column contact_phone text;
++    alter table sales add column status_changed_at timestamptz;
++    alter table sales add column status_changed_by uuid references app_users(id) on delete set null;
++    -- invoices made before this change: walk-in sales are counter sales; paid ones are Completed, the rest Delivered
++    update sales s set sale_kind = 'counter', pay_term = 'cash' from customers c where c.id = s.customer_id and c.is_walk_in;
++    update sales set fulfil_status = case when paid >= total then 'completed' else 'delivered' end where status = 'confirmed';
++  end if;
++end
++$mig$;
++alter table sales add column if not exists active_first smallint generated always as (case when status = 'confirmed' and fulfil_status = 'active' then 0 else 1 end) stored;
++create index if not exists sales_list_idx on sales (active_first, created_at desc);
++
++-- ---------- return numbers: R-0001 ----------
++alter table sale_returns alter column no set default ('R-' || lpad(nextval('return_no_seq')::text, 4, '0'));
++update sale_returns set no = 'R-' || substr(no, 5) where no like 'RET-%';
++
++-- ---------- create an invoice ----------
++drop function if exists create_sale(uuid, uuid, jsonb, numeric, numeric, numeric, text, text, uuid, boolean, uuid[]);
++create or replace function create_sale(
++  p_customer uuid, p_location uuid, p_lines jsonb, p_discount numeric, p_bilti numeric,
++  p_remarks text, p_idem text, p_user uuid, p_can_discount boolean, p_allowed uuid[],
++  p_kind text default 'ledger', p_term text default 'credit', p_hold boolean default false, p_local numeric default 0,
++  p_contact_name text default null, p_contact_phone text default null, p_pays jsonb default '[]'::jsonb
++) returns uuid language plpgsql as $$
++declare
++  c customers%rowtype;
++  r routes%rowtype;
++  p products%rowtype;
++  ln jsonb;
++  loc record;
++  s_id uuid;
++  s_no text;
++  item_id uuid;
++  pay_id uuid;
++  n int := 0;
++  q numeric; fr numeric; want numeric; forced uuid; loc_name text;
++  price numeric; pct numeric; defpct numeric; ldisc numeric;
++  gross numeric := 0; sum_ldisc numeric := 0; tot numeric; v_paid numeric; v_credit numeric; bal numeric;
++  neg boolean; have numeric; take numeric; left_q numeric; first_loc uuid;
++  v_discount numeric := coalesce(p_discount, 0);
++  v_bilti numeric := round(coalesce(p_bilti, 0));
++  v_local numeric := round(coalesce(p_local, 0));
++  v_name text; pays_total numeric := 0; pr jsonb; pm payment_methods%rowtype; amt numeric;
++begin
++  if p_idem is not null then
++    select id into s_id from sales where idem_key = p_idem;
++    if found then return s_id; end if;
++  end if;
++
++  select * into c from customers where id = p_customer for update;
++  if not found then raise exception 'Choose a customer.'; end if;
++  if c.status <> 'active' then raise exception 'This customer is archived. Make them active before creating an invoice.'; end if;
++  if p_lines is null or jsonb_typeof(p_lines) <> 'array' or jsonb_array_length(p_lines) = 0 then raise exception 'Add at least one item.'; end if;
++  if v_discount < 0 then raise exception 'Discount cannot be negative.'; end if;
++  if v_bilti < 0 then raise exception 'Bilti cannot be negative.'; end if;
++  if v_local < 0 then raise exception 'Local charges cannot be negative.'; end if;
++  if p_kind not in ('counter', 'ledger') then raise exception 'Choose counter sale or ledger sale.'; end if;
++  if p_term not in ('cash', 'credit') then raise exception 'Choose cash or credit.'; end if;
++  if p_kind = 'ledger' and c.is_walk_in then raise exception 'Choose a customer for a ledger sale.'; end if;
++  if v_discount > 0 and not p_can_discount then raise exception 'You do not have permission to give a discount.'; end if;
++
++  select (value = 'true'::jsonb) into neg from app_settings where key = 'allow_negative_stock';
++  neg := coalesce(neg, false);
++
++  select * into r from routes where id = c.route_id;
++
++  -- a walk-in customer can give a name and phone; they are printed on this invoice only
++  v_name := case when c.is_walk_in and nullif(trim(coalesce(p_contact_name, '')), '') is not null then trim(p_contact_name) else c.name end;
++  insert into sales (customer_id, customer_name, route_id, area_id, salesman_id, discount, bilti, local_charges, remarks, idem_key, created_by,
++                     sale_kind, pay_term, contact_name, contact_phone)
++  values (c.id, v_name, c.route_id, c.area_id, coalesce(r.salesman_id, p_user), v_discount, v_bilti, v_local,
++          nullif(trim(coalesce(p_remarks, '')), ''), p_idem, p_user,
++          p_kind, case when p_kind = 'counter' then 'cash' else p_term end,
++          case when c.is_walk_in then nullif(trim(coalesce(p_contact_name, '')), '') end,
++          case when c.is_walk_in then nullif(trim(coalesce(p_contact_phone, '')), '') end)
++  returning id, no into s_id, s_no;
++
++  for ln in select value from jsonb_array_elements(p_lines) loop
++    n := n + 1;
++    select * into p from products where id = (ln->>'product_id')::uuid and active;
++    if not found then raise exception 'Part not found or inactive (line %).', n; end if;
++    q := (ln->>'qty')::numeric;
++    if q is null or q <= 0 then raise exception 'Quantity must be above zero for %.', p.name_en; end if;
++    perform pg_advisory_xact_lock(hashtext(p.id::text));   -- two sellers cannot take the same stock at once
++
++    fr := case when coalesce(p.scheme_buy, 0) > 0 and coalesce(p.scheme_free, 0) > 0
++               then floor(q / p.scheme_buy) * p.scheme_free else 0 end;
++    want := q + fr;
++
++    price := case when ln->>'price' is null then p.cp else round((ln->>'price')::numeric) end;
++    if price <= 0 then raise exception 'Set a counter price for % before selling it.', p.name_en; end if;
++    if price <> p.cp and not p_can_discount then raise exception 'You do not have permission to change prices.'; end if;
++
++    select coalesce(
++             (select d.pct from customer_brand_discounts d where d.customer_id = c.id and d.brand_id = p.brand_id),
++             (select b.discount_pct from brands b where b.id = p.brand_id), 0) into defpct;
++    pct := case when ln->>'disc_pct' is null then defpct else (ln->>'disc_pct')::numeric end;
++    if pct < 0 or pct > 100 then raise exception 'Discount percent must be between 0 and 100.'; end if;
++    if pct <> defpct and not p_can_discount then raise exception 'You do not have permission to change discounts.'; end if;
++
++    ldisc := round(q * price * pct / 100);
++    insert into sale_items (sale_id, line_no, product_id, name, qty, free, price, disc_pct, line_disc)
++    values (s_id, n, p.id, p.name_en, q, fr, price, pct, ldisc) returning id into item_id;
++    gross := gross + q * price;
++    sum_ldisc := sum_ldisc + ldisc;
++
++    forced := coalesce(nullif(ln->>'location_id', '')::uuid, p_location);
++    left_q := want;
++    first_loc := null;
++    if forced is not null then
++      if p_allowed is not null and not (forced = any(p_allowed)) then raise exception 'You cannot sell from that location.'; end if;
++      select name into loc_name from locations where id = forced and active;
++      if not found then raise exception 'Choose a valid stock location.'; end if;
++      select coalesce(sum(qty), 0) into have from stock_movements where product_id = p.id and location_id = forced;
++      if have < want and not neg then raise exception 'Only % of % at %.', have, p.name_en, loc_name; end if;
++      insert into sale_item_allocs (sale_item_id, location_id, qty) values (item_id, forced, want);
++      insert into stock_movements (product_id, location_id, qty, type, note, ref) values (p.id, forced, -want, 'sale', s_no, s_id);
++    else
++      -- take from the location sold from first, then the next, among the locations this person may sell from
++      for loc in select id from locations where active and (p_allowed is null or id = any(p_allowed)) order by sell_priority, name loop
++        if first_loc is null then first_loc := loc.id; end if;
++        exit when left_q <= 0;
++        select coalesce(sum(qty), 0) into have from stock_movements where product_id = p.id and location_id = loc.id;
++        if have > 0 then
++          take := least(have, left_q);
++          insert into sale_item_allocs (sale_item_id, location_id, qty) values (item_id, loc.id, take);
++          insert into stock_movements (product_id, location_id, qty, type, note, ref) values (p.id, loc.id, -take, 'sale', s_no, s_id);
++          left_q := left_q - take;
++        end if;
++      end loop;
++      if left_q > 0 then
++        if neg and first_loc is not null then
++          insert into sale_item_allocs (sale_item_id, location_id, qty) values (item_id, first_loc, left_q);
++          insert into stock_movements (product_id, location_id, qty, type, note, ref) values (p.id, first_loc, -left_q, 'sale', s_no, s_id);
++        else
++          raise exception 'Only % of % available in the locations you can sell from.', want - left_q, p.name_en;
++        end if;
++      end if;
++    end if;
++  end loop;
++
++  tot := gross - sum_ldisc - v_discount + v_bilti + v_local;
++  if tot < 0 then raise exception 'Discount is larger than the total.'; end if;
++
++  -- money received with the invoice: one row per payment method (split payment)
++  if p_pays is not null and jsonb_typeof(p_pays) = 'array' then
++    for pr in select value from jsonb_array_elements(p_pays) loop
++      pays_total := pays_total + greatest(round(coalesce((pr->>'amount')::numeric, 0), 2), 0);
++    end loop;
++  end if;
++  if p_kind = 'counter' and p_hold then pays_total := 0; end if;      -- on hold: nothing is received yet
++  if p_kind = 'counter' and not p_hold and pays_total <> tot then
++    raise exception 'A counter sale is paid in full. Received % of %.', pays_total, tot;
++  end if;
++  if pays_total > tot then raise exception 'Payment is larger than the invoice total.'; end if;
++  v_paid := pays_total;
++  v_credit := tot - v_paid;
++  if p_kind = 'ledger' and v_credit > 0 and c.credit_limit > 0 then
++    select coalesce(sum(amount), 0) into bal from customer_ledger where customer_id = c.id;
++    if bal + v_credit > c.credit_limit then
++      raise exception 'This credit sale exceeds the customer credit limit of %.', c.credit_limit;
++    end if;
++  end if;
++
++  update sales set total = tot, paid = v_paid, line_discount = sum_ldisc,
++         fulfil_status = case when p_kind = 'counter' and not p_hold then 'completed' else 'active' end
++   where id = s_id;
++  insert into customer_ledger (customer_id, type, amount, ref) values (c.id, 'invoice', tot, s_id);
++  if v_paid > 0 then
++    for pr in select value from jsonb_array_elements(p_pays) loop
++      amt := round(coalesce((pr->>'amount')::numeric, 0), 2);
++      continue when amt <= 0;
++      select * into pm from payment_methods where id = nullif(pr->>'method_id', '')::uuid and active;
++      if not found then raise exception 'Choose a valid payment method.'; end if;
++      insert into payments (customer_id, amount, kind, sale_id, collector_id, route_id, area_id, created_by, method_id, method)
++      values (c.id, amt, 'invoice', s_id, coalesce(r.salesman_id, p_user), c.route_id, c.area_id, p_user, pm.id, pm.name)
++      returning id into pay_id;
++      insert into customer_ledger (customer_id, type, amount, ref) values (c.id, 'payment', -amt, pay_id);
++    end loop;
++  end if;
++  return s_id;
++end $$;
++
++-- ---------- receive money against one invoice (a held counter sale, or cash on delivery) ----------
++create or replace function pay_sale(p_sale uuid, p_pays jsonb, p_user uuid) returns void language plpgsql as $$
++declare
++  s sales%rowtype; c customers%rowtype; r routes%rowtype;
++  pr jsonb; pm payment_methods%rowtype; amt numeric; added numeric := 0; n int := 0; pay_id uuid;
++begin
++  select * into s from sales where id = p_sale for update;
++  if not found then raise exception 'Invoice not found.'; end if;
++  if s.status <> 'confirmed' then raise exception 'This invoice is cancelled.'; end if;
++  select * into c from customers where id = s.customer_id for update;
++  select * into r from routes where id = c.route_id;
++  for pr in select value from jsonb_array_elements(coalesce(p_pays, '[]'::jsonb)) loop
++    amt := round(coalesce((pr->>'amount')::numeric, 0), 2);
++    continue when amt <= 0;
++    select * into pm from payment_methods where id = nullif(pr->>'method_id', '')::uuid and active;
++    if not found then raise exception 'Choose a valid payment method.'; end if;
++    insert into payments (customer_id, amount, kind, sale_id, collector_id, route_id, area_id, created_by, method_id, method)
++    values (c.id, amt, 'invoice', s.id, coalesce(r.salesman_id, p_user), c.route_id, c.area_id, p_user, pm.id, pm.name)
++    returning id into pay_id;
++    insert into customer_ledger (customer_id, type, amount, ref) values (c.id, 'payment', -amt, pay_id);
++    added := added + amt; n := n + 1;
++  end loop;
++  if n = 0 then raise exception 'Enter an amount above zero.'; end if;
++  if s.paid + added > s.total then raise exception 'That is more than the amount due on this invoice (%).', s.total - s.paid; end if;
++  update sales set paid = s.paid + added,
++         fulfil_status = case when s.sale_kind = 'counter' and s.paid + added >= s.total then 'completed' else s.fulfil_status end
++   where id = s.id;
++end $$;
++
++-- ---------- collect money from a customer: now records the payment method ----------
++drop function if exists collect_payment(uuid, numeric, text, uuid);
++create or replace function collect_payment(p_customer uuid, p_amount numeric, p_method uuid, p_idem text, p_user uuid) returns uuid language plpgsql as $$
++declare
++  c customers%rowtype; r routes%rowtype; pm payment_methods%rowtype; bal numeric; pay_id uuid;
++begin
++  if p_idem is not null then
++    select id into pay_id from payments where idem_key = p_idem;
++    if found then return pay_id; end if;
++  end if;
++  select * into c from customers where id = p_customer for update;
++  if not found then raise exception 'Choose a customer.'; end if;
++  if p_amount is null or p_amount <= 0 then raise exception 'Enter an amount above zero.'; end if;
++  select * into pm from payment_methods where id = p_method and active;
++  if not found then raise exception 'Choose a payment method.'; end if;
++  select coalesce(sum(amount), 0) into bal from customer_ledger where customer_id = c.id;
++  if p_amount > bal then raise exception 'Amount is more than the outstanding balance of %.', bal; end if;
++  select * into r from routes where id = c.route_id;
++  insert into payments (customer_id, amount, kind, collector_id, route_id, area_id, idem_key, created_by, method_id, method)
++  values (c.id, p_amount, 'collection', coalesce(r.salesman_id, p_user), c.route_id, c.area_id, p_idem, p_user, pm.id, pm.name)
++  returning id into pay_id;
++  insert into customer_ledger (customer_id, type, amount, ref) values (c.id, 'payment', -p_amount, pay_id);
++  return pay_id;
++end $$;
++
++-- ---------- team and dashboard numbers: local charges are not sales, like bilti ----------
++create or replace function team_actuals(p_from date, p_to date, p_group text)
++returns table (entity_id uuid, sales numeric, collection numeric, visits bigint)
++language sql stable as $$
++  select x.k, coalesce(sum(x.s), 0), coalesce(sum(x.c), 0), coalesce(sum(x.v), 0)::bigint
++  from (
++    select case p_group when 'route' then route_id when 'area' then area_id else salesman_id end as k,
++           (total - bilti - local_charges) as s, 0::numeric as c, 0 as v
++    from sales where status = 'confirmed' and sale_date between p_from and p_to
++    union all
++    select case p_group when 'route' then route_id when 'area' then area_id else salesman_id end,
++           -amount, 0::numeric, 0
++    from sale_returns where return_date between p_from and p_to
++    union all
++    select case p_group when 'route' then route_id when 'area' then area_id else collector_id end,
++           0::numeric, amount, 0
++    from payments where not reversed and pay_date between p_from and p_to
++    union all
++    select case p_group when 'route' then route_id when 'area' then area_id else user_id end,
++           0::numeric, 0::numeric, 1
++    from visits where visit_date between p_from and p_to
++  ) x
++  where x.k is not null
++  group by x.k
++$$;
++
++create or replace function dashboard_numbers(p_day date, p_routes uuid[]) returns jsonb language sql stable as $$
++  select jsonb_build_object(
++    'today_sales', coalesce((select sum(total - bilti - local_charges) from sales
++        where status = 'confirmed' and sale_date = p_day and (p_routes is null or route_id = any(p_routes))), 0),
++    'today_invoices', coalesce((select count(*) from sales
++        where status = 'confirmed' and sale_date = p_day and (p_routes is null or route_id = any(p_routes))), 0),
++    'today_collections', coalesce((select sum(amount) from payments
++        where not reversed and pay_date = p_day and (p_routes is null or route_id = any(p_routes))), 0),
++    'receivables', coalesce((select sum(b.balance) from customer_balances b join customers c on c.id = b.customer_id
++        where b.balance > 0 and (p_routes is null or c.route_id = any(p_routes))), 0),
++    'money_in_hand', coalesce((select sum(amount) from payments where not reversed), 0)
++        - coalesce((select sum(amount) from supplier_payments where not reversed), 0)
++        - coalesce((select sum(amount) from expenses where not voided), 0)
++  )
++$$;
++
++revoke all on function create_sale(uuid, uuid, jsonb, numeric, numeric, text, text, uuid, boolean, uuid[], text, text, boolean, numeric, text, text, jsonb) from public, anon, authenticated;
++revoke all on function pay_sale(uuid, jsonb, uuid) from public, anon, authenticated;
++revoke all on function collect_payment(uuid, numeric, uuid, text, uuid) from public, anon, authenticated;
+diff --git a/tailwind.config.ts b/tailwind.config.ts
+index d0e426c..4ec2013 100644
+--- a/tailwind.config.ts
++++ b/tailwind.config.ts
+@@ -1,7 +1,7 @@
+ import type { Config } from "tailwindcss";
+ 
+ const config: Config = {
+-  content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
++  content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./lib/**/*.{ts,tsx}"],
+   theme: {
+     extend: {
+       colors: {

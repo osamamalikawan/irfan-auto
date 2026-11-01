@@ -5,6 +5,7 @@ import AddLocationModal from "./AddLocationModal";
 import { useMe } from "./Me";
 import Toast from "./Toast";
 import { Loading } from "./Loading";
+import PaymentMethodsSetting from "./PaymentMethodsSetting";
 import ThemeSetting from "./ThemeSetting";
 
 type ListRow = { id: string; name: string; visible: boolean; products: number };
@@ -92,6 +93,12 @@ export default function SettingsView() {
           <h2 className="mb-1 font-semibold">Appearance</h2>
           <p className="mb-3 text-sm text-muted">Choose how the app looks. This is saved on this device only.</p>
           <ThemeSetting />
+        </section>
+
+        <section className="card p-4">
+          <h2 className="mb-1 font-semibold">Payment methods</h2>
+          <p className="mb-3 text-sm text-muted">Shown when you take payment on a sale or collect money. Hide a method to remove it from those screens; old payments keep their method.</p>
+          <PaymentMethodsSetting />
         </section>
 
         <section id="stock-settings" className="card scroll-mt-16 p-4">

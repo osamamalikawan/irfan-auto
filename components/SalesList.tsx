@@ -3,13 +3,19 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { monthStart, niceDate, todayPk, weekStart } from "@/lib/dates";
 import { rs } from "@/lib/format";
+import { FULFIL, saleKind, statusPill } from "@/lib/sale-types";
 import CollectModal from "./CollectModal";
 import { useMe } from "./Me";
 import Toast from "./Toast";
 import { ListSkeleton, LoadingBar, Spinner } from "./Loading";
 
-type Sale = { id: string; no: string; sale_date: string; customer_name: string; total: number; paid: number; status: string; items: number };
+type Sale = {
+  id: string; no: string; sale_date: string; customer_name: string; total: number; paid: number; status: string; items: number;
+  fulfil_status: string; sale_kind: string; pay_term: string;
+};
 const RANGES = [["today", "Today"], ["week", "This week"], ["month", "This month"], ["all", "All"]] as const;
+const STATUSES = [["", "All"], ["active", "Active"], ["packed", "Packed"], ["delivered", "Delivered"], ["completed", "Completed"], ["cancelled", "Cancelled"]] as const;
+const KINDS = [["", "All types"], ["counter", "Counter"], ["cash", "Cash"], ["credit", "Credit"]] as const;
 const PAGE = 30;
 
 export function saleState(s: { total: number; paid: number; status: string }) {
@@ -19,10 +25,16 @@ export function saleState(s: { total: number; paid: number; status: string }) {
   return Number(s.paid) > 0 ? { label: "Part paid", cls: "bg-amber-bg text-amber" } : { label: "On credit", cls: "bg-red-bg text-red" };
 }
 
+/** Opens the print page for the chosen invoices. type: invoice | gateout | delivery. */
+function printSelected(type: string, ids: string[], layout: "a4" | "roll") {
+  window.open("/print/sales?type=" + type + "&layout=" + layout + "&ids=" + ids.join(","), "_blank");
+}
+
 export default function SalesList({ initialStatus = "", initialRange = "today" }: { initialStatus?: string; initialRange?: string }) {
   const { can } = useMe();
-  const [range, setRange] = useState<(typeof RANGES)[number][0]>(initialRange as (typeof RANGES)[number][0])
+  const [range, setRange] = useState<(typeof RANGES)[number][0]>(initialRange as (typeof RANGES)[number][0]);
   const [status, setStatus] = useState(initialStatus);
+  const [kind, setKind] = useState("");
   const [q, setQ] = useState("");
   const [items, setItems] = useState<Sale[]>([]);
   const [total, setTotal] = useState(0);
@@ -30,6 +42,8 @@ export default function SalesList({ initialStatus = "", initialRange = "today" }
   const [error, setError] = useState("");
   const [collect, setCollect] = useState(false);
   const [toast, setToast] = useState("");
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  const [changing, setChanging] = useState<string | null>(null);
   const req = useRef(0);
 
   const load = useCallback(async (offset: number) => {
@@ -38,6 +52,7 @@ export default function SalesList({ initialStatus = "", initialRange = "today" }
     const t = todayPk();
     const p = new URLSearchParams({ q, offset: String(offset), limit: String(PAGE) });
     if (status) p.set("status", status);
+    if (kind) p.set("kind", kind);
     if (range === "today") { p.set("from", t); p.set("to", t); }
     if (range === "week") { p.set("from", weekStart(t)); p.set("to", t); }
     if (range === "month") { p.set("from", monthStart(t)); p.set("to", t); }
@@ -50,11 +65,26 @@ export default function SalesList({ initialStatus = "", initialRange = "today" }
       setTotal(j.total);
     } catch (e) { if (id === req.current) setError((e as Error).message); }
     finally { if (id === req.current) setLoading(false); }
-  }, [q, range, status]);
+  }, [q, range, status, kind]);
 
   useEffect(() => { const t = setTimeout(() => load(0), 250); return () => clearTimeout(t); }, [load]);
+  useEffect(() => { setSel(new Set()); }, [q, range, status, kind]);
 
-  const sum = items.filter((s) => s.status === "confirmed").reduce((x, s) => x + Number(s.total), 0);
+  async function changeStatus(s: Sale, next: string) {
+    setChanging(s.id);
+    const r = await fetch("/api/sales/" + s.id + "/status", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: next }) });
+    const j = await r.json().catch(() => ({}));
+    setChanging(null);
+    if (!r.ok) return setToast(j.error || "Could not change the status");
+    setItems((list) => list.map((x) => (x.id === s.id ? { ...x, fulfil_status: next } : x)));
+    setToast(s.no + " is now " + (FULFIL.find(([k]) => k === next)?.[1] ?? next));
+  }
+
+  const live = items.filter((s) => s.status === "confirmed");
+  const sum = live.reduce((x, s) => x + Number(s.total), 0);
+  const ids = items.filter((s) => sel.has(s.id)).map((s) => s.id);
+  const allOn = items.length > 0 && items.every((s) => sel.has(s.id));
+  const toggle = (id: string) => setSel((c) => { const n = new Set(c); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   return (
     <div>
@@ -73,25 +103,39 @@ export default function SalesList({ initialStatus = "", initialRange = "today" }
             {q && <button type="button" className="btn absolute inset-y-0 right-1 min-h-9 border-0 bg-transparent px-2" onClick={() => setQ("")} aria-label="Clear search">✕</button>}
           </div>
         </div>
-        <div className="-mx-3 mt-2 flex gap-2 overflow-x-auto px-3 pb-1 lg:mx-0 lg:mt-3 lg:px-0">
-          {RANGES.map(([k, label]) => <button key={k} className={"chip " + (range === k ? "chip-on" : "")} onClick={() => setRange(k)}>{label}</button>)}
+        <div className="-mx-3 mt-2 flex gap-2 overflow-x-auto px-3 pb-1 lg:mx-0 lg:mt-3 lg:px-0" role="group" aria-label="Status">
+          {STATUSES.map(([k, label]) => <button key={k} className={"chip " + (status === k ? "chip-on" : "")} onClick={() => setStatus(k)}>{label}</button>)}
           <span className="mx-1 w-px shrink-0 self-stretch bg-line" aria-hidden />
-          {([["", "All invoices"], ["confirmed", "Completed"], ["cancelled", "Cancelled"]] as const).map(([k, label]) => <button key={k} className={"chip " + (status === k ? "chip-on" : "")} onClick={() => setStatus(k)}>{label}</button>)}
+          {RANGES.map(([k, label]) => <button key={k} className={"chip " + (range === k ? "chip-on" : "")} onClick={() => setRange(k)}>{label}</button>)}
+        </div>
+        <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 lg:mx-0 lg:px-0" role="group" aria-label="Sale type">
+          {KINDS.map(([k, label]) => <button key={k} className={"chip " + (kind === k ? "chip-on" : "")} onClick={() => setKind(k)}>{label}</button>)}
         </div>
         <LoadingBar active={loading} className="mt-2" />
       </header>
       {loading && !items.length && !error && <ListSkeleton />}
 
-      {items.length > 0 && <p className="px-3 pt-2 text-sm text-muted lg:px-5">Shown: <b className="text-ink">{rs(sum)}</b> in {items.filter((s) => s.status === "confirmed").length} confirmed invoices</p>}
+      {items.length > 0 && <p className="px-3 pt-2 text-sm text-muted lg:px-5">Shown: <b className="text-ink">{rs(sum)}</b> in {live.length} invoice{live.length === 1 ? "" : "s"} (cancelled not counted)</p>}
+
+      {ids.length > 0 && (
+        <div data-noprint className="mx-3 mt-2 hidden flex-wrap items-center gap-2 rounded-xl border border-accent bg-surface p-2 lg:mx-5 lg:flex">
+          <b className="px-2 text-sm">{ids.length} selected</b>
+          <button className="btn min-h-9 px-3" onClick={() => printSelected("invoice", ids, "a4")}>Print invoices (A4)</button>
+          <button className="btn min-h-9 px-3" onClick={() => printSelected("gateout", ids, "a4")}>Gate-out slips (A4)</button>
+          <button className="btn min-h-9 px-3" onClick={() => printSelected("delivery", ids, "a4")}>Delivery slips (A4)</button>
+          <button className="btn ml-auto min-h-9 border-0 bg-transparent px-3 text-muted" onClick={() => setSel(new Set())}>Clear</button>
+        </div>
+      )}
 
       <ul className="space-y-2 p-3 lg:hidden">
         {items.map((s) => {
-          const st = saleState(s);
+          const st = statusPill(s), k = saleKind(s);
           return (
             <li key={s.id}>
-              <Link href={"/sales/" + s.id} className="card block p-3 active:opacity-70">
+              <Link href={"/sales/" + s.id} className={"card block border-l-4 p-3 active:opacity-70 " + k.bar}>
                 <div className="flex items-start gap-2">
                   <p className="min-w-0 flex-1 font-semibold leading-snug">{s.customer_name}</p>
+                  <span className={"pill " + k.pill}>{k.label}</span>
                   <span className={"pill " + st.cls}>{st.label}</span>
                 </div>
                 <div className="mt-1 flex items-baseline justify-between text-sm">
@@ -109,23 +153,40 @@ export default function SalesList({ initialStatus = "", initialRange = "today" }
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead><tr className="text-left text-[12.5px] text-muted">
-              {["Invoice", "Date", "Customer", "Items"].map((h) => <th key={h} className="border-b border-line px-2 py-1.5 font-semibold">{h}</th>)}
+              <th className="w-8 border-b border-line px-2 py-1.5"><input type="checkbox" aria-label="Select all invoices shown" checked={allOn} onChange={() => setSel(allOn ? new Set() : new Set(items.map((s) => s.id)))} /></th>
+              {["Invoice", "Date", "Customer", "Type", "Items"].map((h) => <th key={h} className="border-b border-line px-2 py-1.5 font-semibold">{h}</th>)}
               {["Total", "Paid", "Due"].map((h) => <th key={h} className="border-b border-line px-2 py-1.5 text-right font-semibold">{h}</th>)}
-              <th className="border-b border-line px-2 py-1.5 font-semibold">Status</th><th className="border-b border-line px-2 py-1.5" />
+              <th className="border-b border-line px-2 py-1.5 font-semibold">Status</th>
             </tr></thead>
             <tbody>
-              {items.map((s) => { const st = saleState(s); const due = s.status === "confirmed" ? Number(s.total) - Number(s.paid) : 0; return (
-                <tr key={s.id} className="hover:bg-bg">
-                  <td className="whitespace-nowrap border-b border-line px-2 py-2 font-semibold"><Link href={"/sales/" + s.id} className="hover:underline">{s.no}</Link></td>
-                  <td className="whitespace-nowrap border-b border-line px-2 py-2">{niceDate(s.sale_date)}</td>
-                  <td className="border-b border-line px-2 py-2">{s.customer_name}</td>
-                  <td className="border-b border-line px-2 py-2">{s.items}</td>
-                  <td className="whitespace-nowrap border-b border-line px-2 py-2 text-right">{rs(s.total)}</td>
-                  <td className="whitespace-nowrap border-b border-line px-2 py-2 text-right">{rs(s.paid)}</td>
-                  <td className={"whitespace-nowrap border-b border-line px-2 py-2 text-right " + (due > 0 ? "font-semibold text-red" : "")}>{due > 0 ? rs(due) : "—"}</td>
-                  <td className="border-b border-line px-2 py-2"><span className={"pill " + st.cls}>{st.label}</span></td>
-                  <td className="border-b border-line px-2 py-2 text-right"><Link href={"/sales/" + s.id} className="btn min-h-8 px-2 text-[13px]">Open</Link></td>
-                </tr>); })}
+              {items.map((s) => {
+                const st = statusPill(s), k = saleKind(s);
+                const due = s.status === "confirmed" ? Number(s.total) - Number(s.paid) : 0;
+                const editable = can("sales.status") && s.status === "confirmed";
+                return (
+                  <tr key={s.id} className={"hover:bg-bg " + (sel.has(s.id) ? "bg-bg" : "")}>
+                    <td className={"border-b border-l-4 border-line px-2 py-2 " + k.bar}><input type="checkbox" aria-label={"Select " + s.no} checked={sel.has(s.id)} onChange={() => toggle(s.id)} /></td>
+                    <td className="whitespace-nowrap border-b border-line px-2 py-2 font-semibold"><Link href={"/sales/" + s.id} className="hover:underline">{s.no}</Link></td>
+                    <td className="whitespace-nowrap border-b border-line px-2 py-2">{niceDate(s.sale_date)}</td>
+                    <td className="border-b border-line px-2 py-2">{s.customer_name}</td>
+                    <td className="border-b border-line px-2 py-2"><span className={"pill " + k.pill}>{k.label}</span></td>
+                    <td className="border-b border-line px-2 py-2">{s.items}</td>
+                    <td className="whitespace-nowrap border-b border-line px-2 py-2 text-right">{rs(s.total)}</td>
+                    <td className="whitespace-nowrap border-b border-line px-2 py-2 text-right">{rs(s.paid)}</td>
+                    <td className={"whitespace-nowrap border-b border-line px-2 py-2 text-right " + (due > 0 ? "font-semibold text-red" : "")}>{due > 0 ? rs(due) : "—"}</td>
+                    <td className="whitespace-nowrap border-b border-line px-2 py-2">
+                      {editable ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <select className="input min-h-8 w-32 py-0 text-[13px]" aria-label={"Status of " + s.no} value={s.fulfil_status} disabled={changing === s.id} onChange={(e) => changeStatus(s, e.target.value)}>
+                            {FULFIL.map(([key, label]) => <option key={key} value={key}>{key === "active" && s.sale_kind === "counter" && due > 0 ? "Active (Hold)" : label}</option>)}
+                          </select>
+                          {changing === s.id && <Spinner />}
+                        </span>
+                      ) : <span className={"pill " + st.cls}>{st.label}</span>}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -133,7 +194,7 @@ export default function SalesList({ initialStatus = "", initialRange = "today" }
 
       <div className="px-3 pb-6 text-center text-sm text-muted lg:px-5 lg:pt-3">
         {error && <p className="mb-2 text-red">{error} <button className="underline" onClick={() => load(0)}>Retry</button></p>}
-        {!loading && !error && !items.length && <p>No invoices in this period.</p>}
+        {!loading && !error && !items.length && <p>No invoices for this filter.</p>}
         {items.length < total && <button className="btn w-full lg:w-auto" disabled={loading} onClick={() => load(items.length)}>{loading ? <><Spinner /> Loading…</> : "Load more (" + (total - items.length) + " left)"}</button>}
       </div>
 

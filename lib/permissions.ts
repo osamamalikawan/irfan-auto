@@ -6,7 +6,7 @@ export const PERM_GROUPS: { title: string; perms: [string, string][] }[] = [
   ] },
   { title: "Sales", perms: [
     ["sales.create", "Create sales"], ["sales.discount", "Give discounts"], ["sales.return", "Take returns"],
-    ["sales.cancel", "Cancel sales"], ["payments.receive", "Receive payments"],
+    ["sales.cancel", "Cancel sales"], ["sales.status", "Change sale status"], ["payments.receive", "Receive payments"],
   ] },
   { title: "Customers and routes", perms: [
     ["customers.view", "View customers"], ["customers.edit", "Add and edit customers"], ["routes.manage", "Manage routes and areas"],
