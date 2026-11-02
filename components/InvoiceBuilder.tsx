@@ -8,7 +8,7 @@ import { useMe } from "./Me";
 import { Loading, LoadingBar, Spinner } from "./Loading";
 import PaySplit, { newRow, paysTotal, toPayments, usePaymentMethods, type PayRow } from "./PaySplit";
 
-export type Prod = { id: string; name_en: string; code_name: string | null; name_ur: string | null; unit: string; cp: number; scheme: string | null; on_hand: number; racks: string[] };
+export type Prod = { id: string; name_en: string; code_name: string | null; name_ur: string | null; unit: string; cp: number; scheme: string | null; on_hand: number; racks: string[]; list_name?: string | null; market_list?: boolean };
 type Line = { key: string; p: Prod; qty: string; price: string; disc: string; market?: { cost: number; vendor: string } };
 type Cust = { id: string; name: string; is_walk_in: boolean; credit_limit: number; balance: number; route: string | null };
 

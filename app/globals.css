@@ -2,12 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
-:root{--bg:#eef4ff;--surface:#fff;--ink:#0f2347;--muted:#55688a;--line:#d5e0f2;--accent:#1f5fd6;--accent-ink:#fff;
+:root{--g-wash:#eaf7ee;--g-card:#f5fbf7;--g-line:#c6e4d0;--g-head:#dcf1e3;--g-ink:#14532d;--g-strong:#1b8a4a;--g-strong2:#146c3a;--g-row:#eef8f1;--bg:#eef4ff;--surface:#fff;--ink:#0f2347;--muted:#55688a;--line:#d5e0f2;--accent:#1f5fd6;--accent-ink:#fff;
 --red:#a8211a;--red-bg:#fbe4e2;--amber:#7a4e00;--amber-bg:#fdf0d2;--green:#175c32;--green-bg:#dcf1e3;--side:#12408f;--side-ink:#d6e4ff;color-scheme:light}
 /* Dark: chosen in Settings (data-theme="dark"), or by the device when the choice is "system". */
-:root[data-theme="dark"]{--bg:#0e151c;--surface:#17212b;--ink:#e6ebf0;--muted:#93a1af;--line:#2a3744;--accent:#3cb5ad;--accent-ink:#08201e;
+:root[data-theme="dark"]{--g-wash:#0c1912;--g-card:#122318;--g-line:#25432f;--g-head:#173322;--g-ink:#8de6ae;--g-strong:#1f8a4c;--g-strong2:#156b3a;--g-row:#14291d;--bg:#0e151c;--surface:#17212b;--ink:#e6ebf0;--muted:#93a1af;--line:#2a3744;--accent:#3cb5ad;--accent-ink:#08201e;
 --red:#ff9d94;--red-bg:#3a1c1a;--amber:#f2c35b;--amber-bg:#3a2d10;--green:#7fd9a0;--green-bg:#133224;--side:#0a1117;--side-ink:#aab7c3;color-scheme:dark}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0e151c;--surface:#17212b;--ink:#e6ebf0;--muted:#93a1af;--line:#2a3744;--accent:#3cb5ad;--accent-ink:#08201e;
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--g-wash:#0c1912;--g-card:#122318;--g-line:#25432f;--g-head:#173322;--g-ink:#8de6ae;--g-strong:#1f8a4c;--g-strong2:#156b3a;--g-row:#14291d;--bg:#0e151c;--surface:#17212b;--ink:#e6ebf0;--muted:#93a1af;--line:#2a3744;--accent:#3cb5ad;--accent-ink:#08201e;
 --red:#ff9d94;--red-bg:#3a1c1a;--amber:#f2c35b;--amber-bg:#3a2d10;--green:#7fd9a0;--green-bg:#133224;--side:#0a1117;--side-ink:#aab7c3;color-scheme:dark}}
 body{background:var(--bg);color:var(--ink);-webkit-tap-highlight-color:transparent;font-variant-numeric:tabular-nums}
 
@@ -21,6 +21,17 @@ body{background:var(--bg);color:var(--ink);-webkit-tap-highlight-color:transpare
   .chip{@apply inline-flex min-h-9 shrink-0 items-center rounded-full border border-line bg-surface px-3 text-sm active:opacity-70}
   .chip-on{@apply border-accent bg-accent text-accent-ink font-medium}
   .pill{@apply inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium}
+  /* invoice screen: soft green panels */
+  .inv-page{background:linear-gradient(180deg,var(--g-wash) 0%,var(--bg) 85%)}
+  .inv-card{border:1px solid var(--g-line);background:var(--g-card);border-radius:1rem;box-shadow:0 1px 2px rgb(20 83 45/.07),0 8px 20px -10px rgb(20 83 45/.25)}
+  .inv-th{background:var(--g-head);color:var(--g-ink)}
+  .inv-stat{background:var(--g-head);color:var(--g-ink);border-radius:.85rem}
+  .inv-total{background:linear-gradient(135deg,var(--g-strong),var(--g-strong2));color:#fff;border-radius:1rem;box-shadow:0 10px 24px -12px rgb(20 108 58/.7)}
+  .inv-page .chip-on{background:var(--g-strong);border-color:var(--g-strong);color:#fff}
+  .inv-page .btn-primary{background:var(--g-strong);border-color:var(--g-strong);color:#fff}
+  .inv-page .input:focus{border-color:var(--g-strong);box-shadow:0 0 0 3px rgb(27 138 74/.25);outline:none}
+  .inv-total .btn-primary{background:#fff;border-color:#fff;color:var(--g-strong2);font-weight:700}
+  .inv-total .btn{border-color:rgb(255 255 255/.5)}
   .spinner{@apply inline-block size-4 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent align-[-0.15em]}
   .loadbar{@apply relative h-0.5 overflow-hidden rounded-full}
   .loadbar-on{@apply bg-line}

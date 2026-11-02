@@ -59,6 +59,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     }
     for (const k of ["code_name", "name_ur", "scheme", "unit"] as const) if (b[k] !== undefined) patch[k] = String(b[k]).trim() || (k === "unit" ? "pc" : null);
     if (b.cp !== undefined) patch.cp = Number(b.cp) || 0;
+    if (typeof b.active === "boolean") patch.active = b.active;   // soft delete / restore
     if (b.reorder_level !== undefined) patch.reorder_level = Number(b.reorder_level) || 0;
     if (b.list !== undefined) patch.list_id = await ensureNamed(sb, "price_lists", b.list);
     if (b.brand !== undefined) patch.brand_id = await ensureNamed(sb, "brands", b.brand);

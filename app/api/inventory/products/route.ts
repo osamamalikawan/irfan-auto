@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase";
 import { authorize } from "@/lib/auth";
 import { applyPlacement, ensureLocation, ensureNamed } from "@/lib/placement-db";
+import { marketLists } from "@/lib/market-lists";
 import type { Placement } from "@/lib/placement";
 
 export const dynamic = "force-dynamic";
+
 
 const FILTERS = ["all", "low", "out", "norack"];
 
@@ -15,7 +17,8 @@ export async function GET(req: NextRequest) {
   const filter = sp.get("filter") ?? "all";
   const limit = Math.min(Math.max(Number(sp.get("limit")) || 30, 1), 100);
   const offset = Math.max(Number(sp.get("offset")) || 0, 0);
-  const { data, error } = await db().rpc("inventory_list", {
+  const sb = db();
+  const { data, error } = await sb.rpc("inventory_list", {
     p_q: (sp.get("q") ?? "").trim() || null,
     p_list: sp.get("list") || null,
     p_filter: FILTERS.includes(filter) ? filter : "all",
@@ -24,7 +27,8 @@ export async function GET(req: NextRequest) {
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   const rows = (data ?? []) as { total: number }[];
-  return NextResponse.json({ items: rows.map(({ total, ...r }) => r), total: rows[0] ? Number(rows[0].total) : 0 });
+  const market = await marketLists(sb);
+  return NextResponse.json({ items: rows.map(({ total, ...r }) => ({ ...r, market_list: !!(r as { list_name?: string }).list_name && market.has((r as { list_name: string }).list_name) })), total: rows[0] ? Number(rows[0].total) : 0 });
 }
 
 export async function POST(req: NextRequest) {

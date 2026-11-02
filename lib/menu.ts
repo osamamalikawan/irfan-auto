@@ -29,6 +29,7 @@ export const MENU: MenuGroup[] = [
     { label: "Stock & Racks", href: "/inventory", perms: STOCK },
     { label: "Low stock", href: "/inventory?filter=low", perms: STOCK },
     { label: "Add product", href: "/inventory/new", perms: ["stock.manage"] },
+    { label: "Price lists", href: "/lists", perms: ["stock.view", "stock.manage"] },
   ] },
   { label: "People", items: [
     { label: "Customers", href: "/customers", perms: CUSTOMERS },

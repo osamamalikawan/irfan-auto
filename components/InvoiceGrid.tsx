@@ -4,18 +4,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { qty as fmtQty, rs } from "@/lib/format";
 import CustomerPicker, { type PickedCustomer } from "./CustomerPicker";
 import { MarketModal, ProductPicker, type Prod } from "./InvoiceBuilder";
+import MarketDetailsModal, { type MarketInfo } from "./MarketDetailsModal";
 import { Spinner } from "./Loading";
 import { useMe } from "./Me";
 import PaySplit, { newRow, paysTotal, toPayments, usePaymentMethods, type PayRow } from "./PaySplit";
 
 /*
  * Keyboard-first invoice screen for the desktop (the phone keeps the touch form).
- *  customer: type, Enter  ->  product: type, Enter  ->  quantity, Enter  ->  next row.
+ *  customer: type, Enter  ->  product: type, Enter  ->  quantity, Enter  ->  price, Enter  ->  next row.
  *  F2 counter/ledger   F3 customer   F4 payment (counter) or cash/credit (ledger)   F7 buy from market
  *  F8 hold   F9 list   F10 save (Shift+F10 save and print)   Shift+F6 delete row   Up/Down rows
  */
 
-type Row = { key: string; p?: Prod; q: string; price: string; disc: string; market?: { cost: number; vendor: string } };
+type Row = { key: string; p?: Prod; q: string; price: string; disc: string; market?: MarketInfo };
+type Hist = { days_ago: number; price: number; qty: number };
 type Cust = { id: string; name: string; is_walk_in: boolean; credit_limit: number; balance: number; route: string | null };
 type CustHit = { id: string; code: string; name: string; owner: string | null; phone: string | null; balance: number; route: { name: string } | null };
 
@@ -45,6 +47,8 @@ function useSearch<T>(path: string, q: string, enabled: boolean, limit = 8) {
   return { items: state.q === q ? state.items : [], ready: state.q === q };
 }
 
+const ago = (n: number) => (n <= 0 ? "Today" : n === 1 ? "Yesterday" : n + " days ago");
+
 const Key = ({ k }: { k: string }) => <kbd className="rounded border border-line bg-bg px-1.5 py-0.5 font-sans text-[11px] font-semibold text-ink">{k}</kbd>;
 
 export default function InvoiceGrid({ customerId }: { customerId?: string }) {
@@ -68,7 +72,11 @@ export default function InvoiceGrid({ customerId }: { customerId?: string }) {
   const [split, setSplit] = useState(false);
   const [recv, setRecv] = useState("");
   const [recvMethod, setRecvMethod] = useState("");
-  const [modal, setModal] = useState<"" | "cust" | "prod" | "market">("");
+  const [modal, setModal] = useState<"" | "cust" | "prod" | "market" | "mkdetails">("");
+  const [mkRow, setMkRow] = useState("");
+  const mkAfter = useRef<"price" | "next">("price");
+  const [hist, setHist] = useState<Record<string, Hist | null>>({});
+  const histAsked = useRef<Record<string, Set<string>>>({});
   const [pickRow, setPickRow] = useState("");
   const [busy, setBusy] = useState<"" | "hold" | "save" | "print">("");
   const [error, setError] = useState("");
@@ -137,7 +145,8 @@ export default function InvoiceGrid({ customerId }: { customerId?: string }) {
     const t = rows[idx(from.key) + delta];
     if (t) focus(rowCell(t, t.p ? col : "prod"));
   }
-  const nextRowProduct = (from: Row) => { const t = rows[idx(from.key) + 1]; if (t) focus(rowCell(t, "prod")); else focus("disc"); };
+  const nextRowProduct = (from: Row) => { const t = rows[idx(from.key) + 1]; if (t) focus(rowCell(t, "prod")); else focus(flow[0]); };
+  const afterPrice = (r: Row) => { if (r.p?.market_list && !r.market) { mkAfter.current = "next"; setMkRow(r.key); setModal("mkdetails"); } else nextRowProduct(r); };
 
   useEffect(() => {
     const ids = rows.filter((r) => r.p).map((r) => r.p!.id);
@@ -145,16 +154,39 @@ export default function InvoiceGrid({ customerId }: { customerId?: string }) {
     fetch("/api/sales/discounts?customer=" + cust.id + "&ids=" + ids.join(",")).then((r) => r.json()).then((j) => j.pct && setDefPct(j.pct)).catch(() => {});
   }, [cust, rows.filter((r) => r.p).length]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // when each part was last sold to this customer, and at what price
+  useEffect(() => {
+    if (!cust || cust.is_walk_in) return;
+    const asked = (histAsked.current[cust.id] ??= new Set<string>());
+    const ids = [...new Set(rows.filter((r) => r.p && !asked.has(r.p.id)).map((r) => r.p!.id))];
+    if (!ids.length) return;
+    ids.forEach((i) => asked.add(i));
+    fetch("/api/sales/history?customer=" + cust.id + "&ids=" + ids.join(",")).then((r) => r.json()).then((j) => {
+      if (!j.history) return;
+      setHist((h) => { const n = { ...h }; for (const id of ids) n[cust.id + ":" + id] = j.history[id] ?? null; return n; });
+    }).catch(() => ids.forEach((i) => asked.delete(i)));
+  }, [cust, rows]);
+
   /* ---------- numbers ---------- */
   const calc = rows.map((r) => {
     if (!r.p) return null;
     const q = money(r.q), price = r.price !== "" ? money(r.price) : r.p.cp, pct = r.disc !== "" ? money(r.disc) : defPct[r.p.id] ?? 0;
     const free = freeFor(r.p, q), ld = Math.round((q * price * pct) / 100);
-    return { q, price, pct, free, ld, value: q * price - ld, tot: q + free, after: r.market ? null : r.p.on_hand - (q + free) };
+    return { q, price, pct, free, ld, value: q * price - ld, tot: q + free, after: r.market || r.p.market_list ? null : r.p.on_hand - (q + free) };
   });
   const filled = rows.map((r, i) => ({ r, c: calc[i] })).filter((x): x is { r: Row; c: NonNullable<(typeof calc)[number]> } => !!x.c);
   const gross = filled.reduce((s, x) => s + x.c.q * x.c.price, 0), ldisc = filled.reduce((s, x) => s + x.c.ld, 0);
   const totQty = filled.reduce((s, x) => s + x.c.q, 0), freeQty = filled.reduce((s, x) => s + x.c.free, 0);
+  // discount by price list: the percent every (non-market) item of that list gets
+  const listGroups = (() => {
+    const m = new Map<string, number[]>();
+    for (const { r, c } of filled) { const n = r.p!.list_name; if (n && !r.market && !r.p!.market_list) m.set(n, [...(m.get(n) ?? []), c.pct]); }
+    return [...m].map(([name, p]) => ({ name, count: p.length, shared: p.every((x) => x === p[0]) ? p[0] : null }));
+  })();
+  const setListDisc = (name: string, v: string) => {
+    const clean = v.replace(/[^\d.]/g, "");
+    setRows((rs) => rs.map((r) => (r.p?.list_name === name && !r.market && !r.p.market_list ? { ...r, disc: clean } : r)));
+  };
   const total = gross - ldisc - money(discount) + Math.round(money(bilti)) + Math.round(money(local));
 
   const counter = kind === "counter";
@@ -163,7 +195,7 @@ export default function InvoiceGrid({ customerId }: { customerId?: string }) {
   const counterOk = split ? Math.abs(paysTotal(pay) - total) < 0.005 && counterPays.length > 0 : counterPays.length > 0;
   const received = counter ? total : Math.min(money(recv), total);
   const balanceAfter = cust && !walkIn ? cust.balance + total - (counter ? total : money(recv)) : 0;
-  const problem = !cust ? "Choose a customer" : !filled.length ? "Add at least one item" : filled.some((x) => x.c.q <= 0) ? "Enter a quantity for every item" : filled.some((x) => x.c.price <= 0) ? "An item has no price" : !counter && walkIn ? "Choose a customer for a ledger sale" : "";
+  const problem = !cust ? "Choose a customer" : !filled.length ? "Add at least one item" : filled.some((x) => x.c.q <= 0) ? "Enter a quantity for every item" : filled.some((x) => x.c.price <= 0) ? "An item has no price" : !counter && walkIn ? "Choose a customer for a ledger sale" : filled.find((x) => x.r.p!.market_list && !x.r.market) ? "Enter the market details for " + filled.find((x) => x.r.p!.market_list && !x.r.market)!.r.p!.name_en : "";
   const canSave = !problem && !busy && total >= 0;
   const canPay = canSave && total > 0 && counterOk;
   const overLimit = !counter && !!cust && !walkIn && cust.credit_limit > 0 && total - money(recv) > 0 && cust.balance + total - money(recv) > cust.credit_limit;
@@ -203,7 +235,10 @@ export default function InvoiceGrid({ customerId }: { customerId?: string }) {
         setSplit(false); setPay([{ ...(pay[0] ?? newRow(methods[0].id)), method_id: methods[(i + 1) % methods.length].id, amount: "" }]);
       } else setTerm(term === "cash" ? "credit" : "cash");
     });
-    else if (e.key === "F7") run(() => setModal("market"));
+    else if (e.key === "F7") run(() => {
+      const mr = rowKey ? rows.find((x) => x.key === rowKey) : undefined;
+      if (mr?.p?.market_list) { mkAfter.current = "price"; setMkRow(mr.key); setModal("mkdetails"); } else setModal("market");
+    });
     else if (e.key === "F8") run(() => { if (counter) save("hold"); });
     else if (e.key === "F9") run(() => { if (el?.dataset?.cell === "cust") setModal("cust"); else { setPickRow(rowKey ?? rows.find((r) => !r.p)?.key ?? ""); setModal("prod"); } });
     else if (e.key === "F10") run(() => save(e.shiftKey ? "print" : "save"));
@@ -213,17 +248,17 @@ export default function InvoiceGrid({ customerId }: { customerId?: string }) {
   useEffect(() => { const h = (e: KeyboardEvent) => keys.current(e); window.addEventListener("keydown", h); return () => window.removeEventListener("keydown", h); }, []);
 
   /* ---------- footer: Enter walks down the fields, then lands on Save ---------- */
-  const flow = useMemo(() => [canDiscount ? "disc" : "", "local", "bilti", "remarks", counter ? "" : "recv", "save"].filter(Boolean), [canDiscount, counter]);
+  const flow = [...(canDiscount ? listGroups.map((_, i) => "ld:" + i) : []), canDiscount ? "disc" : "", "local", "bilti", "remarks", counter ? "" : "recv", "save"].filter(Boolean);
   const nextField = (cur: string) => focus(flow[flow.indexOf(cur) + 1] ?? "save");
   const enterTo = (cur: string) => (e: React.KeyboardEvent) => { if (e.key === "Enter") { e.preventDefault(); nextField(cur); } };
 
-  const th = "border-b border-line bg-bg px-1.5 py-1.5 text-left text-[12px] font-semibold text-muted";
-  const cell = "h-9 w-full rounded border border-transparent bg-transparent px-1.5 text-sm outline-none focus:border-accent focus:bg-surface focus:ring-2 focus:ring-accent";
+  const th = "inv-th border-b border-[var(--g-line)] px-1.5 py-2 text-left text-[12px] font-semibold first:rounded-tl-2xl last:rounded-tr-2xl";
+  const cell = "h-9 w-full rounded border border-transparent bg-transparent px-1.5 text-sm outline-none focus:border-green focus:bg-surface focus:ring-2 focus:ring-green";
 
   return (
-    <div className="flex min-h-[calc(100dvh-7rem)] flex-col gap-3 p-4">
+    <div className="inv-page flex min-h-[calc(100dvh-7rem)] flex-col gap-3 p-4">
       {/* top strip */}
-      <section className="card grid grid-cols-[auto_1fr_auto] items-start gap-x-4 gap-y-2 p-3">
+      <section className="inv-card grid grid-cols-[auto_1fr_auto] items-start gap-x-4 gap-y-2 p-4">
         <div className="flex flex-col gap-1">
           <span className="text-xs font-semibold text-muted">Sale <Key k="F2" /></span>
           <div role="radiogroup" aria-label="Sale type" className="flex gap-1">
@@ -258,33 +293,44 @@ export default function InvoiceGrid({ customerId }: { customerId?: string }) {
       {error && <p role="alert" className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
 
       {/* items grid */}
-      <section className="card p-0">
-        <table className="w-full table-fixed border-collapse">
-          <colgroup><col style={{ width: "2.2rem" }} /><col /><col style={{ width: "5.5rem" }} /><col style={{ width: "6rem" }} /><col style={{ width: "5rem" }} /><col style={{ width: "6.5rem" }} /><col style={{ width: "4rem" }} /><col style={{ width: "4.5rem" }} /><col style={{ width: "8rem" }} /><col style={{ width: "7rem" }} /></colgroup>
+      <section className="inv-card p-0">
+        <table className="w-full table-fixed border-separate border-spacing-0">
+          <colgroup><col style={{ width: "2rem" }} /><col /><col style={{ width: "4.6rem" }} /><col style={{ width: "5.6rem" }} /><col style={{ width: "4.4rem" }} /><col style={{ width: "6rem" }} /><col style={{ width: "3.2rem" }} /><col style={{ width: "3.6rem" }} /><col style={{ width: "7.5rem" }} /><col style={{ width: "9.6rem" }} /><col className="hidden 2xl:table-column" style={{ width: "6rem" }} /></colgroup>
           <thead>
-            <tr><th className={th}>#</th><th className={th}>Product</th><th className={th + " text-right"}>Qty</th><th className={th + " text-right"}>Price</th><th className={th + " text-right"}>Disc %</th><th className={th + " text-right"}>Value</th><th className={th + " text-right"}>Free</th><th className={th + " text-right"}>Total</th><th className={th + " text-right"}>Stock before → after</th><th className={th}>Rack</th></tr>
+            <tr><th className={th}>#</th><th className={th}>Product</th><th className={th + " text-right"}>Qty</th><th className={th + " text-right"}>Price</th><th className={th + " text-right"}>Disc %</th><th className={th + " text-right"}>Value</th><th className={th + " text-right"}>Free</th><th className={th + " text-right"}>Total</th><th className={th + " text-right"}>Stock</th><th className={th}>History</th><th className={th + " hidden 2xl:table-cell"}>Rack</th></tr>
           </thead>
           <tbody>
             {rows.map((r, i) => {
               const c = calc[i];
+              const hv = r.p && cust && !walkIn ? hist[cust.id + ":" + r.p.id] : undefined;
               return (
-                <tr key={r.key} className="border-b border-line align-middle even:bg-bg">
-                  <td className="px-1.5 text-center text-xs text-muted">{r.p ? i + 1 : ""}</td>
-                  <td className="relative px-1 py-0.5">
+                <tr key={r.key} className={"align-middle focus-within:bg-[var(--g-row)] " + (r.p?.market_list || r.market ? "bg-amber-bg" : "")}>
+                  <td className="border-b border-[var(--g-line)] px-1.5 text-center text-xs text-muted">{r.p ? i + 1 : ""}</td>
+                  <td className="relative border-b border-[var(--g-line)] px-1 py-0.5">
                     <ProductCell row={r} reg={reg} onPick={(p) => setProduct(r.key, p)} onClear={() => patch(r.key, { p: undefined, market: undefined })}
-                      onEmptyEnter={() => (filled.length ? focus("disc") : undefined)} onArrow={(d) => goRow(r, d, "prod")} />
+                      onEmptyEnter={() => (filled.length ? focus(flow[0]) : undefined)} onArrow={(d) => goRow(r, d, "prod")} />
                   </td>
-                  <td className="px-1 py-0.5"><input ref={reg("qty:" + r.key)} data-row={r.key} data-cell="qty" disabled={!r.p} className={cell + " text-right"} inputMode="decimal" aria-label={"Quantity, row " + (i + 1)} value={r.q} onChange={(e) => patch(r.key, { q: e.target.value.replace(/[^\d.]/g, "") })}
-                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (money(r.q) > 0) nextRowProduct(r); } else if (e.key === "ArrowUp") { e.preventDefault(); goRow(r, -1, "qty"); } else if (e.key === "ArrowDown") { e.preventDefault(); goRow(r, 1, "qty"); } else if (e.key === "Backspace" && r.q === "") { e.preventDefault(); focus("prod:" + r.key); } }} /></td>
-                  <td className="px-1 py-0.5"><input ref={reg("price:" + r.key)} data-row={r.key} data-cell="price" disabled={!r.p} readOnly={!canDiscount || !!r.market} className={cell + " text-right"} inputMode="decimal" aria-label={"Price, row " + (i + 1)} value={r.price !== "" ? r.price : r.p ? String(r.p.cp) : ""} onChange={(e) => patch(r.key, { price: e.target.value.replace(/[^\d.]/g, "") })}
-                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); nextRowProduct(r); } else if (e.key === "ArrowUp") { e.preventDefault(); goRow(r, -1, "price"); } else if (e.key === "ArrowDown") { e.preventDefault(); goRow(r, 1, "price"); } }} /></td>
-                  <td className="px-1 py-0.5"><input ref={reg("disc:" + r.key)} data-row={r.key} data-cell="disc" disabled={!r.p} readOnly={!canDiscount || !!r.market} className={cell + " text-right"} inputMode="decimal" aria-label={"Discount percent, row " + (i + 1)} value={r.disc !== "" ? r.disc : c && c.pct ? String(c.pct) : ""} onChange={(e) => patch(r.key, { disc: e.target.value.replace(/[^\d.]/g, "") })}
+                  <td className="border-b border-[var(--g-line)] px-1 py-0.5"><input ref={reg("qty:" + r.key)} data-row={r.key} data-cell="qty" disabled={!r.p} className={cell + " text-right"} inputMode="decimal" aria-label={"Quantity, row " + (i + 1)} value={r.q} onChange={(e) => patch(r.key, { q: e.target.value.replace(/[^\d.]/g, "") })}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (money(r.q) > 0) focus("price:" + r.key); } else if (e.key === "ArrowUp") { e.preventDefault(); goRow(r, -1, "qty"); } else if (e.key === "ArrowDown") { e.preventDefault(); goRow(r, 1, "qty"); } else if (e.key === "Backspace" && r.q === "") { e.preventDefault(); focus("prod:" + r.key); } }} /></td>
+                  <td className="border-b border-[var(--g-line)] px-1 py-0.5"><input ref={reg("price:" + r.key)} data-row={r.key} data-cell="price" disabled={!r.p} readOnly={!canDiscount} className={cell + " text-right"} inputMode="decimal" aria-label={"Price, row " + (i + 1)} value={r.price !== "" ? r.price : r.p ? String(r.p.cp) : ""} onChange={(e) => patch(r.key, { price: e.target.value.replace(/[^\d.]/g, "") })}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); afterPrice(r); } else if (e.key === "ArrowUp") { e.preventDefault(); goRow(r, -1, "price"); } else if (e.key === "ArrowDown") { e.preventDefault(); goRow(r, 1, "price"); } }} /></td>
+                  <td className="border-b border-[var(--g-line)] px-1 py-0.5"><input ref={reg("disc:" + r.key)} data-row={r.key} data-cell="disc" disabled={!r.p} readOnly={!canDiscount || !!r.market || !!r.p?.market_list} className={cell + " text-right"} inputMode="decimal" aria-label={"Discount percent, row " + (i + 1)} value={r.disc !== "" ? r.disc : c && c.pct ? String(c.pct) : ""} onChange={(e) => patch(r.key, { disc: e.target.value.replace(/[^\d.]/g, "") })}
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); nextRowProduct(r); } else if (e.key === "ArrowUp") { e.preventDefault(); goRow(r, -1, "disc"); } else if (e.key === "ArrowDown") { e.preventDefault(); goRow(r, 1, "disc"); } }} /></td>
-                  <td className="px-2 text-right text-sm font-semibold">{c ? rs(c.value) : ""}</td>
-                  <td className="px-2 text-right text-sm text-green">{c && c.free > 0 ? "+" + c.free : ""}</td>
-                  <td className="px-2 text-right text-sm">{c && c.q > 0 ? fmtQty(c.tot) : ""}</td>
-                  <td className="px-2 text-right text-sm">{c && r.p ? (c.after === null ? <span className="text-muted">market</span> : <><span className="text-muted">{fmtQty(r.p.on_hand)}</span> → <b className={c.after < 0 ? "text-red" : ""}>{fmtQty(c.after)}</b></>) : ""}</td>
-                  <td className="truncate px-1.5 text-xs text-muted" title={r.p?.racks.join(", ")}>{r.p?.racks.join(", ")}{r.market && <span className="pill bg-bg text-ink">Market · cost {rs(r.market.cost)}</span>}</td>
+                  <td className="border-b border-[var(--g-line)] px-2 text-right text-sm font-semibold">{c ? rs(c.value) : ""}</td>
+                  <td className="border-b border-[var(--g-line)] px-2 text-right text-sm text-green">{c && c.free > 0 ? "+" + c.free : ""}</td>
+                  <td className="border-b border-[var(--g-line)] px-2 text-right text-sm">{c && c.q > 0 ? fmtQty(c.tot) : ""}</td>
+                  <td className="border-b border-[var(--g-line)] px-2 text-right text-sm">{c && r.p ? (c.after === null ? <span className="text-muted">market</span> : <><span className="text-muted">{fmtQty(r.p.on_hand)}</span> → <b className={c.after < 0 ? "text-red" : ""}>{fmtQty(c.after)}</b></>) : ""}</td>
+                  <td className="border-b border-[var(--g-line)] px-2 py-1 text-[12px] leading-tight">
+                    {r.p && walkIn && <span className="text-muted">—</span>}
+                    {r.p && cust && !walkIn && (hv === undefined ? <span className="text-muted">…</span> : hv === null ? <span className="font-bold text-red">Never Sold Before</span> : <><span className="font-semibold">{ago(hv.days_ago)}</span><br /><span className="text-muted">@ {rs(hv.price)} × {fmtQty(hv.qty)}</span></>)}
+                    {(r.p?.market_list || r.market) && (
+                      <button type="button" tabIndex={-1} className="mt-0.5 block max-w-full truncate rounded-md border border-amber bg-amber-bg px-1.5 py-0.5 text-left text-[11px] font-bold text-amber"
+                        onClick={() => { mkAfter.current = "price"; setMkRow(r.key); setModal("mkdetails"); }}>
+                        {r.market ? "Cost " + rs(r.market.cost) + (r.market.vendor ? " · " + r.market.vendor : "") + " ✎" : "Market details (F7)"}
+                      </button>
+                    )}
+                  </td>
+                  <td className="hidden truncate border-b border-[var(--g-line)] px-1.5 text-xs text-muted 2xl:table-cell" title={r.p?.racks.join(", ")}>{r.p?.racks.join(", ")}</td>
                 </tr>
               );
             })}
@@ -292,13 +338,28 @@ export default function InvoiceGrid({ customerId }: { customerId?: string }) {
         </table>
       </section>
 
+      {canDiscount && listGroups.length > 0 && (
+        <section className="inv-card flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2.5">
+          <span className="text-sm font-bold text-[color:var(--g-ink)]">Discount by list</span>
+          {listGroups.map((g, i) => (
+            <label key={g.name} className="flex items-center gap-2 text-sm">
+              <span className="font-medium">{g.name}</span><span className="text-xs text-muted">({g.count})</span>
+              <input ref={reg("ld:" + i)} className="input h-9 w-20 text-right" inputMode="decimal" aria-label={"Discount percent for list " + g.name} placeholder="mixed" value={g.shared === null ? "" : String(g.shared)}
+                onChange={(e) => setListDisc(g.name, e.target.value)} onKeyDown={enterTo("ld:" + i)} />
+              <span className="text-muted">%</span>
+            </label>
+          ))}
+          <span className="ml-auto text-xs text-muted">Sets the discount on every item of that list. One item can still be changed in its own row.</span>
+        </section>
+      )}
+
       {/* totals and payment */}
       <section className="grid grid-cols-[auto_1fr_auto] items-start gap-4">
-        <div className="card grid grid-cols-3 gap-4 p-3 text-center">
-          {[["Total qty", fmtQty(totQty)], ["Free qty", fmtQty(freeQty)], ["Items", String(filled.length)]].map(([l, v]) => <div key={l}><p className="text-xs text-muted">{l}</p><p className="text-2xl font-bold">{v}</p></div>)}
+        <div className="inv-card grid grid-cols-3 gap-3 p-3 text-center">
+          {[["Total qty", fmtQty(totQty)], ["Free qty", fmtQty(freeQty)], ["Items", String(filled.length)]].map(([l, v]) => <div key={l} className="inv-stat px-4 py-2"><p className="text-xs opacity-75">{l}</p><p className="text-2xl font-bold">{v}</p></div>)}
         </div>
 
-        <div className="card grid grid-cols-4 gap-3 p-3">
+        <div className="inv-card grid grid-cols-4 gap-3 p-4">
           {canDiscount && <div><label className="label" htmlFor="g-disc">Discount (Rs)</label><input id="g-disc" ref={reg("disc")} className="input text-right" inputMode="decimal" value={discount} onChange={(e) => setDiscount(e.target.value.replace(/[^\d.]/g, ""))} onKeyDown={enterTo("disc")} /></div>}
           <div><label className="label" htmlFor="g-local">Local charges</label><input id="g-local" ref={reg("local")} className="input text-right" inputMode="numeric" placeholder="inside city" value={local} onChange={(e) => setLocal(e.target.value.replace(/[^\d]/g, ""))} onKeyDown={enterTo("local")} /></div>
           <div><label className="label" htmlFor="g-bilti">Bilti</label><input id="g-bilti" ref={reg("bilti")} className="input text-right" inputMode="numeric" placeholder="outside city" value={bilti} onChange={(e) => setBilti(e.target.value.replace(/[^\d]/g, ""))} onKeyDown={enterTo("bilti")} /></div>
@@ -322,18 +383,18 @@ export default function InvoiceGrid({ customerId }: { customerId?: string }) {
           </div>
         </div>
 
-        <div className="card min-w-64 space-y-2 p-3 text-right">
-          <p className="text-xs text-muted">Total bill</p>
-          <p className="text-4xl font-bold leading-none text-green">{rs(total)}</p>
-          {!counter && cust && !walkIn && <p className="text-sm text-muted">Receivable after: <b className={balanceAfter > 0 ? "text-red" : "text-ink"}>{rs(balanceAfter)}</b></p>}
-          {counter && <p className="text-sm text-muted">{received > 0 ? "Paid in full at the counter" : ""}</p>}
+        <div className="inv-total min-w-64 space-y-2 p-4 text-right">
+          <p className="text-xs uppercase tracking-wide opacity-80">Total bill</p>
+          <p className="text-4xl font-bold leading-none">{rs(total)}</p>
+          {!counter && cust && !walkIn && <p className="text-sm opacity-90">Receivable after: <b>{rs(balanceAfter)}</b></p>}
+          {counter && <p className="text-sm opacity-90">{received > 0 ? "Paid in full at the counter" : ""}</p>}
           <div className="flex flex-wrap justify-end gap-2 pt-1">
             <button className="btn" tabIndex={-1} onClick={() => { if (!filled.length || confirm("Discard this invoice?")) router.push("/sales"); }}>Cancel</button>
             {counter && <button className="btn" tabIndex={-1} disabled={!canSave} onClick={() => save("hold")}>{busy === "hold" ? <><Spinner /> Holding…</> : <>Hold <Key k="F8" /></>}</button>}
             <button ref={reg("save")} className="btn btn-primary" disabled={counter ? !canPay : !canSave} onClick={() => save("save")}>{busy === "save" ? <><Spinner /> Saving…</> : <>{counter ? "Pay & complete" : "Save"} <Key k="F10" /></>}</button>
           </div>
-          <button className="text-sm text-accent underline" tabIndex={-1} disabled={counter ? !canPay : !canSave} onClick={() => save("print")}>{busy === "print" ? "Saving…" : "Save and print"} <Key k="⇧F10" /></button>
-          {problem && !busy && <p className="text-xs text-muted">{problem}</p>}
+          <button className="text-sm text-white underline" tabIndex={-1} disabled={counter ? !canPay : !canSave} onClick={() => save("print")}>{busy === "print" ? "Saving…" : "Save and print"} <Key k="⇧F10" /></button>
+          {problem && !busy && <p className="text-xs opacity-90">{problem}</p>}
         </div>
       </section>
 
@@ -346,6 +407,13 @@ export default function InvoiceGrid({ customerId }: { customerId?: string }) {
       {modal === "cust" && <CustomerPicker allowAdd onPick={(c) => { setModal(""); chooseCustomer(c); }} onClose={() => { setModal(""); focus("cust"); }} />}
       {modal === "prod" && <ProductPicker onAdd={(p) => { setModal(""); const t = rows.find((x) => x.key === pickRow && !x.p) ?? rows.find((x) => !x.p); if (t) setProduct(t.key, p); }}
         inInvoice={Object.fromEntries(filled.map(({ r, c }) => [r.p!.id, c.q]))} onClose={() => { setModal(""); focus("prod:" + (pickRow || rows[rows.length - 1].key)); }} />}
+      {modal === "mkdetails" && (() => {
+        const r = rows.find((x) => x.key === mkRow); const i = rows.findIndex((x) => x.key === mkRow); const c = i >= 0 ? calc[i] : null;
+        if (!r?.p || !c) return null;
+        const back = () => { setModal(""); focus("price:" + r.key); };
+        return <MarketDetailsModal title={r.p.name_en} qty={c.q} price={c.price} initial={r.market} onClose={back}
+          onSave={(m) => { patch(r.key, { market: m }); setModal(""); if (mkAfter.current === "next") nextRowProduct(r); else focus("price:" + r.key); }} />;
+      })()}
       {modal === "market" && <MarketModal canCreate={can("stock.manage")} onClose={() => { setModal(""); focus("prod:" + rows[rows.length - 1].key); }}
         onAdd={(m) => { setModal(""); const t = rows.find((x) => !x.p) ?? rows[rows.length - 1]; setProduct(t.key, m.p, { q: String(m.qty), price: String(m.price), market: { cost: m.cost, vendor: m.vendor } }); }} />}
     </div>
@@ -394,6 +462,8 @@ function ProductCell({ row, reg, onPick, onClear, onEmptyEnter, onArrow }: {
             <li key={p.id} role="option" aria-selected={k === at} onMouseDown={(e) => { e.preventDefault(); choose(p); }} onMouseEnter={() => setAt(k)}
               className={"flex cursor-pointer items-center gap-3 rounded-lg px-3 py-1.5 text-sm " + (k === at ? "bg-accent text-accent-ink" : "")}>
               <span className="min-w-0 flex-1 truncate font-medium">{p.name_en}{p.name_ur ? "  ·  " + p.name_ur : ""}</span>
+              {p.scheme && <span className="shrink-0 rounded-full border border-amber bg-amber-bg px-2 py-0.5 text-[11px] font-bold text-amber">Scheme {p.scheme}</span>}
+              {p.market_list && <span className="shrink-0 rounded-full border border-line bg-bg px-2 py-0.5 text-[11px] font-bold text-ink">Market</span>}
               <span className={"w-24 shrink-0 truncate text-xs " + (k === at ? "" : "text-muted")}>{p.code_name ?? ""}</span>
               <span className={"w-20 shrink-0 text-right text-xs " + (k === at ? "" : p.on_hand <= 0 ? "text-red" : "text-muted")}>stock {fmtQty(p.on_hand)}</span>
               <span className="w-20 shrink-0 text-right font-semibold">{rs(p.cp)}</span>

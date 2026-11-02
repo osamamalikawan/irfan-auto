@@ -8,7 +8,7 @@ import { Loading } from "./Loading";
 import PaymentMethodsSetting from "./PaymentMethodsSetting";
 import ThemeSetting from "./ThemeSetting";
 
-type ListRow = { id: string; name: string; visible: boolean; products: number };
+type ListRow = { id: string; name: string; visible: boolean; products: number; is_market: boolean };
 type LocRow = { id: string; name: string; type: string; racks: number; active: boolean };
 
 export default function SettingsView() {
@@ -60,6 +60,12 @@ export default function SettingsView() {
   }, []);
   useEffect(() => { loadLists(); loadLocs(); }, [loadLists, loadLocs]);
 
+  async function setMarket(id: string, is_market: boolean) {
+    const before = lists;
+    setLists((ls) => ls && ls.map((l) => (l.id === id ? { ...l, is_market } : l)));
+    const r = await fetch("/api/inventory/lists", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, is_market }) });
+    if (!r.ok) { setLists(before); const j = await r.json().catch(() => ({})); setToast(j.error || "Could not save"); }
+  }
   async function setVisible(body: { id?: string; all?: boolean; visible: boolean }) {
     const before = lists;
     setLists((ls) => ls && ls.map((l) => (body.all || l.id === body.id ? { ...l, visible: body.visible } : l)));
@@ -127,6 +133,10 @@ export default function SettingsView() {
                   <p className={"break-words font-medium " + (l.visible ? "" : "text-muted")}>{l.name}</p>
                   <p className="text-xs text-muted">{l.products.toLocaleString()} products</p>
                 </div>
+                <label className="flex shrink-0 items-center gap-2 text-sm" title="Parts in a market list are bought from the market when sold">
+                  <input type="checkbox" className="size-5" checked={l.is_market} onChange={(e) => setMarket(l.id, e.target.checked)} />Market list
+                </label>
+                <Link href={"/lists/" + l.id} className="btn min-h-9 px-3">Open</Link>
                 <button role="switch" aria-checked={l.visible} aria-label={(l.visible ? "Hide " : "Show ") + l.name}
                   onClick={() => setVisible({ id: l.id, visible: !l.visible })}
                   className={"relative h-8 w-14 shrink-0 rounded-full transition-colors " + (l.visible ? "bg-accent" : "bg-line")}>
