@@ -354,7 +354,7 @@ export function ProductPicker({ onAdd, inInvoice, onClose, allowNoPrice }: { onA
 }
 
 /** A part we do not have in stock: bought from the market at a cost price and sold on this invoice. */
-function MarketModal({ onAdd, onClose, canCreate }: { onAdd: (m: { p: Prod; qty: number; price: number; cost: number; vendor: string }) => void; onClose: () => void; canCreate: boolean }) {
+export function MarketModal({ onAdd, onClose, canCreate }: { onAdd: (m: { p: Prod; qty: number; price: number; cost: number; vendor: string }) => void; onClose: () => void; canCreate: boolean }) {
   const [mode, setMode] = useState<"existing" | "new">("existing");
   const [p, setP] = useState<Prod | null>(null);
   const [picking, setPicking] = useState(false);

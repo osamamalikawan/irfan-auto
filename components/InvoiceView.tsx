@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { niceDate } from "@/lib/dates";
 import { qty as fmtQty, rs } from "@/lib/format";
 import CollectModal from "./CollectModal";
@@ -21,13 +21,15 @@ type Detail = {
   items: Item[]; payments: { method: string; amount: number }[]; prev_balance: number; final_balance: number;
 };
 
-export default function InvoiceView({ id }: { id: string }) {
+export default function InvoiceView({ id, autoPrint = false }: { id: string; autoPrint?: boolean }) {
   const { can } = useMe();
   const [d, setD] = useState<Detail | null>(null);
   const [error, setError] = useState("");
   const [collect, setCollect] = useState(false);
   const [payInv, setPayInv] = useState(false);
   const [job, setJob] = useState<PrintJob | null>(null);
+  const printed = useRef(false);
+  useEffect(() => { if (autoPrint && d && !printed.current) { printed.current = true; setJob({ ids: [id], type: "invoice", layout: "roll" }); } }, [autoPrint, d, id]);
   const [changing, setChanging] = useState(false);
   const [toast, setToast] = useState("");
   const [busy, setBusy] = useState(false);

@@ -1,6 +1,7 @@
 import InvoiceView from "@/components/InvoiceView";
 
-export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ print?: string }> }) {
   const { id } = await params;
-  return <InvoiceView id={id} />;
+  const { print } = await searchParams;
+  return <InvoiceView id={id} autoPrint={print === "1"} />;
 }
