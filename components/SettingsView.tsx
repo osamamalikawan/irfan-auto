@@ -82,6 +82,12 @@ export default function SettingsView() {
       <div className="space-y-4 p-3 lg:max-w-3xl lg:p-5">
         {error && <p className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
 
+        <section className="card divide-y divide-line">
+          {[["/discounts", "Discounts", "Brand discounts and customer deals"], ["/promises", "Customer promises", "Who promised to pay, and when"], ["/market", "Market purchases", "Parts bought from the market for invoices"]].map(([href, t, sub]) => (
+            <Link key={href} href={href} className="flex items-center justify-between p-4 active:opacity-70"><span><span className="block font-semibold">{t}</span><span className="text-sm text-muted">{sub}</span></span><span aria-hidden>›</span></Link>
+          ))}
+        </section>
+
         {can("users.manage") && (
           <Link href="/users" className="card flex items-center justify-between p-4 active:opacity-70">
             <span><span className="block font-semibold">Users &amp; Roles</span><span className="text-sm text-muted">Who can sign in and what they can do</span></span>

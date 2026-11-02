@@ -18,7 +18,7 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
   const mine = await allowedRouteIds(sb, a.user);
   if (mine && !(s.data.route_id && mine.includes(s.data.route_id))) return NextResponse.json({ error: "Invoice not found." }, { status: 404 });
 
-  const items = await sb.from("sale_items").select("id,line_no,product_id,name,qty,free,price,disc_pct,line_disc,sale_item_allocs(qty,location:locations(id,name))").eq("sale_id", id).order("line_no");
+  const items = await sb.from("sale_items").select("id,line_no,product_id,name,qty,free,price,disc_pct,line_disc,market,market_cost,sale_item_allocs(qty,location:locations(id,name))").eq("sale_id", id).order("line_no");
   if (items.error) return NextResponse.json({ error: items.error.message }, { status: 500 });
   const pids = [...new Set((items.data ?? []).map((i: { product_id: string }) => i.product_id))];
   const none = { data: [] as unknown[], error: null };

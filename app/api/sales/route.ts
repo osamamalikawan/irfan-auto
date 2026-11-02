@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
     price: l.price === undefined || l.price === null || l.price === "" ? null : Number(l.price),
     disc_pct: l.disc_pct === undefined || l.disc_pct === null || l.disc_pct === "" ? null : Number(l.disc_pct),
     location_id: l.location_id || null,
+    market: l.market && typeof l.market === "object" ? { cost: Number((l.market as { cost?: unknown }).cost), vendor: String((l.market as { vendor?: unknown }).vendor ?? "").slice(0, 80) } : undefined,
   })) : [];
   const { data, error } = await sb.rpc("create_sale", {
     p_customer: b.customer_id, p_location: b.location_id || null, p_lines: lines,

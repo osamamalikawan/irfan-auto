@@ -23,6 +23,7 @@ export const MENU: MenuGroup[] = [
     { label: "Dispatch vouchers", href: "/dispatch", perms: ["sales.create", "stock.view", "stock.transfer"] },
     { label: "Completed Sales", href: "/sales?status=completed&range=month", perms: SALES },
     { label: "Sales Team", href: "/team", perms: ["reports.view", "targets.manage"] },
+    { label: "Discounts", href: "/discounts", perms: ["sales.discount", "settings.edit"] },
   ] },
   { label: "Stock", items: [
     { label: "Stock & Racks", href: "/inventory", perms: STOCK },
@@ -33,6 +34,7 @@ export const MENU: MenuGroup[] = [
     { label: "Customers", href: "/customers", perms: CUSTOMERS },
     { label: "Suppliers", href: "/suppliers", perms: SUPPLIERS },
     { label: "Employees", href: "/users?tab=users", perms: ["users.manage"] },
+    { label: "Customer promises", href: "/promises", perms: ["visits.record", "payments.receive", "reports.view", "customers.view"] },
   ] },
   { label: "Visit Planning", items: [
     { label: "Monthly planner", href: "/planner", perms: VISITS },
@@ -49,6 +51,7 @@ export const MENU: MenuGroup[] = [
   { label: "Purchasing", items: [
     { label: "Purchases", href: "/purchases", perms: ["purchases.create", "purchases.cancel", "suppliers.view"] },
     { label: "New purchase", href: "/purchases/new", perms: ["purchases.create"] },
+    { label: "Market purchases", href: "/market", perms: ["stock.manage", "accounts.edit", "reports.view", "sales.create"] },
   ] },
   { label: "Settings", items: [
     { label: "Stock Settings", href: "/settings#stock-settings", perms: ["settings.edit"] },

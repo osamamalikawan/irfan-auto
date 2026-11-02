@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { rs } from "@/lib/format";
 import { telLink, waLink } from "@/lib/phone";
+import CustomerDeals from "./CustomerDeals";
 import LedgerSection from "./LedgerSection";
 import VisitHistory from "./VisitHistory";
 import { MoveModal } from "./CustomersList";
@@ -146,6 +147,7 @@ export default function CustomerDetail({ id }: { id: string }) {
           </ul>
         </section>
         <div className="space-y-3 lg:col-span-2">
+          {(can("sales.discount") || can("settings.edit") || can("customers.edit")) && <CustomerDeals customerId={id} customerName={c.name} />}
           <VisitHistory customerId={id} />
           <LedgerSection customerId={id} customerName={c.name} isWalkIn={c.is_walk_in} />
         </div>

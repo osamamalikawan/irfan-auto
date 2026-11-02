@@ -9,7 +9,7 @@ import { Loading, LoadingBar, Spinner } from "./Loading";
 import PaySplit, { newRow, paysTotal, toPayments, usePaymentMethods, type PayRow } from "./PaySplit";
 
 export type Prod = { id: string; name_en: string; code_name: string | null; name_ur: string | null; unit: string; cp: number; scheme: string | null; on_hand: number; racks: string[] };
-type Line = { key: string; p: Prod; qty: string; price: string; disc: string };
+type Line = { key: string; p: Prod; qty: string; price: string; disc: string; market?: { cost: number; vendor: string } };
 type Cust = { id: string; name: string; is_walk_in: boolean; credit_limit: number; balance: number; route: string | null };
 
 const freeFor = (p: Prod, q: number) => {
@@ -28,6 +28,7 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
   const [cust, setCust] = useState<Cust | null>(null);
   const [pickCust, setPickCust] = useState(false);
   const [pickProd, setPickProd] = useState(false);
+  const [pickMkt, setPickMkt] = useState(false);
   const [lines, setLines] = useState<Line[]>([]);
   const [defPct, setDefPct] = useState<Record<string, number>>({});
   const [discount, setDiscount] = useState("");
@@ -85,7 +86,7 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
 
   function addProduct(p: Prod) {
     setLines((ls) => {
-      const i = ls.findIndex((l) => l.p.id === p.id);
+      const i = ls.findIndex((l) => l.p.id === p.id && !l.market);
       if (i >= 0) return ls.map((l, j) => (j === i ? { ...l, qty: String(money(l.qty) + 1) } : l));
       return [...ls, { key: crypto.randomUUID(), p, qty: "1", price: "", disc: "" }];
     });
@@ -95,7 +96,7 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
   const calc = lines.map((l) => {
     const q = money(l.qty), price = l.price !== "" ? money(l.price) : l.p.cp, pct = l.disc !== "" ? money(l.disc) : defPct[l.p.id] ?? 0;
     const free = freeFor(l.p, q), ld = Math.round((q * price * pct) / 100);
-    return { q, price, pct, free, ld, amount: q * price - ld, short: q + free > l.p.on_hand };
+    return { q, price, pct, free, ld, amount: q * price - ld, short: !l.market && q + free > l.p.on_hand };
   });
   const gross = calc.reduce((s, c) => s + c.q * c.price, 0), ldisc = calc.reduce((s, c) => s + c.ld, 0);
   const total = gross - ldisc - money(discount) + Math.round(money(bilti)) + Math.round(money(local));
@@ -119,7 +120,7 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
       customer_id: cust.id, kind, term, hold: mode === "hold", idem_key: idem, discount: money(discount), bilti: money(bilti), local_charges: money(local), remarks,
       contact_name: walkIn ? contactName : "", contact_phone: walkIn ? contactPhone : "",
       payments: mode === "hold" ? [] : counter ? counterPays : receiveNow ? toPayments(rows, true, 0) : [],
-      lines: lines.map((l) => ({ product_id: l.p.id, qty: money(l.qty), price: l.price !== "" ? money(l.price) : undefined, disc_pct: l.disc !== "" ? money(l.disc) : undefined })),
+      lines: lines.map((l) => ({ product_id: l.p.id, qty: money(l.qty), price: l.price !== "" ? money(l.price) : undefined, disc_pct: l.disc !== "" ? money(l.disc) : undefined, market: l.market })),
     };
     const r = await fetch("/api/sales", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const j = await r.json().catch(() => ({}));
@@ -198,7 +199,8 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
 
         <section className="card p-4">
           <div className="mb-2 flex items-center justify-between"><h2 className="font-semibold">Items</h2>
-            <button className="btn btn-primary min-h-9 px-3" onClick={() => setPickProd(true)}>＋ Add item</button></div>
+            <div className="flex gap-2">{can("sales.create") && <button className="btn min-h-9 px-3" onClick={() => setPickMkt(true)}>Buy from market</button>}
+              <button className="btn btn-primary min-h-9 px-3" onClick={() => setPickProd(true)}>＋ Add item</button></div></div>
           {!lines.length && <p className="py-3 text-center text-sm text-muted">No items yet. Tap “Add item” and search by name, code or Urdu name.</p>}
           <ul className="divide-y divide-line">
             {lines.map((l, i) => {
@@ -222,9 +224,10 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
                   <div className="mt-1 flex flex-wrap gap-1 text-xs">
                     {c.free > 0 && <span className="pill bg-green-bg text-green">+{c.free} free</span>}
                     {c.pct > 0 && <span className="pill bg-bg text-muted">{c.pct}% off</span>}
+                    {l.market && <span className="pill bg-bg text-ink">Bought from market · cost {rs(l.market.cost)}{l.market.vendor ? " · " + l.market.vendor : ""}</span>}
                     {c.short && <span className="pill bg-amber-bg text-amber">Only {fmtQty(l.p.on_hand)} in stock</span>}
                   </div>
-                  {canDiscount && (
+                  {canDiscount && !l.market && (
                     <details className="mt-1 text-sm">
                       <summary className="cursor-pointer text-muted">Change price or discount</summary>
                       <div className="mt-2 grid grid-cols-2 gap-2">
@@ -282,6 +285,8 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
       </div>
 
       {pickCust && <CustomerPicker allowAdd onPick={chooseCustomer} onClose={() => setPickCust(false)} />}
+
+      {pickMkt && <MarketModal canCreate={can("stock.manage")} onClose={() => setPickMkt(false)} onAdd={(m) => { setLines((ls) => [...ls, { key: crypto.randomUUID(), p: m.p, qty: String(m.qty), price: String(m.price), disc: "", market: { cost: m.cost, vendor: m.vendor } }]); setPickMkt(false); }} />}
       {pickProd && <ProductPicker onAdd={addProduct} inInvoice={Object.fromEntries(lines.map((l) => [l.p.id, money(l.qty)]))} onClose={() => setPickProd(false)} />}
     </div>
   );
@@ -344,6 +349,70 @@ export function ProductPicker({ onAdd, inInvoice, onClose, allowNoPrice }: { onA
         {error && <p role="alert" className="mt-2 text-sm text-red">{error}</p>}
         {!loading && !error && !rows.length && <p className="py-4 text-center text-sm text-muted">No part matches.</p>}
       </div>
+    </div>
+  );
+}
+
+/** A part we do not have in stock: bought from the market at a cost price and sold on this invoice. */
+function MarketModal({ onAdd, onClose, canCreate }: { onAdd: (m: { p: Prod; qty: number; price: number; cost: number; vendor: string }) => void; onClose: () => void; canCreate: boolean }) {
+  const [mode, setMode] = useState<"existing" | "new">("existing");
+  const [p, setP] = useState<Prod | null>(null);
+  const [picking, setPicking] = useState(false);
+  const [name, setName] = useState("");
+  const [nameUr, setNameUr] = useState("");
+  const [brand, setBrand] = useState("");
+  const [qty, setQty] = useState("1");
+  const [cost, setCost] = useState("");
+  const [price, setPrice] = useState("");
+  const [vendor, setVendor] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const ok = (mode === "existing" ? !!p : name.trim().length > 0) && money(qty) > 0 && money(cost) > 0 && money(price) > 0;
+
+  async function add() {
+    setBusy(true); setError("");
+    let prod = p;
+    if (mode === "new") {
+      const r = await fetch("/api/inventory/products", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name_en: name, name_ur: nameUr, brand, cp: money(price) }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { setBusy(false); return setError(j.error || "Could not create the part"); }
+      prod = { id: j.id, name_en: name.trim(), code_name: null, name_ur: nameUr.trim() || null, unit: "pc", cp: money(price), scheme: null, on_hand: 0, racks: [] };
+    }
+    setBusy(false);
+    if (prod) onAdd({ p: prod, qty: money(qty), price: money(price), cost: money(cost), vendor: vendor.trim() });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end bg-black/50 lg:items-center" onClick={onClose}>
+      <div role="dialog" aria-label="Buy from market" onClick={(e) => e.stopPropagation()}
+        className="mx-auto max-h-[92dvh] w-full max-w-2xl overflow-auto rounded-t-2xl bg-surface p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] lg:max-w-lg lg:rounded-2xl lg:pb-4">
+        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line lg:hidden" />
+        <h2 className="text-base font-semibold">Buy from market</h2>
+        <p className="mb-3 text-sm text-muted">The part is bought now at your cost price and sold on this invoice. The cost is recorded as a market purchase and an expense.</p>
+        {canCreate && <div className="mb-3 flex gap-2"><button className={"chip " + (mode === "existing" ? "chip-on" : "")} onClick={() => setMode("existing")}>Part in my list</button><button className={"chip " + (mode === "new" ? "chip-on" : "")} onClick={() => setMode("new")}>New part</button></div>}
+        {mode === "existing" ? (
+          <div className="mb-3">{p ? <div className="flex items-center gap-2"><p className="min-w-0 flex-1 font-medium">{p.name_en}</p><button className="btn min-h-9 px-3" onClick={() => setPicking(true)}>Change</button></div>
+            : <button className="btn w-full" onClick={() => setPicking(true)}>Choose part</button>}</div>
+        ) : (
+          <div className="mb-3 space-y-3">
+            <div><label className="label" htmlFor="mk-name">Part name</label><input id="mk-name" className="input" value={name} onChange={(e) => setName(e.target.value)} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="label" htmlFor="mk-ur">Urdu name</label><input id="mk-ur" className="input ur" dir="rtl" value={nameUr} onChange={(e) => setNameUr(e.target.value)} /></div>
+              <div><label className="label" htmlFor="mk-brand">Brand</label><input id="mk-brand" className="input" value={brand} onChange={(e) => setBrand(e.target.value)} /></div>
+            </div>
+          </div>
+        )}
+        <div className="grid grid-cols-3 gap-3">
+          <div><label className="label" htmlFor="mk-qty">Quantity</label><input id="mk-qty" className="input text-center" type="number" inputMode="decimal" min="0" step="any" value={qty} onChange={(e) => setQty(e.target.value)} /></div>
+          <div><label className="label" htmlFor="mk-cost">Cost each (Rs)</label><input id="mk-cost" className="input text-center" type="number" inputMode="decimal" min="0" value={cost} onChange={(e) => setCost(e.target.value)} /></div>
+          <div><label className="label" htmlFor="mk-price">Sell each (Rs)</label><input id="mk-price" className="input text-center" type="number" inputMode="decimal" min="0" value={price} onChange={(e) => setPrice(e.target.value)} /></div>
+        </div>
+        <div className="mt-3"><label className="label" htmlFor="mk-vendor">Bought from (shop or person)</label><input id="mk-vendor" className="input" maxLength={80} value={vendor} onChange={(e) => setVendor(e.target.value)} /></div>
+        {ok && <p className="mt-2 text-sm text-muted">Margin on this line: <b className={money(price) - money(cost) < 0 ? "text-red" : "text-green"}>{rs((money(price) - money(cost)) * money(qty))}</b></p>}
+        {error && <p role="alert" className="mt-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end"><button className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={!ok || busy} onClick={add}>{busy ? "Adding…" : "Add to invoice"}</button></div>
+      </div>
+      {picking && <div onClick={(e) => e.stopPropagation()}><ProductPicker allowNoPrice inInvoice={{}} onClose={() => setPicking(false)} onAdd={(x) => { setP(x); if (x.cp > 0 && !price) setPrice(String(x.cp)); setPicking(false); }} /></div>}
     </div>
   );
 }

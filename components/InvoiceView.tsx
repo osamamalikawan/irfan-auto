@@ -12,7 +12,7 @@ import Toast from "./Toast";
 import { PageLoading, Spinner } from "./Loading";
 
 type Item = {
-  id: string; name: string; code_name: string | null; name_ur: string | null; unit: string; qty: number; free: number; price: number; disc_pct: number; line_disc: number;
+  id: string; name: string; market?: boolean; code_name: string | null; name_ur: string | null; unit: string; qty: number; free: number; price: number; disc_pct: number; line_disc: number;
   allocs: { qty: number; location: string; racks: string[] }[];
 };
 type Detail = {
@@ -113,7 +113,7 @@ export default function InvoiceView({ id }: { id: string }) {
               <li key={i.id} className="py-2">
                 <div className="flex items-start gap-2">
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium leading-snug">{i.name}</p>
+                    <p className="font-medium leading-snug">{i.name} {i.market && <span className="pill bg-bg text-muted">Market</span>}</p>
                     {i.name_ur && <p className="ur text-sm text-muted">{i.name_ur}</p>}
                     <p className="text-xs text-muted">{fmtQty(i.qty)} × {rs(i.price)}{Number(i.disc_pct) > 0 ? " − " + i.disc_pct + "%" : ""}{Number(i.free) > 0 ? " · +" + fmtQty(i.free) + " free" : ""}</p>
                     {s.status === "confirmed" && (
