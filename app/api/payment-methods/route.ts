@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 /** Active payment methods for the sales and payment screens. ?all=1 (settings only) also lists hidden ones. */
 export async function GET(req: NextRequest) {
-  const a = await authorize("sales.create", "payments.receive", "settings.edit");
+  const a = await authorize("sales.create", "payments.receive", "payments.request", "settings.edit");
   if (a.error) return a.error;
   const all = req.nextUrl.searchParams.get("all") === "1" && hasPerm(a.user, "settings.edit");
   let q = db().from("payment_methods").select("id,name,active,sort").order("sort").order("name");

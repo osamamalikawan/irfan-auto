@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { SignJWT, jwtVerify } from "jose";
 import { db } from "./supabase";
@@ -29,9 +29,16 @@ export function clearSessionCookie(res: NextResponse) {
   res.cookies.set(SESSION_COOKIE, "", { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 0 });
 }
 
+/** The Android app sends "Authorization: Bearer <token>"; the website uses the session cookie. */
+async function sessionToken(): Promise<string | undefined> {
+  const h = (await headers()).get("authorization");
+  if (h && /^bearer\s/i.test(h)) return h.slice(7).trim();
+  return (await cookies()).get(SESSION_COOKIE)?.value;
+}
+
 /** The signed-in user, loaded fresh from the database (so a deactivated user is locked out at once). */
 export async function getUser(): Promise<SessionUser | null> {
-  const uid = await readSession((await cookies()).get(SESSION_COOKIE)?.value);
+  const uid = await readSession(await sessionToken());
   if (!uid) return null;
   const { data } = await db()
     .from("app_users")

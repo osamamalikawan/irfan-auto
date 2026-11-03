@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 /** ?q=&from=YYYY-MM-DD&to=&customer=&status=active|packed|delivered|completed|cancelled&kind=counter|cash|credit&offset=&limit=
  *  Active invoices come first, then the newest. */
 export async function GET(req: NextRequest) {
-  const a = await authorize("sales.create", "payments.receive");
+  const a = await authorize("sales.create", "payments.receive", "orders.request", "returns.request");
   if (a.error) return a.error;
   const sp = req.nextUrl.searchParams;
   const sb = db();

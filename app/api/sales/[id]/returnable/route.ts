@@ -8,7 +8,7 @@ type Ctx = { params: Promise<{ id: string }> };
 
 /** What can still be returned from an invoice, per item. */
 export async function GET(_req: NextRequest, { params }: Ctx) {
-  const a = await authorize("sales.return");
+  const a = await authorize("sales.return", "returns.request");
   if (a.error) return a.error;
   const { id } = await params;
   const sb = db();

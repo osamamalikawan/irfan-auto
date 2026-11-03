@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 /** Lists returned here are only the visible ones (Settings > Price lists). */
 export async function GET() {
-  const a = await authorize("stock.view", "stock.manage", "sales.create");
+  const a = await authorize("stock.view", "stock.manage", "sales.create", "orders.request");
   if (a.error) return a.error;
   const sb = db();
   const [lists, locations, companies, brands] = await Promise.all([
