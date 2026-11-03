@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { BUSINESS } from "@/lib/business";
+import { withArea } from "@/lib/cust";
 import { saleKind } from "@/lib/sale-types";
 
 type Item = {
@@ -29,7 +30,8 @@ const qtyOf = (i: Item) => n(i.qty) + (Number(i.free) > 0 ? "+" + n(i.free) : ""
 const termLabel = (s: Detail["sale"]) => { const k = saleKind(s).key; return k === "counter" ? "Counter Sale" : k === "cash" ? "On Cash" : "On Credit"; };
 
 /** "Hashir Auto - Qasim Bela": the customer with their area. Walk-in customers have no area. */
-const custName = (d: Detail) => (d.customer && !d.customer.is_walk_in && d.customer.area?.name ? d.sale.customer_name + " - " + d.customer.area.name : d.sale.customer_name);
+const custName = (d: Detail) => withArea(d.sale.customer_name, d.customer && !d.customer.is_walk_in ? d.customer.area?.name : null);
+const Logo = ({ src, className }: { src: string | null; className: string }) => (src ? <img src={src} alt="" className={className} /> : null);
 const phoneOf = (d: Detail) => d.sale.contact_phone ?? d.customer?.phone ?? null;
 
 /** Product name on every slip: the Urdu name only. The English name is used only when a product has no Urdu name yet. */
@@ -43,7 +45,7 @@ function Row({ v, l }: { v: string; l: string }) {
   return <div className="flex items-baseline"><span className="w-[7.5em] text-right font-bold">{v}</span><span className="ml-1 font-bold">:{l}</span></div>;
 }
 
-function InvoiceRoll({ d, printedAt }: { d: Detail; printedAt: string }) {
+function InvoiceRoll({ d, printedAt, logo }: { d: Detail; printedAt: string; logo: string | null }) {
   const { sale: s, customer: c } = d;
   const gross = d.items.reduce((x, i) => x + i.qty * i.price, 0);
   const discount = Number(s.line_discount) + Number(s.discount);
@@ -52,6 +54,7 @@ function InvoiceRoll({ d, printedAt }: { d: Detail; printedAt: string }) {
   const odd = d.payments.length > 1 || (d.payments.length === 1 && d.payments[0].method.toLowerCase() !== "cash");
   return (
     <div className="text-[12px] leading-snug text-black">
+      <Logo src={logo} className="mx-auto mb-1 max-h-[20mm] max-w-full object-contain" />
       <p className="text-center text-[20px] font-bold leading-tight">{BUSINESS.name}</p>
       <p className="text-center text-[11px] font-bold uppercase">{BUSINESS.address} - {BUSINESS.phone}</p>
       <p className="text-right text-[11px]">Page 1 of 1</p>
@@ -184,11 +187,12 @@ function DeliveryRoll({ d }: { d: Detail }) {
 const th = "border border-black bg-gray-100 px-2 py-1 font-semibold";
 const td = "border border-black px-2 py-1";
 
-function A4Head({ title, d, right }: { title: string; d: Detail; right?: React.ReactNode }) {
+function A4Head({ title, d, right, logo }: { title: string; d: Detail; right?: React.ReactNode; logo?: string | null }) {
   const s = d.sale;
   return (
     <div className="flex items-start justify-between gap-4 border-b-2 border-black pb-2">
       <div>
+        <Logo src={logo ?? null} className="mb-1 max-h-[18mm] max-w-[60mm] object-contain" />
         <p className="text-[24px] font-bold leading-tight">{BUSINESS.name}</p>
         <p className="text-[11px] font-semibold uppercase">{BUSINESS.address}</p>
         <p className="text-[11px]">Phone: {BUSINESS.phone}</p>
@@ -204,7 +208,7 @@ function A4Head({ title, d, right }: { title: string; d: Detail; right?: React.R
   );
 }
 
-function InvoiceA4({ d, printedAt }: { d: Detail; printedAt: string }) {
+function InvoiceA4({ d, printedAt, logo }: { d: Detail; printedAt: string; logo: string | null }) {
   const { sale: s, customer: c } = d;
   const gross = d.items.reduce((x, i) => x + i.qty * i.price, 0);
   const discount = Number(s.line_discount) + Number(s.discount);
@@ -212,7 +216,7 @@ function InvoiceA4({ d, printedAt }: { d: Detail; printedAt: string }) {
   const line = (l: string, v: string, bold = false) => <div className={"flex justify-between gap-6 py-0.5 " + (bold ? "border-t border-black text-[14px] font-bold" : "")}><span>{l}</span><span>{v}</span></div>;
   return (
     <div className="text-[12px] text-black">
-      <A4Head title="SALES INVOICE" d={d} />
+      <A4Head title="SALES INVOICE" d={d} logo={logo} />
       <div className="mt-2 flex justify-between gap-4">
         <div>
           <p className="text-[10px] uppercase text-gray-600">Customer</p>
@@ -340,6 +344,7 @@ export default function SalePrint({ ids, type, layout: first, embed = false }: {
   const [docs, setDocs] = useState<Detail[] | null>(null);
   const [error, setError] = useState("");
   const [layout, setLayout] = useState(first);
+  const [logo, setLogo] = useState<string | null>(null);
   const printedAt = useMemo(stamp, []);
 
   useEffect(() => {
@@ -351,25 +356,31 @@ export default function SalePrint({ ids, type, layout: first, embed = false }: {
           if (!r.ok) throw new Error(j.error || "Could not load an invoice");
           return j as Detail;
         }));
+        let lg: string | null = null;
+        if (type === "invoice") {
+          lg = await fetch("/api/settings/logo").then((r) => r.json()).then((j) => (typeof j.logo === "string" ? j.logo : null)).catch(() => null);
+          if (lg) await new Promise<void>((done) => { const stop = setTimeout(done, 2500); const fin = () => { clearTimeout(stop); done(); }; const im = new Image(); im.onload = fin; im.onerror = fin; im.src = lg!; });
+        }
+        setLogo(lg);
         setDocs(all);
         await document.fonts?.ready;
         if (embed) setTimeout(() => window.parent.postMessage({ type: "sale-print-ready" }, location.origin), 300);
         else setTimeout(() => window.print(), 400);
       } catch (e) { setError((e as Error).message); }
     })();
-  }, [ids, embed]);
+  }, [ids, embed, type]);
 
   if (error) return <p className="p-4 text-red">{error}</p>;
   if (!docs) return <p className="p-4 text-muted">Preparing…</p>;
   const roll = layout === "roll";
   const slip = (d: Detail) => {
-    if (roll) return type === "invoice" ? <InvoiceRoll d={d} printedAt={printedAt} /> : type === "gateout" ? <GateRoll d={d} /> : <DeliveryRoll d={d} />;
-    return type === "invoice" ? <InvoiceA4 d={d} printedAt={printedAt} /> : type === "gateout" ? <GateA4 d={d} /> : <DeliveryA4 d={d} />;
+    if (roll) return type === "invoice" ? <InvoiceRoll d={d} printedAt={printedAt} logo={logo} /> : type === "gateout" ? <GateRoll d={d} /> : <DeliveryRoll d={d} />;
+    return type === "invoice" ? <InvoiceA4 d={d} printedAt={printedAt} logo={logo} /> : type === "gateout" ? <GateA4 d={d} /> : <DeliveryA4 d={d} />;
   };
 
   return (
     <div className="min-h-dvh bg-white text-black">
-      <style>{`@page { size: ${roll ? "80mm auto" : "A4"}; margin: ${roll ? "2mm" : "10mm"}; } @media print { html, body { background: #fff !important; } }`}</style>
+      <style>{`@page { size: ${roll ? "78mm auto" : "A4"}; margin: ${roll ? "0" : "10mm"}; } @media print { html, body { background: #fff !important; margin: 0 !important; ${roll ? "width: 78mm !important;" : ""} } }`}</style>
       {!embed && (
         <div data-noprint className="flex flex-wrap items-center gap-2 border-b border-gray-300 bg-white p-3">
           <button className="btn btn-primary" onClick={() => window.print()}>Print</button>
@@ -378,7 +389,7 @@ export default function SalePrint({ ids, type, layout: first, embed = false }: {
         </div>
       )}
       {roll ? (
-        <div className="mx-auto w-[72mm]">
+        <div className="mx-auto w-[72mm] max-w-full">
           {docs.map((d, k) => <section key={d.sale.id} className="py-1" style={{ breakAfter: k < docs.length - 1 ? "page" : "auto" }}>{slip(d)}</section>)}
         </div>
       ) : (

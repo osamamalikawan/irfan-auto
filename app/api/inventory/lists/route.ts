@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase";
 import { authorize } from "@/lib/auth";
-import { hasPerm } from "@/lib/permissions";
 import { forgetMarketLists } from "@/lib/market-lists";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +25,6 @@ export async function PATCH(req: NextRequest) {
     forgetMarketLists();
     return NextResponse.json({ ok: true });
   }
-  if (!hasPerm(a.user, "settings.edit")) return NextResponse.json({ error: "You do not have permission for this." }, { status: 403 });
   if (typeof b?.visible !== "boolean") return NextResponse.json({ error: "visible must be true or false" }, { status: 400 });
   const base = db().from("price_lists").update({ visible: b.visible });
   let q: typeof base;

@@ -31,7 +31,8 @@ body{background:var(--bg);color:var(--ink);-webkit-tap-highlight-color:transpare
   .inv-page .btn-primary{background:var(--g-strong);border-color:var(--g-strong);color:#fff}
   .inv-page .input:focus{border-color:var(--g-strong);box-shadow:0 0 0 3px rgb(27 138 74/.25);outline:none}
   .inv-total .btn-primary{background:#fff;border-color:#fff;color:var(--g-strong2);font-weight:700}
-  .inv-total .btn{border-color:rgb(255 255 255/.5)}
+  .inv-total .btn{border-color:rgb(255 255 255/.5);color:var(--ink)}
+  .inv-total .btn-primary{color:var(--g-strong2)}
   .spinner{@apply inline-block size-4 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent align-[-0.15em]}
   .loadbar{@apply relative h-0.5 overflow-hidden rounded-full}
   .loadbar-on{@apply bg-line}

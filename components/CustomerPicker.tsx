@@ -1,12 +1,13 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { withArea } from "@/lib/cust";
 import { rs } from "@/lib/format";
 import { canAddCustomer, hasPerm } from "@/lib/permissions";
 import { useMe } from "./Me";
 import { Loading, LoadingBar, Spinner } from "./Loading";
 
 export type PickedCustomer = { id: string; name: string; is_walk_in?: boolean };
-type Row = { id: string; code: string; name: string; owner: string | null; phone: string | null; balance: number; route: { name: string } | null };
+type Row = { id: string; code: string; name: string; owner: string | null; phone: string | null; balance: number; route: { name: string } | null; area?: { name: string } | null };
 
 /** Bottom sheet (dialog on desktop) to find a customer by name, phone or code. */
 export default function CustomerPicker({ onPick, onClose, allowWalkIn, allowAdd, onlyWithBalance }: {
@@ -64,9 +65,9 @@ export default function CustomerPicker({ onPick, onClose, allowWalkIn, allowAdd,
           )}
           {rows.map((c) => (
             <li key={c.id}>
-              <button className="flex min-h-14 w-full items-center gap-2 py-2 text-left active:bg-bg" onClick={() => onPick({ id: c.id, name: c.name })}>
+              <button className="flex min-h-14 w-full items-center gap-2 py-2 text-left active:bg-bg" onClick={() => onPick({ id: c.id, name: withArea(c.name, c.area?.name) })}>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-semibold">{c.name}</span>
+                  <span className="block truncate font-semibold">{withArea(c.name, c.area?.name)}</span>
                   <span className="block truncate text-xs text-muted">{[c.code, c.owner, c.phone, c.route?.name].filter(Boolean).join(" · ")}</span>
                 </span>
                 {c.balance > 0 && <span className="pill bg-red-bg text-red">Due {rs(c.balance)}</span>}

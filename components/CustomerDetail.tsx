@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { withArea } from "@/lib/cust";
 import { useCallback, useEffect, useState } from "react";
 import { rs } from "@/lib/format";
 import { telLink, waLink } from "@/lib/phone";
@@ -75,7 +76,7 @@ export default function CustomerDetail({ id }: { id: string }) {
     <div>
       <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-line bg-bg px-2 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-4 lg:pt-4">
         <Link href="/customers" className="btn border-0 bg-transparent px-3 text-xl" aria-label="Back">←</Link>
-        <h1 className="min-w-0 flex-1 truncate text-base font-bold">{c.name}</h1>
+        <h1 className="min-w-0 flex-1 truncate text-base font-bold">{withArea(c.name, c.area?.name)}</h1>
         {can("customers.edit") && <Link href={"/customers/" + id + "/edit"} className="btn">Edit</Link>}
       </header>
 

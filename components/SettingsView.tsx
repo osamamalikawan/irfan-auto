@@ -5,6 +5,7 @@ import AddLocationModal from "./AddLocationModal";
 import { useMe } from "./Me";
 import Toast from "./Toast";
 import { Loading } from "./Loading";
+import LogoSetting from "./LogoSetting";
 import PaymentMethodsSetting from "./PaymentMethodsSetting";
 import ThemeSetting from "./ThemeSetting";
 
@@ -105,6 +106,12 @@ export default function SettingsView() {
           <h2 className="mb-1 font-semibold">Appearance</h2>
           <p className="mb-3 text-sm text-muted">Choose how the app looks. This is saved on this device only.</p>
           <ThemeSetting />
+        </section>
+
+        <section className="card p-4">
+          <h2 className="mb-1 font-semibold">Invoice logo</h2>
+          <p className="mb-3 text-sm text-muted">Printed above the shop name on invoices. A wide, simple logo works best.</p>
+          <LogoSetting />
         </section>
 
         <section className="card p-4">

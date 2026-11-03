@@ -12,7 +12,7 @@ export async function GET() {
   const { data, error } = await sb.from("app_settings").select("key,value");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   const out: Record<string, unknown> = { allow_negative_stock: false };
-  for (const r of data ?? []) out[r.key] = r.value;
+  for (const r of data ?? []) if (r.key !== "logo") out[r.key] = r.value;
   out.thresholds = await getThresholds(sb);
   return NextResponse.json({ settings: out });
 }

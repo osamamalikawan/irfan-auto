@@ -5,6 +5,7 @@ import { niceDate } from "@/lib/dates";
 import { qty as fmtQty, rs } from "@/lib/format";
 import CollectModal from "./CollectModal";
 import { useMe } from "./Me";
+import { withArea } from "@/lib/cust";
 import { FULFIL, saleKind, statusPill } from "@/lib/sale-types";
 import PayInvoiceModal from "./PayInvoiceModal";
 import PrintModal, { type PrintJob } from "./PrintModal";
@@ -165,7 +166,7 @@ export default function InvoiceView({ id, autoPrint = false }: { id: string; aut
 
       {job && <PrintModal job={job} onClose={() => setJob(null)} />}
       {payInv && <PayInvoiceModal saleId={id} no={s.no} due={due} onClose={() => setPayInv(false)} onDone={(m) => { setPayInv(false); setToast(m); load(); }} />}
-      {collect && c && <CollectModal customer={{ id: c.id, name: c.name }} onClose={() => setCollect(false)} onDone={(m) => { setCollect(false); setToast(m); load(); }} />}
+      {collect && c && <CollectModal customer={{ id: c.id, name: withArea(c.name, c.area?.name) }} onClose={() => setCollect(false)} onDone={(m) => { setCollect(false); setToast(m); load(); }} />}
       {toast && <Toast msg={toast} onHide={() => setToast("")} />}
     </div>
   );

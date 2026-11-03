@@ -7,7 +7,7 @@ import ListPrintModal from "./ListPrintModal";
 import { useMe } from "./Me";
 import Toast from "./Toast";
 
-type P = { id: string; name_en: string; name_ur: string | null; code_name: string | null; cp: number; scheme: string | null; unit: string; on_hand?: number };
+type P = { id: string; name_en: string; name_ur: string | null; code_name: string | null; cp: number; purchase_price?: number; scheme: string | null; unit: string };
 type Meta = { id: string; name: string; products: number; is_market: boolean };
 const PAGE = 50;
 
@@ -24,6 +24,7 @@ export default function ListView({ id }: { id: string }) {
   const [error, setError] = useState("");
   const [edit, setEdit] = useState<P | "new" | null>(null);
   const [print, setPrint] = useState(false);
+  const [canPP, setCanPP] = useState(false);
   const [toast, setToast] = useState("");
   const req = useRef(0);
 
@@ -40,12 +41,13 @@ export default function ListView({ id }: { id: string }) {
     const n = ++req.current;
     setLoading(true); setError("");
     try {
-      const r = view === "deleted" ? await fetch("/api/inventory/lists/" + id + "/deleted") : await fetch("/api/inventory/products?list=" + id + "&limit=" + PAGE + "&offset=" + offset + "&q=" + encodeURIComponent(q.trim()));
+      const r = view === "deleted" ? await fetch("/api/inventory/lists/" + id + "/deleted") : await fetch("/api/inventory/lists/" + id + "/products?limit=" + PAGE + "&offset=" + offset + "&q=" + encodeURIComponent(q.trim()));
       const j = await r.json();
       if (n !== req.current) return;
       if (!r.ok) throw new Error(j.error || "Could not load the products");
       setItems((prev) => (offset ? [...prev, ...j.items] : j.items));
       setTotal(view === "deleted" ? j.items.length : j.total);
+      if (view === "active") setCanPP(!!j.can_see_pp);
     } catch (e) { if (n === req.current) setError((e as Error).message); }
     finally { if (n === req.current) setLoading(false); }
   }, [id, q, view]);
@@ -91,7 +93,7 @@ export default function ListView({ id }: { id: string }) {
           <table className="w-full min-w-[40rem] border-collapse text-sm">
             <thead><tr className="text-left text-[12.5px] text-muted">
               <th className="border-b border-line px-2 py-1.5 font-semibold">Product</th><th className="border-b border-line px-2 py-1.5 text-right font-semibold">اردو نام</th>
-              <th className="border-b border-line px-2 py-1.5 font-semibold">Code</th><th className="border-b border-line px-2 py-1.5 text-right font-semibold">Price</th>
+              <th className="border-b border-line px-2 py-1.5 font-semibold">Code</th><th className="border-b border-line px-2 py-1.5 text-right font-semibold">Price</th>{canPP && view === "active" && <th className="border-b border-line px-2 py-1.5 text-right font-semibold">PP</th>}
               <th className="border-b border-line px-2 py-1.5 font-semibold">Scheme</th><th className="border-b border-line px-2 py-1.5" />
             </tr></thead>
             <tbody>
@@ -101,6 +103,7 @@ export default function ListView({ id }: { id: string }) {
                   <td className="ur border-b border-line px-2 py-2 text-right">{p.name_ur}</td>
                   <td className="border-b border-line px-2 py-2 text-muted">{p.code_name}</td>
                   <td className="whitespace-nowrap border-b border-line px-2 py-2 text-right">{rs(p.cp)}</td>
+                  {canPP && view === "active" && <td className="whitespace-nowrap border-b border-line px-2 py-2 text-right text-muted">{rs(p.purchase_price ?? 0)}</td>}
                   <td className="border-b border-line px-2 py-2">{p.scheme && <span className="pill border border-amber bg-amber-bg font-bold text-amber">{p.scheme}</span>}</td>
                   <td className="whitespace-nowrap border-b border-line px-2 py-2 text-right">
                     {canEdit && (view === "active"
@@ -118,15 +121,15 @@ export default function ListView({ id }: { id: string }) {
         {view === "active" && items.length < total && <button className="btn" disabled={loading} onClick={() => load(items.length)}>{loading ? <><Spinner /> Loading…</> : "Load more (" + (total - items.length) + " left)"}</button>}
       </div>
 
-      {edit && meta && <ProductModal listName={meta.name} product={edit === "new" ? null : edit} onClose={() => setEdit(null)} onSaved={(msg) => { setEdit(null); setToast(msg); load(0); loadMeta(); }} />}
+      {edit && meta && <ProductModal canPP={canPP} listName={meta.name} product={edit === "new" ? null : edit} onClose={() => setEdit(null)} onSaved={(msg) => { setEdit(null); setToast(msg); load(0); loadMeta(); }} />}
       {print && meta && <ListPrintModal listId={id} name={meta.name} onClose={() => setPrint(false)} />}
       {toast && <Toast msg={toast} onHide={() => setToast("")} />}
     </div>
   );
 }
 
-function ProductModal({ listName, product, onClose, onSaved }: { listName: string; product: P | null; onClose: () => void; onSaved: (msg: string) => void }) {
-  const [f, setF] = useState({ name_en: product?.name_en ?? "", name_ur: product?.name_ur ?? "", code_name: product?.code_name ?? "", cp: product ? String(product.cp) : "", scheme: product?.scheme ?? "", unit: product?.unit ?? "pc" });
+function ProductModal({ canPP, listName, product, onClose, onSaved }: { canPP: boolean; listName: string; product: P | null; onClose: () => void; onSaved: (msg: string) => void }) {
+  const [f, setF] = useState({ name_en: product?.name_en ?? "", name_ur: product?.name_ur ?? "", code_name: product?.code_name ?? "", cp: product ? String(product.cp) : "", purchase_price: product?.purchase_price ? String(product.purchase_price) : "", scheme: product?.scheme ?? "", unit: product?.unit ?? "pc" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF((x) => ({ ...x, [k]: e.target.value }));
@@ -139,7 +142,8 @@ function ProductModal({ listName, product, onClose, onSaved }: { listName: strin
     e.preventDefault();
     if (!f.name_en.trim()) return setError("Enter the product name.");
     setBusy(true); setError("");
-    const body = { ...f, cp: Number(f.cp) || 0, ...(product ? {} : { list: listName }) };
+    const { purchase_price, ...rest } = f;
+    const body = { ...rest, cp: Number(f.cp) || 0, ...(canPP ? { purchase_price: Number(purchase_price) || 0 } : {}), ...(product ? {} : { list: listName }) };
     const r = await fetch(product ? "/api/inventory/products/" + product.id : "/api/inventory/products", { method: product ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const j = await r.json().catch(() => ({}));
     setBusy(false);
@@ -157,6 +161,7 @@ function ProductModal({ listName, product, onClose, onSaved }: { listName: strin
         <div className="col-span-2"><label className="label" htmlFor="lp-ur">Name (Urdu)</label><input id="lp-ur" className="input ur" value={f.name_ur} onChange={set("name_ur")} maxLength={200} /></div>
         {field("code_name", "Code", { maxLength: 80 })}
         {field("cp", "Price (Rs)", { inputMode: "decimal" })}
+        {canPP && field("purchase_price", "Purchase price, PP (Rs)", { inputMode: "decimal" })}
         {field("scheme", "Scheme (for example 9+1)", { maxLength: 20 })}
         {field("unit", "Unit", { maxLength: 20 })}
         {error && <p role="alert" className="col-span-2 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}

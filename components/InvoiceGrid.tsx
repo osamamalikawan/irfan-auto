@@ -1,6 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { withArea } from "@/lib/cust";
 import { qty as fmtQty, rs } from "@/lib/format";
 import CustomerPicker, { type PickedCustomer } from "./CustomerPicker";
 import { MarketModal, ProductPicker, type Prod } from "./InvoiceBuilder";
@@ -18,8 +19,8 @@ import PaySplit, { newRow, paysTotal, toPayments, usePaymentMethods, type PayRow
 
 type Row = { key: string; p?: Prod; q: string; price: string; disc: string; market?: MarketInfo };
 type Hist = { days_ago: number; price: number; qty: number };
-type Cust = { id: string; name: string; is_walk_in: boolean; credit_limit: number; balance: number; route: string | null };
-type CustHit = { id: string; code: string; name: string; owner: string | null; phone: string | null; balance: number; route: { name: string } | null };
+type Cust = { id: string; name: string; area: string | null; is_walk_in: boolean; credit_limit: number; balance: number; route: string | null };
+type CustHit = { id: string; code: string; name: string; owner: string | null; phone: string | null; balance: number; route: { name: string } | null; area?: { name: string } | null };
 
 const blank = (): Row => ({ key: crypto.randomUUID(), q: "", price: "", disc: "" });
 const money = (v: string) => (v === "" || !Number.isFinite(Number(v)) ? 0 : Number(v));
@@ -96,7 +97,7 @@ export default function InvoiceGrid({ customerId }: { customerId?: string }) {
     const j = await r.json();
     if (!r.ok) return setError(j.error || "Could not load the customer");
     const x = j.customer;
-    setCust({ id: x.id, name: x.name, is_walk_in: !!x.is_walk_in, credit_limit: Number(x.credit_limit), balance: Number(x.balance), route: x.route?.name ?? null });
+    setCust({ id: x.id, name: x.name, area: x.area?.name ?? null, is_walk_in: !!x.is_walk_in, credit_limit: Number(x.credit_limit), balance: Number(x.balance), route: x.route?.name ?? null });
     if (thenFocus) focus("prod:0");
   }, [focus]);
   const useWalkIn = useCallback(async (thenFocus = false) => {
@@ -360,7 +361,10 @@ export default function InvoiceGrid({ customerId }: { customerId?: string }) {
         </div>
 
         <div className="inv-card grid grid-cols-4 gap-3 p-4">
-          {canDiscount && <div><label className="label" htmlFor="g-disc">Discount (Rs)</label><input id="g-disc" ref={reg("disc")} className="input text-right" inputMode="decimal" value={discount} onChange={(e) => setDiscount(e.target.value.replace(/[^\d.]/g, ""))} onKeyDown={enterTo("disc")} /></div>}
+          {canDiscount && <div><label className="label" htmlFor="g-disc">Discount (Rs)</label>
+            <input id="g-disc" ref={reg("disc")} className="input text-right font-semibold" inputMode="decimal" value={ldisc + money(discount) > 0 ? String(ldisc + money(discount)) : ""} placeholder="0"
+              onChange={(e) => { const t = e.target.value.replace(/[^\d.]/g, ""); setDiscount(t === "" ? "" : String(Math.max(0, Number(t) - ldisc))); }} onKeyDown={enterTo("disc")} />
+            {ldisc > 0 && <p className="mt-0.5 text-[11px] text-muted">Items {rs(ldisc)}{money(discount) > 0 ? " + extra " + rs(money(discount)) : ""}</p>}</div>}
           <div><label className="label" htmlFor="g-local">Local charges</label><input id="g-local" ref={reg("local")} className="input text-right" inputMode="numeric" placeholder="inside city" value={local} onChange={(e) => setLocal(e.target.value.replace(/[^\d]/g, ""))} onKeyDown={enterTo("local")} /></div>
           <div><label className="label" htmlFor="g-bilti">Bilti</label><input id="g-bilti" ref={reg("bilti")} className="input text-right" inputMode="numeric" placeholder="outside city" value={bilti} onChange={(e) => setBilti(e.target.value.replace(/[^\d]/g, ""))} onKeyDown={enterTo("bilti")} /></div>
           <div className={canDiscount ? "" : "col-span-2"}><label className="label" htmlFor="g-rem">Remarks</label><input id="g-rem" ref={reg("remarks")} className="input" maxLength={500} placeholder="BY HAND" value={remarks} onChange={(e) => setRemarks(e.target.value)} onKeyDown={enterTo("remarks")} /></div>
@@ -484,9 +488,9 @@ function CustomerBox({ cust, kind, reg, onPick, onEmptyEnter }: { cust: Cust | n
   const typed = (q ?? "").trim();
   const { items, ready } = useSearch<CustHit>("/api/customers", typed, typed.length > 0);
   useEffect(() => { setAt(0); }, [items]);
-  const choose = useCallback((c: CustHit) => { setQ(null); setOpen(false); setWait(false); onPick({ id: c.id, name: c.name }); }, [onPick]);
+  const choose = useCallback((c: CustHit) => { setQ(null); setOpen(false); setWait(false); onPick({ id: c.id, name: withArea(c.name, c.area?.name) }); }, [onPick]);
   useEffect(() => { if (wait && ready && items.length) choose(items[Math.min(at, items.length - 1)]); else if (wait && ready) setWait(false); }, [wait, ready, items, at, choose]);
-  const shown = q ?? (cust ? (cust.is_walk_in ? "Walk-in customer" : cust.name) : "");
+  const shown = q ?? (cust ? (cust.is_walk_in ? "Walk-in customer" : withArea(cust.name, cust.area)) : "");
 
   return (
     <div className="relative">
@@ -511,7 +515,7 @@ function CustomerBox({ cust, kind, reg, onPick, onEmptyEnter }: { cust: Cust | n
           {items.map((c, k) => (
             <li key={c.id} role="option" aria-selected={k === at} onMouseDown={(e) => { e.preventDefault(); choose(c); }} onMouseEnter={() => setAt(k)}
               className={"flex cursor-pointer items-center gap-3 rounded-lg px-3 py-1.5 text-sm " + (k === at ? "bg-accent text-accent-ink" : "")}>
-              <span className="min-w-0 flex-1 truncate font-medium">{c.name}</span>
+              <span className="min-w-0 flex-1 truncate font-medium">{withArea(c.name, c.area?.name)}</span>
               <span className={"w-28 shrink-0 truncate text-xs " + (k === at ? "" : "text-muted")}>{c.route?.name ?? c.code}</span>
               <span className={"w-24 shrink-0 text-right text-xs " + (k === at ? "" : c.balance > 0 ? "text-red" : "text-muted")}>{c.balance ? rs(c.balance) : ""}</span>
             </li>

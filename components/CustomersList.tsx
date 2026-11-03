@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { withArea } from "@/lib/cust";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { rs } from "@/lib/format";
 import { telLink } from "@/lib/phone";
@@ -111,7 +112,7 @@ export default function CustomersList() {
           <li key={c.id} className="card p-3">
             <Link href={"/customers/" + c.id} className="block active:opacity-70">
               <div className="flex items-start gap-2">
-                <p className="min-w-0 flex-1 font-semibold leading-snug">{c.name}</p>
+                <p className="min-w-0 flex-1 font-semibold leading-snug">{withArea(c.name, c.area?.name)}</p>
                 <span className="shrink-0 text-xs text-muted">{c.code}</span>
               </div>
               {c.name_ur && <p className="ur text-sm text-muted">{c.name_ur}</p>}
@@ -151,7 +152,7 @@ export default function CustomersList() {
                   <td className="border-b border-line px-2 py-2">{canSelect && <input type="checkbox" className="size-4" checked={sel.has(c.id)} onChange={() => toggle(c.id)} aria-label={"Select " + c.name} />}</td>
                   <td className="whitespace-nowrap border-b border-line px-2 py-2 text-muted">{c.code}</td>
                   <td className="border-b border-line px-2 py-2">
-                    <Link href={"/customers/" + c.id} className="font-semibold hover:underline">{c.name}</Link>
+                    <Link href={"/customers/" + c.id} className="font-semibold hover:underline">{withArea(c.name, c.area?.name)}</Link>
                     {c.name_ur && <div className="ur text-[13px] leading-8 text-muted">{c.name_ur}</div>}
                     <div className="text-xs text-muted">{[c.owner, c.phone].filter(Boolean).join(" · ")}</div>
                     {c.last_remark && <div className="max-w-xs truncate text-xs italic text-muted" title={c.last_remark}>“{c.last_remark}”</div>}

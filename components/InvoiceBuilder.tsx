@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { withArea } from "@/lib/cust";
 import { qty as fmtQty, rs } from "@/lib/format";
 import CustomerPicker, { type PickedCustomer } from "./CustomerPicker";
 import { useMe } from "./Me";
@@ -10,7 +11,7 @@ import PaySplit, { newRow, paysTotal, toPayments, usePaymentMethods, type PayRow
 
 export type Prod = { id: string; name_en: string; code_name: string | null; name_ur: string | null; unit: string; cp: number; scheme: string | null; on_hand: number; racks: string[]; list_name?: string | null; market_list?: boolean };
 type Line = { key: string; p: Prod; qty: string; price: string; disc: string; market?: { cost: number; vendor: string } };
-type Cust = { id: string; name: string; is_walk_in: boolean; credit_limit: number; balance: number; route: string | null };
+type Cust = { id: string; name: string; area: string | null; is_walk_in: boolean; credit_limit: number; balance: number; route: string | null };
 
 const freeFor = (p: Prod, q: number) => {
   const m = /^(\d+)\+(\d+)$/.exec(p.scheme ?? "");
@@ -54,7 +55,7 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
     const j = await r.json();
     if (!r.ok) return setError(j.error || "Could not load the customer");
     const x = j.customer;
-    setCust({ id: x.id, name: x.name, is_walk_in: !!x.is_walk_in, credit_limit: Number(x.credit_limit), balance: Number(x.balance), route: x.route?.name ?? null });
+    setCust({ id: x.id, name: x.name, area: x.area?.name ?? null, is_walk_in: !!x.is_walk_in, credit_limit: Number(x.credit_limit), balance: Number(x.balance), route: x.route?.name ?? null });
   }
   async function useWalkIn() {
     setError("");
@@ -162,7 +163,7 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
             <div className="space-y-3">
               <div className="flex items-start gap-2">
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold">{walkIn ? "Walk-in customer" : cust.name}{walkIn && <span className="ml-2 pill bg-bg text-muted">Counter</span>}</p>
+                  <p className="font-semibold">{walkIn ? "Walk-in customer" : withArea(cust.name, cust.area)}{walkIn && <span className="ml-2 pill bg-bg text-muted">Counter</span>}</p>
                   {!walkIn && (
                     <p className="text-sm text-muted">{cust.route ? cust.route + " · " : ""}Balance <b className={cust.balance > 0 ? "text-red" : "text-ink"}>{rs(cust.balance)}</b>{cust.credit_limit > 0 ? " · limit " + rs(cust.credit_limit) : ""}</p>
                   )}
