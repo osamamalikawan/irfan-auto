@@ -24,7 +24,7 @@ export default function BottomNav() {
     { href: "/customers", label: "Customers", icon: "☺", on: path.startsWith("/customers"), show: customers },
   ].filter((i) => i.show);
   const groups = visibleMenu(user);
-  const moreOn = ["/users", "/settings", "/account", "/returns", "/dispatch", "/expenses", "/vouchers", "/purchases", "/suppliers", "/accounts", "/planner", "/route-plans", "/routes", "/team", "/approvals", "/attendance", "/tracking", "/salesman-cash"].some((p) => path.startsWith(p));
+  const moreOn = ["/users", "/settings", "/account", "/returns", "/dispatch", "/expenses", "/vouchers", "/purchases", "/suppliers", "/accounts", "/planner", "/route-plans", "/routes", "/team", "/my-day", "/approvals", "/attendance", "/tracking", "/salesman-cash"].some((p) => path.startsWith(p));
 
   async function signOut() {
     await fetch("/api/auth/logout", { method: "POST" });

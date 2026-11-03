@@ -60,6 +60,7 @@ export const MENU: MenuGroup[] = [
     { label: "User & Roles", href: "/users?tab=roles", perms: ["users.manage"] },
   ] },
   { label: "Field Team", items: [
+    { label: "Start work", href: "/my-day", perms: ["attendance.mark"] },
     { label: "Approvals", href: "/approvals", perms: ["requests.approve"] },
     { label: "Attendance", href: "/attendance", perms: ["attendance.view"] },
     { label: "Live map", href: "/tracking", perms: ["tracking.view"] },
