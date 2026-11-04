@@ -1,0 +1,6 @@
+<resources>
+    <color name="white">#FFFFFFFF</color>
+    <color name="brand">#FF1F4E8C</color>
+    <color name="brand_dark">#FF163A6A</color>
+    <color name="ic_launcher_background">#FF1F4E8C</color>
+</resources>
