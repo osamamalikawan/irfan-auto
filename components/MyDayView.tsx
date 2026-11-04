@@ -31,7 +31,6 @@ export default function MyDayView() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
-  const [lastSent, setLastSent] = useState<string | null>(null);
   const [, tick] = useState(0);
 
   const load = useCallback(async () => {
@@ -55,7 +54,6 @@ export default function MyDayView() {
         const r = await fetch("/api/location", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ pings: [{ ...f, ts: Date.now() }] }) });
         const j = await r.json().catch(() => ({}));
         if (stop || !r.ok) return;
-        setLastSent(new Date().toISOString());
         if (j.on_duty === false) load();
       } catch { /* the next try is in 2 minutes */ }
     }
@@ -72,7 +70,6 @@ export default function MyDayView() {
       const j = await r.json().catch(() => ({}));
       if (!r.ok) return setError(j.error || "Could not save");
       setAtt(j.attendance); setOnDuty(!!j.on_duty);
-      if (kind === "start") setLastSent(new Date().toISOString());
       setToast(kind === "start" ? "Work started. Have a good day." : "Work ended. Thank you.");
     } catch (e) { setError((e as Error).message || "No connection. Try again."); } finally { setBusy(false); }
   }
@@ -94,26 +91,21 @@ export default function MyDayView() {
                   <span className="pill bg-green-bg text-green">On duty</span>
                   <p className="mt-2 text-sm">Started <b>{fmtTime(att.check_in_at)}</b> · <a className="underline" href={mapLink(att.in_lat, att.in_lng)} target="_blank" rel="noreferrer">place</a></p>
                   <p className="text-2xl font-bold">{duration(att.check_in_at)}</p>
-                  <button className="btn mt-3 w-full border-red bg-red-bg text-red" disabled={busy} onClick={() => go("end")}>{busy ? <><Spinner /> Getting location…</> : "End work"}</button>
+                  <button className="btn mt-3 w-full border-red bg-red-bg text-red" disabled={busy} onClick={() => go("end")}>{busy ? <><Spinner /> Ending shift…</> : "End work"}</button>
                 </>
               ) : att?.check_out_at ? (
                 <>
                   <span className="pill bg-bg text-ink">Finished for today</span>
                   <p className="mt-2 text-sm">{fmtTime(att.check_in_at)} to {fmtTime(att.check_out_at)} · {duration(att.check_in_at, att.check_out_at)}</p>
-                  <button className="btn mt-3 w-full" disabled={busy} onClick={() => go("start")}>{busy ? <><Spinner /> Getting location…</> : "Start again"}</button>
+                  <button className="btn mt-3 w-full" disabled={busy} onClick={() => go("start")}>{busy ? <><Spinner /> Starting shift…</> : "Start again"}</button>
                 </>
               ) : (
                 <>
                   <p className="text-muted">You have not started work today.</p>
-                  <button className="btn btn-primary mt-3 min-h-14 w-full text-lg" disabled={busy} onClick={() => go("start")}>{busy ? <><Spinner /> Getting location…</> : "Start work"}</button>
+                  <button className="btn btn-primary mt-3 min-h-14 w-full text-lg" disabled={busy} onClick={() => go("start")}>{busy ? <><Spinner /> Starting shift…</> : "Start work"}</button>
                 </>
               )}
             </div>
-            {onDuty && (
-              <p className="text-sm text-muted">
-                {lastSent ? "Your location was last sent at " + fmtTime(lastSent) + ". " : ""}Keep this page open so the office can see where you are. The phone stops it when the screen locks; the Android app will keep tracking in the background.
-              </p>
-            )}
           </>
         )}
       </div>

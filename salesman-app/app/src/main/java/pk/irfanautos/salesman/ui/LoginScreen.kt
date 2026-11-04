@@ -41,7 +41,7 @@ import pk.irfanautos.salesman.data.UserItem
 @Composable
 fun LoginScreen(onDone: (mustChangePin: Boolean) -> Unit) {
     val scope = rememberCoroutineScope()
-    var server by remember { mutableStateOf(App.prefs.server) }
+    var loadingNames by remember { mutableStateOf(true) }
     var users by remember { mutableStateOf<List<UserItem>>(emptyList()) }
     var picked by remember { mutableStateOf<UserItem?>(null) }
     var pin by remember { mutableStateOf("") }
@@ -50,30 +50,25 @@ fun LoginScreen(onDone: (mustChangePin: Boolean) -> Unit) {
     var menu by remember { mutableStateOf(false) }
 
     suspend fun loadUsers() {
+        loadingNames = true
         error = ""
         try {
-            App.prefs.server = server
             users = Api.users()
-            if (users.isEmpty()) error = "No users found on that server."
+            if (users.isEmpty()) error = "No users found."
         } catch (e: ApiException) {
             error = e.message ?: "Could not load the names."
+        } finally {
+            loadingNames = false
         }
     }
-    LaunchedEffect(Unit) { if (server.isNotBlank()) loadUsers() }
+    LaunchedEffect(Unit) { loadUsers() }
 
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp)) {
         Spacer(Modifier.height(32.dp))
         Text("Irfan Autos", style = MaterialTheme.typography.headlineMedium)
         Text("Salesman app", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 24.dp))
 
-        OutlinedTextField(
-            value = server, onValueChange = { server = it }, label = { Text("Server address") }, singleLine = true,
-            placeholder = { Text("https://your-site.vercel.app") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri), modifier = Modifier.fillMaxWidth(),
-        )
-        OutlinedButton(onClick = { scope.launch { loadUsers() } }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("Load names") }
-
-        Box(Modifier.fillMaxWidth().padding(top = 16.dp)) {
+        Box(Modifier.fillMaxWidth()) {
             OutlinedTextField(
                 value = picked?.name ?: "", onValueChange = {}, readOnly = true, enabled = false, label = { Text("Your name") },
                 modifier = Modifier.fillMaxWidth(),
@@ -84,6 +79,12 @@ fun LoginScreen(onDone: (mustChangePin: Boolean) -> Unit) {
             }
         }
 
+        if (loadingNames) {
+            Text("Loading names...", modifier = Modifier.padding(top = 8.dp))
+        } else if (users.isEmpty()) {
+            OutlinedButton(onClick = { scope.launch { loadUsers() } }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("Try again") }
+        }
+
         OutlinedTextField(
             value = pin, onValueChange = { pin = it.filter(Char::isDigit).take(8) }, label = { Text("PIN") }, singleLine = true,
             visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
@@ -92,12 +93,11 @@ fun LoginScreen(onDone: (mustChangePin: Boolean) -> Unit) {
         if (error.isNotEmpty()) ErrorText(error)
 
         Button(
-            enabled = !busy && picked != null && pin.length >= 4 && server.isNotBlank(),
+            enabled = !busy && picked != null && pin.length >= 4,
             onClick = {
                 picked?.let { u -> scope.launch {
                     busy = true; error = ""
                     try {
-                        App.prefs.server = server
                         val r = Api.login(u.id, pin)
                         val token = r.token ?: throw ApiException(0, "The server did not send a sign-in token. Make sure the website has the latest update.")
                         val p = App.prefs
@@ -108,7 +108,7 @@ fun LoginScreen(onDone: (mustChangePin: Boolean) -> Unit) {
                     } catch (e: ApiException) {
                         error = e.message ?: "Could not sign in."
                     } catch (e: Exception) {
-                        error = "Could not read the server's answer. Check the server address."
+                        error = "Could not read the answer from the website. Please try again."
                     } finally {
                         busy = false
                     }

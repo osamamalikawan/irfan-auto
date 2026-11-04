@@ -5,15 +5,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import pk.irfanautos.salesman.App
-import pk.irfanautos.salesman.BuildConfig
 
 /** Everything the phone remembers: the sign-in, the server address, whether he is on duty, and the offline queues. */
 class Prefs(ctx: Context) {
     private val sp = ctx.getSharedPreferences("salesman", Context.MODE_PRIVATE)
-
-    var server: String
-        get() = sp.getString("server", null) ?: BuildConfig.DEFAULT_SERVER
-        set(v) { sp.edit().putString("server", v.trim().trimEnd('/')).apply() }
 
     var token: String?
         get() = sp.getString("token", null)

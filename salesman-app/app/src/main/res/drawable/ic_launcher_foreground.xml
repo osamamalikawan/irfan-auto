@@ -1,15 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A salesman: head, shirt with a V-neck, and a tie. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
-    <group
-        android:scaleX="0.6"
-        android:scaleY="0.6"
-        android:pivotX="12"
-        android:pivotY="12">
-        <path
-            android:fillColor="#FFFFFFFF"
-            android:pathData="M12,2C8.13,2 5,5.13 5,9c0,5.25 7,13 7,13s7,-7.75 7,-13c0,-3.87 -3.13,-7 -7,-7zM12,11.5c-1.38,0 -2.5,-1.12 -2.5,-2.5s1.12,-2.5 2.5,-2.5 2.5,1.12 2.5,2.5 -1.12,2.5 -2.5,2.5z" />
-    </group>
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- head -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M43,36a11,11 0 1,0 22,0a11,11 0 1,0 -22,0z" />
+    <!-- shoulders and shirt -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30,84C30,67 40,56 54,56C68,56 78,67 78,84Z" />
+    <!-- V-neck opening -->
+    <path
+        android:fillColor="#1F4E8C"
+        android:pathData="M45,56L63,56L54,70Z" />
+    <!-- tie knot and tie -->
+    <path
+        android:fillColor="#FFB300"
+        android:pathData="M50.5,57L57.5,57L56,61L52,61Z" />
+    <path
+        android:fillColor="#FFB300"
+        android:pathData="M52,61L56,61L59,74L54,80L49,74Z" />
 </vector>

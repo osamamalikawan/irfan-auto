@@ -184,17 +184,17 @@ fun HomeScreen(onNav: (String) -> Unit) {
                             Button(
                                 onClick = { toggle(false) }, enabled = !busy, colors = ButtonDefaults.buttonColors(containerColor = Bad),
                                 modifier = Modifier.fillMaxWidth().height(52.dp),
-                            ) { Text(if (busy) "Getting location..." else "End work") }
+                            ) { Text(if (busy) "Ending shift..." else "End work") }
                         }
                         att?.check_out_at != null -> {
                             Text("Finished for today", style = MaterialTheme.typography.titleMedium)
                             Text(fmtTime(att.check_in_at) + " to " + fmtTime(att.check_out_at) + "  -  " + durationText(att.check_in_at, att.check_out_at), modifier = Modifier.padding(vertical = 8.dp))
-                            OutlinedButton(onClick = { requestStart() }, enabled = !busy, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text(if (busy) "Getting location..." else "Start again") }
+                            OutlinedButton(onClick = { requestStart() }, enabled = !busy, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text(if (busy) "Starting shift..." else "Start again") }
                         }
                         else -> {
                             Text("You have not started work today.", modifier = Modifier.padding(bottom = 8.dp))
                             Button(onClick = { requestStart() }, enabled = !busy, modifier = Modifier.fillMaxWidth().height(64.dp)) {
-                                Text(if (busy) "Getting location..." else "Start work", style = MaterialTheme.typography.titleLarge)
+                                Text(if (busy) "Starting shift..." else "Start work", style = MaterialTheme.typography.titleLarge)
                             }
                         }
                     }

@@ -19,6 +19,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import pk.irfanautos.salesman.App
+import pk.irfanautos.salesman.Config
 
 /** `offline` is true when the phone could not reach the server at all (no data, timeout): such requests are kept and retried later. */
 class ApiException(val code: Int, message: String, val offline: Boolean = false) : Exception(message)
@@ -47,8 +48,8 @@ object Api {
         .connectTimeout(20, TimeUnit.SECONDS).readTimeout(40, TimeUnit.SECONDS).writeTimeout(40, TimeUnit.SECONDS).build()
 
     private suspend fun raw(method: String, path: String, body: String? = null, auth: Boolean = true): String = withContext(Dispatchers.IO) {
-        val base = App.prefs.server
-        if (base.isBlank()) throw ApiException(0, "Enter the server address first.")
+        val base = Config.baseUrl
+        if (base.isBlank()) throw ApiException(0, "This app does not have the website address yet. Set it in Config.kt and build the app again.")
         try {
             val rb = Request.Builder().url(base + path).header("Accept", "application/json")
             if (auth) App.prefs.token?.let { rb.header("Authorization", "Bearer $it") }
@@ -65,7 +66,7 @@ object Api {
                 throw ApiException(r.code, msg ?: "The server answered with an error (${r.code}).")
             }
         } catch (e: IllegalArgumentException) {
-            throw ApiException(0, "The server address is not valid. Example: https://your-site.vercel.app")
+            throw ApiException(0, "The website address set in the app (Config.kt) is not valid.")
         } catch (e: IOException) {
             throw ApiException(-1, "No connection. Check your internet and try again.", offline = true)
         }

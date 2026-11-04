@@ -14,10 +14,6 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
-        // The website address the app talks to. Set with:  gradle assembleDebug -PSERVER_URL=https://your-site.vercel.app
-        // (it can also be typed on the sign-in screen)
-        val server = (project.findProperty("SERVER_URL") as String?)?.trim()?.trimEnd('/') ?: ""
-        buildConfigField("String", "DEFAULT_SERVER", "\"$server\"")
     }
 
     buildTypes {
@@ -27,7 +23,6 @@ android {
     }
     buildFeatures {
         compose = true
-        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.14"

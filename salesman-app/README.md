@@ -13,17 +13,21 @@ Kotlin + Jetpack Compose. Talks to the same website/API as the office (`/api/...
 - **My requests**: status of everything sent (waiting / approved / rejected with the office's reason); withdraw a waiting one.
 - **My account**: sales, collections, visits against target; money still to hand over to the office; what customers owe.
 
+## Set the website address (once)
+Open `app/src/main/java/pk/irfanautos/salesman/Config.kt` and replace `PUT-YOUR-WEBSITE-ADDRESS-HERE` with your website address,
+for example `https://irfan-auto.vercel.app` (only the address, no page name after it). On GitHub you can do this in the browser:
+open the file, click the pencil icon, edit the one line, commit.
+
 ## Get the APK (no Android Studio needed)
-1. Push this repo to GitHub (the `salesman-app/` folder and `.github/workflows/salesman-apk.yml`).
-2. GitHub > **Actions** > *Salesman Android APK* > **Run workflow** (type your website address, e.g. `https://irfan-auto.vercel.app`, or leave blank and type it in the app).
+1. Push this repo to GitHub (the `salesman-app/` folder and `.github/workflows/salesman-apk.yml`). Pushing a change inside `salesman-app/` builds the APK by itself.
+2. GitHub > **Actions** > *Salesman Android APK* (you can also press **Run workflow**).
 3. When it turns green, open the run and download **irfan-salesman-apk** (a zip containing `app-debug.apk`).
 4. Send the APK to the salesman's phone (WhatsApp, USB, Drive) and open it. Android asks to allow *Install unknown apps* for that app: allow it.
 
-Or with Android Studio: open the `salesman-app` folder, let it sync, press Run. To set the website address at build time:
-`gradle assembleDebug -PSERVER_URL=https://your-site.vercel.app`.
+Or with Android Studio: open the `salesman-app` folder, let it sync, press Run.
 
 ## First use on the phone
-1. Open the app, type the website address, tap **Load names**, choose the name, enter the PIN.
+1. Open the app, choose your name, enter the PIN.
 2. If the office gave a temporary PIN you are asked to choose your own.
 3. On the home screen tap **Start work** and **allow location**. Choose **Allow / Unrestricted** when asked about battery, so tracking keeps working with the screen off.
 4. Keep GPS (location) switched on while working.

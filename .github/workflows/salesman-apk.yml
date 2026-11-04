@@ -2,14 +2,10 @@ name: Salesman Android APK
 
 # Builds the salesman app. Run it from the GitHub "Actions" tab (Run workflow), or it runs by itself when salesman-app/ changes.
 # The finished APK is under the run's "Artifacts" (irfan-salesman-apk).
-# Optional: add a repository variable SERVER_URL (Settings > Secrets and variables > Actions > Variables) with your site address.
+# The website address is set in salesman-app/app/src/main/java/pk/irfanautos/salesman/Config.kt
 
 on:
   workflow_dispatch:
-    inputs:
-      server_url:
-        description: "Your website address, e.g. https://irfan-auto.vercel.app (optional, can be typed in the app)"
-        required: false
   push:
     paths:
       - "salesman-app/**"
@@ -34,9 +30,7 @@ jobs:
           gradle-version: "8.7"
       - name: Build the APK
         working-directory: salesman-app
-        env:
-          SERVER_URL: ${{ github.event.inputs.server_url || vars.SERVER_URL }}
-        run: gradle assembleDebug --no-daemon "-PSERVER_URL=$SERVER_URL"
+        run: gradle assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
         with:
           name: irfan-salesman-apk
