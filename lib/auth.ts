@@ -30,15 +30,16 @@ export function clearSessionCookie(res: NextResponse) {
 }
 
 /** The Android app sends "Authorization: Bearer <token>"; the website uses the session cookie. */
-async function sessionToken(): Promise<string | undefined> {
+async function sessionToken(): Promise<{ token: string | undefined; viaApp: boolean }> {
   const h = (await headers()).get("authorization");
-  if (h && /^bearer\s/i.test(h)) return h.slice(7).trim();
-  return (await cookies()).get(SESSION_COOKIE)?.value;
+  if (h && /^bearer\s/i.test(h)) return { token: h.slice(7).trim(), viaApp: true };
+  return { token: (await cookies()).get(SESSION_COOKIE)?.value, viaApp: false };
 }
 
 /** The signed-in user, loaded fresh from the database (so a deactivated user is locked out at once). */
 export async function getUser(): Promise<SessionUser | null> {
-  const uid = await readSession(await sessionToken());
+  const { token, viaApp } = await sessionToken();
+  const uid = await readSession(token);
   if (!uid) return null;
   const { data } = await db()
     .from("app_users")
@@ -51,7 +52,9 @@ export async function getUser(): Promise<SessionUser | null> {
   if (!r) return null;
   return {
     id: data.id, name: data.name, roleId: data.role_id, roleName: r.name, perms: r.perms ?? [], ownOnly: !!r.own_only,
-    locationIds: data.location_ids ?? null, isSalesman: !!data.is_salesman, mustChangePin: !!data.must_change_pin,
+    locationIds: data.location_ids ?? null, isSalesman: !!data.is_salesman,
+    // choosing a new PIN is compulsory on the website but optional in the Android app (it offers it and lets him skip)
+    mustChangePin: !viaApp && !!data.must_change_pin,
   };
 }
 

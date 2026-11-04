@@ -20,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -119,9 +120,9 @@ fun LoginScreen(onDone: (mustChangePin: Boolean) -> Unit) {
     }
 }
 
-/** First sign-in with a PIN the office gave: choose your own. */
+/** Choose your own PIN instead of the one the office gave. Optional: he can skip it and do it later from the menu. */
 @Composable
-fun PinScreen(onDone: () -> Unit) {
+fun PinScreen(onDone: () -> Unit, onSkip: () -> Unit) {
     val scope = rememberCoroutineScope()
     var current by remember { mutableStateOf("") }
     var next by remember { mutableStateOf("") }
@@ -133,7 +134,7 @@ fun PinScreen(onDone: () -> Unit) {
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp)) {
         Spacer(Modifier.height(32.dp))
         Text("Choose your own PIN", style = MaterialTheme.typography.headlineSmall)
-        Text("4 to 8 digits that others cannot guess.", modifier = Modifier.padding(bottom = 16.dp))
+        Text("4 to 8 digits that others cannot guess. You can also skip this and do it later from the menu.", modifier = Modifier.padding(bottom = 16.dp))
         OutlinedTextField(current, { current = it.filter(Char::isDigit).take(8) }, label = { Text("Current PIN") }, singleLine = true,
             visualTransformation = PasswordVisualTransformation(), keyboardOptions = numeric, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(next, { next = it.filter(Char::isDigit).take(8) }, label = { Text("New PIN") }, singleLine = true,
@@ -159,5 +160,6 @@ fun PinScreen(onDone: () -> Unit) {
             },
             modifier = Modifier.fillMaxWidth().padding(top = 16.dp).height(52.dp),
         ) { Text(if (busy) "Saving..." else "Save PIN") }
+        TextButton(onClick = onSkip, enabled = !busy, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("Skip for now") }
     }
 }

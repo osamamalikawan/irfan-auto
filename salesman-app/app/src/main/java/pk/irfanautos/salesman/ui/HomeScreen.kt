@@ -158,6 +158,7 @@ fun HomeScreen(onNav: (String) -> Unit) {
         actions = {
             IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, contentDescription = "Menu") }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                DropdownMenuItem(text = { Text("Change PIN") }, onClick = { menu = false; onNav("pin") })
                 DropdownMenuItem(text = { Text("Sign out") }, onClick = {
                     menu = false
                     when {

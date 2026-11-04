@@ -32,7 +32,12 @@ fun AppNav() {
             })
         }
         composable("pin") {
-            PinScreen(onDone = { nav.navigate("home") { popUpTo("pin") { inclusive = true } } })
+            val leave = {
+                // from the home menu: go back to it; right after signing in: go to home
+                if (!nav.popBackStack("home", false)) nav.navigate("home") { popUpTo("pin") { inclusive = true } }
+                Unit
+            }
+            PinScreen(onDone = leave, onSkip = leave)
         }
         composable("home") { HomeScreen(onNav = { nav.navigate(it) }) }
         composable("customers") { CustomersScreen(onBack = { nav.popBackStack() }, onOpen = { nav.navigate("customer/$it") }) }
