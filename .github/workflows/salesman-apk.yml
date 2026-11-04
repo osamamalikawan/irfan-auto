@@ -24,7 +24,11 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - uses: android-actions/setup-android@v3
+      # The GitHub build machine already has the Android SDK; only make sure its licences are accepted.
+      - name: Accept Android SDK licences
+        run: |
+          SDKM="$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | head -1)"
+          if [ -n "$SDKM" ]; then yes | "$SDKM" --licenses > /dev/null || true; fi
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.7"
