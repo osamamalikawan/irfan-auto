@@ -6,6 +6,8 @@ Kotlin + Jetpack Compose. Talks to the same website/API as the office (`/api/...
 - **Start / End work**: saves the salesman's place and time (office sees it under *Field Team > Attendance*).
 - **Live location**: while on duty a foreground service sends his position every 2 minutes (office: *Field Team > Live map*).
   Points taken without internet are kept on the phone and uploaded later.
+- **Location warnings**: if location (GPS) is switched off or the permission is removed while on duty, the home screen shows a red warning with a button
+  to fix it, the notification turns red ("Location is OFF"), and the moment is sent to the office, which sees it on *Live map* and *Attendance*.
 - **Customers**: his own customers with balances, full account statement, unpaid bills.
 - **New order** (temporary invoice), **Collect payment**, **Return / claim**: sent to the office for approval
   (*Field Team > Approvals*). Nothing reaches stock or the customer account until the office approves.
@@ -35,7 +37,7 @@ Or with Android Studio: open the `salesman-app` folder, let it sync, press Run.
 ## Before it works, on the server
 - Run migrations `0016_field_work.sql` and `0018_salesman_account.sql` in Supabase and deploy the latest website.
 - Give each salesman the **Salesman** role (it gets the app permissions from 0016) and put his customers on his routes.
-- Only after testing: run `0017_salesman_approval_switch.sql` so salesmen can no longer invoice directly on the website.
+- Only after testing: run `0021_salesman_approval_switch.sql` so salesmen can no longer invoice directly on the website.
 
 ## Notes
 - Needs Android 8.0 or newer and Google Play services (for location).

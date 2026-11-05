@@ -1,16 +1,16 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { todayPk } from "@/lib/dates";
-import { fmtTime, mapLink, minutesSince, timeAgo } from "@/lib/field-ui";
+import { fmtTime, mapLink, minutesSince, offLabel, timeAgo, type OffPeriod } from "@/lib/field-ui";
 import { Loading } from "./Loading";
 
-type Loc = { user_id: string; name: string; lat: number | null; lng: number | null; accuracy: number | null; recorded_at: string | null; battery: number | null; on_duty: boolean; check_in_at: string | null; check_out_at: string | null };
+type Loc = { user_id: string; name: string; lat: number | null; lng: number | null; accuracy: number | null; recorded_at: string | null; battery: number | null; on_duty: boolean; check_in_at: string | null; check_out_at: string | null; location_issue: string | null; issue_since: string | null };
 type Pt = { recorded_at: string; lat: number; lng: number; accuracy: number | null; battery: number | null };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Leaf = any; // the Leaflet map library is loaded from a CDN when this page opens, so it adds nothing to the app bundle
 
 const STALE_MIN = 15;
-const GREEN = "#1b8a4a", AMBER = "#d9a400", GREY = "#7a8699";
+const GREEN = "#1b8a4a", AMBER = "#d9a400", GREY = "#7a8699", RED = "#c62828";
 
 let leafletReady: Promise<Leaf> | null = null;
 function loadLeaflet(): Promise<Leaf> {
@@ -33,7 +33,7 @@ function loadLeaflet(): Promise<Leaf> {
   return leafletReady;
 }
 
-const colour = (l: Loc) => (!l.on_duty ? GREY : minutesSince(l.recorded_at) > STALE_MIN ? AMBER : GREEN);
+const colour = (l: Loc) => (!l.on_duty ? GREY : l.location_issue ? RED : minutesSince(l.recorded_at) > STALE_MIN ? AMBER : GREEN);
 
 export default function TrackingView({ initialUser, initialDate }: { initialUser?: string; initialDate?: string }) {
   const [locs, setLocs] = useState<Loc[] | null>(null);
@@ -41,6 +41,7 @@ export default function TrackingView({ initialUser, initialDate }: { initialUser
   const [sel, setSel] = useState<string | null>(initialUser ?? null);
   const [date, setDate] = useState(initialDate ?? todayPk());
   const [trail, setTrail] = useState<Pt[] | null>(null);
+  const [periods, setPeriods] = useState<OffPeriod[]>([]);
   const [L, setL] = useState<Leaf>(null);
   const [mapErr, setMapErr] = useState("");
   const el = useRef<HTMLDivElement>(null);
@@ -76,6 +77,13 @@ export default function TrackingView({ initialUser, initialDate }: { initialUser
   }, [sel, date]);
 
   useEffect(() => {
+    if (!sel) { setPeriods([]); return; }
+    let live = true;
+    fetch("/api/location/events?user=" + sel + "&from=" + date + "&to=" + date).then((r) => r.json()).then((j) => { if (live) setPeriods(j.periods ?? []); }).catch(() => { if (live) setPeriods([]); });
+    return () => { live = false; };
+  }, [sel, date]);
+
+  useEffect(() => {
     const m = map.current, g = layer.current;
     if (!L || !m || !g || !locs) return;
     g.clearLayers();
@@ -101,7 +109,7 @@ export default function TrackingView({ initialUser, initialDate }: { initialUser
     <div>
       <header className="sticky top-0 z-20 border-b border-line bg-bg px-3 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-5 lg:pt-4">
         <h1 className="text-lg font-bold lg:hidden">Live map</h1>
-        <p className="text-sm text-muted">Where each salesman was last seen. <span style={{ color: GREEN }}>●</span> on duty <span style={{ color: AMBER }}>●</span> no update for {STALE_MIN}+ min <span style={{ color: GREY }}>●</span> off duty. Updates every 30 seconds.</p>
+        <p className="text-sm text-muted">Where each salesman was last seen. <span style={{ color: GREEN }}>●</span> on duty <span style={{ color: AMBER }}>●</span> no update for {STALE_MIN}+ min <span style={{ color: RED }}>●</span> location turned off <span style={{ color: GREY }}>●</span> off duty. Updates every 30 seconds.</p>
       </header>
 
       <div className="space-y-3 p-3 lg:grid lg:grid-cols-3 lg:items-start lg:gap-4 lg:space-y-0 lg:px-5">
@@ -129,7 +137,9 @@ export default function TrackingView({ initialUser, initialDate }: { initialUser
                       {l.recorded_at ? <>Last seen <b className={stale ? "text-red" : "text-ink"}>{timeAgo(l.recorded_at)}</b> ({fmtTime(l.recorded_at)})</> : "No location received yet"}
                       {l.battery != null && <> · battery {l.battery}%</>}{l.accuracy != null && <> · ±{Math.round(l.accuracy)} m</>}
                     </p>
-                    {stale && <p className="text-xs text-red">No update for a while. The phone may be off, offline, or the app was closed.</p>}
+                    {l.on_duty && l.location_issue
+                      ? <p className="text-sm font-semibold text-red">{l.location_issue === "permission_off" ? "Location permission removed" : "Location turned OFF"} since {fmtTime(l.issue_since)}. The phone cannot send its position.</p>
+                      : stale && <p className="text-xs text-red">No update for a while. The phone may be off, offline, or the app was closed.</p>}
                   </button>
                   {l.user_id === sel && (
                     <div className="card mt-1 space-y-2 p-3">
@@ -140,6 +150,12 @@ export default function TrackingView({ initialUser, initialDate }: { initialUser
                       {trail === null ? <Loading label="Loading route…" className="py-2" /> : trail.length
                         ? <p className="text-sm text-muted">{trail.length} points from {fmtTime(trail[0].recorded_at)} to {fmtTime(trail[trail.length - 1].recorded_at)}.</p>
                         : <p className="text-sm text-muted">No route recorded for this day.</p>}
+                      {periods.length > 0 && (
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold">Location problems on this day</p>
+                          {periods.map((p, i) => <p key={i} className="text-sm text-red">{offLabel(p)}</p>)}
+                        </div>
+                      )}
                     </div>
                   )}
                 </li>

@@ -24,3 +24,11 @@ export function duration(fromIso: string, toIso?: string | null, now = Date.now(
   return Math.floor(m / 60) + " h " + (m % 60) + " min";
 }
 export const mapLink = (lat: number, lng: number) => "https://www.google.com/maps?q=" + lat + "," + lng;
+
+/** A stretch of time during which a salesman's location was off (see /api/location/events). */
+export type OffPeriod = { user_id: string; user_name: string; date: string; kind: "location" | "permission"; from: string; to: string | null; minutes: number; ongoing: boolean };
+export function offLabel(p: OffPeriod): string {
+  const what = p.kind === "permission" ? "Location permission removed" : "Location turned off";
+  const len = p.minutes >= 60 ? Math.floor(p.minutes / 60) + " h " + (p.minutes % 60) + " min" : p.minutes + " min";
+  return p.to ? what + " " + fmtTime(p.from) + " to " + fmtTime(p.to) + " (" + len + ")" : what + " at " + fmtTime(p.from) + ", still off (" + len + " so far)";
+}

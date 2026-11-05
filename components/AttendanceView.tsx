@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { addDays, niceDate, todayPk, weekStart } from "@/lib/dates";
-import { duration, fmtTime, mapLink } from "@/lib/field-ui";
+import { duration, fmtTime, mapLink, offLabel, type OffPeriod } from "@/lib/field-ui";
 import { Loading } from "./Loading";
 import { useMe } from "./Me";
 
@@ -20,6 +20,7 @@ export default function AttendanceView() {
   const [cTo, setCTo] = useState("");
   const [rows, setRows] = useState<Row[] | null>(null);
   const [men, setMen] = useState<Man[]>([]);
+  const [off, setOff] = useState<OffPeriod[]>([]);
   const [error, setError] = useState("");
   const today = todayPk();
   const [from, to] = useMemo(() => {
@@ -36,6 +37,7 @@ export default function AttendanceView() {
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || "Could not load attendance");
       setRows(j.items ?? []); setMen(j.salesmen ?? []); setError("");
+      fetch("/api/location/events?from=" + from + "&to=" + to).then((x) => (x.ok ? x.json() : null)).then((e) => setOff(e?.periods ?? [])).catch(() => setOff([]));
     } catch (e) { setError((e as Error).message); setRows((x) => x ?? []); }
   }, [from, to]);
   useEffect(() => { load(); }, [load]);
@@ -94,6 +96,7 @@ export default function AttendanceView() {
                         <p className="mt-1 text-sm">Started <b>{fmtTime(r.check_in_at)}</b> · <a className="underline" href={mapLink(r.in_lat, r.in_lng)} target="_blank" rel="noreferrer">place</a>{r.in_accuracy != null && <span className="text-xs text-muted"> (±{Math.round(r.in_accuracy)} m)</span>}</p>
                         {r.check_out_at && r.out_lat != null && r.out_lng != null && <p className="text-sm">Finished <b>{fmtTime(r.check_out_at)}</b> · <a className="underline" href={mapLink(r.out_lat, r.out_lng)} target="_blank" rel="noreferrer">place</a>{r.out_accuracy != null && <span className="text-xs text-muted"> (±{Math.round(r.out_accuracy)} m)</span>}</p>}
                         <p className="mt-1 text-xs text-muted">{r.check_out_at ? "Worked " + duration(r.check_in_at, r.check_out_at) : live ? "On duty for " + duration(r.check_in_at) : "Never checked out"}</p>
+                        {off.filter((o) => o.user_id === r.user_id && o.date === r.work_date).map((o, i) => <p key={i} className="mt-1 text-sm font-medium text-red">{offLabel(o)}</p>)}
                         {can("tracking.view") && <Link className="mt-1 inline-block text-sm underline" href={"/tracking?user=" + r.user_id + "&date=" + r.work_date}>See the route on the map</Link>}
                       </li>
                     );

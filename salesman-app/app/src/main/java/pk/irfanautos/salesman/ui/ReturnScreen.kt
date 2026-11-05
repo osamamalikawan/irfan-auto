@@ -79,7 +79,7 @@ fun ReturnScreen(customerId: String?, onBack: () -> Unit) {
             sales = Load.Ok(emptyList())
         } else {
             sales = Load.Loading
-            sales = load { Api.sales(c.id).filter { it.status == "confirmed" } }
+            sales = load { Api.sales(c.id).filter { it.status == "confirmed" && (it.fulfil_status == "delivered" || it.fulfil_status == "completed") } }
         }
     }
     LaunchedEffect(sale?.id) {
@@ -109,7 +109,7 @@ fun ReturnScreen(customerId: String?, onBack: () -> Unit) {
                     is Load.Loading -> item { LoadingBox() }
                     is Load.Err -> item { ErrorText(s.message) }
                     is Load.Ok -> {
-                        if (s.value.isEmpty()) item { Text("This customer has no invoices.", color = Color.Gray) }
+                        if (s.value.isEmpty()) item { Text("This customer has no delivered orders. A return or claim can only be made for an order that has been delivered.", color = Color.Gray) }
                         items(s.value, key = { it.id }) { inv ->
                             val on = sale?.id == inv.id
                             Card(

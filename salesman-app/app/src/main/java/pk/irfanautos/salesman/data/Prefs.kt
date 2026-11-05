@@ -43,6 +43,15 @@ class Prefs(ctx: Context) {
         get() = sp.getString("pings", null) ?: "[]"
         set(v) { sp.edit().putString("pings", v).apply() }
 
+    var events: String
+        get() = sp.getString("events", null) ?: "[]"
+        set(v) { sp.edit().putString("events", v).apply() }
+
+    /** What the phone last reported about location while on duty: "ok", "location_off" or "permission_off". */
+    var lastLocState: String
+        get() = sp.getString("last_loc_state", null) ?: "ok"
+        set(v) { sp.edit().putString("last_loc_state", v).apply() }
+
     var customersCache: String?
         get() = sp.getString("customers_cache", null)
         set(v) { sp.edit().apply { if (v == null) remove("customers_cache") else putString("customers_cache", v) }.apply() }

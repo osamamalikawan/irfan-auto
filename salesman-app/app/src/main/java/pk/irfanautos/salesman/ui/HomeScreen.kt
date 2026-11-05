@@ -29,6 +29,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -39,6 +40,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,9 +49,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import pk.irfanautos.salesman.App
@@ -66,6 +72,7 @@ import pk.irfanautos.salesman.data.fmtTime
 import pk.irfanautos.salesman.data.load
 import pk.irfanautos.salesman.location.Gps
 import pk.irfanautos.salesman.location.GpsException
+import pk.irfanautos.salesman.location.LocationWatch
 import pk.irfanautos.salesman.location.Tracking
 
 private fun isIgnoringBattery(ctx: Context): Boolean =
@@ -109,6 +116,24 @@ fun HomeScreen(onNav: (String) -> Unit) {
             clock = System.currentTimeMillis()
         }
     }
+    // keep an eye on location: switched off, or the permission taken away, while on duty
+    LaunchedEffect(Unit) {
+        while (true) {
+            LocationWatch.refresh(ctx)
+            delay(5_000)
+        }
+    }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                LocationWatch.refresh(ctx)
+                tick++ // coming back from the settings screen: reload the day and restart tracking if it was fixed
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     fun toggle(start: Boolean) {
         scope.launch {
@@ -118,6 +143,7 @@ fun HomeScreen(onNav: (String) -> Unit) {
                 if (start) {
                     Api.checkIn(fix)
                     App.prefs.onDuty = true
+                    App.prefs.lastLocState = "ok"
                     App.prefs.saveFix(fix)
                     onDuty = true
                     Tracking.start(ctx)
@@ -172,6 +198,27 @@ fun HomeScreen(onNav: (String) -> Unit) {
     ) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Hello, " + (App.prefs.userName ?: ""), style = MaterialTheme.typography.titleLarge)
+
+            val problem = LocationWatch.problem
+            if (onDuty && problem != null) {
+                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFFDECEA))) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text(
+                            if (problem == LocationWatch.Problem.LOCATION_OFF) "Your location is OFF" else "Location permission was removed",
+                            color = Bad, style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text("The office cannot see where you are. Fix this now.", modifier = Modifier.padding(vertical = 6.dp))
+                        Button(
+                            onClick = {
+                                val i = if (problem == LocationWatch.Problem.LOCATION_OFF) Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                                else Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + ctx.packageName))
+                                runCatching { ctx.startActivity(i) }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Bad),
+                        ) { Text(if (problem == LocationWatch.Problem.LOCATION_OFF) "Turn on location" else "Allow location") }
+                    }
+                }
+            }
 
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {

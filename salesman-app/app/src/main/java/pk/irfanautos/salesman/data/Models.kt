@@ -58,3 +58,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable data class Ping(val lat: Double, val lng: Double, val accuracy: Double? = null, val ts: Long, val battery: Int? = null)
 @Serializable data class PingsBody(val pings: List<Ping>)
+
+/** "location_off" / "location_on" / "permission_off" / "permission_on": reported to the office so it can see when location was switched off. */
+@Serializable data class LocEvent(val type: String, val ts: Long)
+@Serializable data class EventsBody(val events: List<LocEvent>)

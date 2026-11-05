@@ -91,13 +91,14 @@ object Api {
     suspend fun checkIn(f: Fix) { raw("POST", "/api/attendance", fixBody(f)) }
     suspend fun checkOut(f: Fix) { raw("POST", "/api/attendance/check-out", fixBody(f)) }
     suspend fun sendPings(p: List<Ping>): PingsAck = post("/api/location", json.encodeToString(PingsBody(p)))
+    suspend fun sendEvents(e: List<LocEvent>) { raw("POST", "/api/location/events", json.encodeToString(EventsBody(e))) }
 
     // ---- reading
     suspend fun myCustomers(): List<MyCustomer> = get<MyCustomersResp>("/api/me/customers").items
     suspend fun ledger(customerId: String): LedgerResp = get("/api/customers/$customerId/ledger")
     suspend fun products(q: String): List<Product> = get<ProductsResp>("/api/inventory/products?limit=25&q=" + enc(q)).items
     suspend fun methods(): List<Method> = get<MethodsResp>("/api/payment-methods").methods
-    suspend fun sales(customerId: String): List<SaleSummary> = get<SalesResp>("/api/sales?limit=30&customer=$customerId").items
+    suspend fun sales(customerId: String): List<SaleSummary> = get<SalesResp>("/api/sales?limit=30&status=returnable&customer=$customerId").items
     suspend fun returnable(saleId: String): List<RetItem> = get<ReturnableResp>("/api/sales/$saleId/returnable").items
     suspend fun account(range: String): JsonObject = json.parseToJsonElement(raw("GET", "/api/me/account?range=$range")).jsonObject
 

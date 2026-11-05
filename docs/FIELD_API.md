@@ -15,6 +15,7 @@ If `mustChangePin` is true: `POST /api/auth/pin` `{ current, next }` first, othe
 | `GET /api/attendance/today` | `{ attendance \| null, on_duty }` for the Start / End work button |
 | `POST /api/attendance` `{ lat, lng, accuracy? }` | start work (saves place and time). Tapping again while on duty changes nothing; after an end-of-day it resumes the shift |
 | `POST /api/attendance/check-out` `{ lat, lng, accuracy? }` | end work |
+| `POST /api/location/events` `{ events: [{ type, ts }] }` | `type` = `location_off`, `location_on`, `permission_off`, `permission_on`; up to 50; the phone sends these when location is switched off/on while on duty |
 | `POST /api/location` `{ pings: [{ lat, lng, accuracy?, ts, battery? }] }` | up to 200 points per call (`ts` = ISO text or epoch ms). Answer `{ accepted, ignored, on_duty }`; **stop tracking when `on_duty` is false**. Points outside a checked-in shift are ignored. Re-sending the same point is harmless |
 
 ## Reading (salesman: only his own routes' customers)
@@ -54,8 +55,9 @@ Nothing changes stock or the ledger until the office approves. Send an `idem_key
 | `POST /api/requests/returns/:id/approve` | `{ lines?, damaged? }` -> stock back, customer credited; `{ ok, return_id }` |
 | `POST /api/requests/:type/:id/reject` | `{ note }` (required; the salesman sees it) |
 | `GET /api/attendance?from=&to=&user=` | attendance with place and time (a salesman gets only his own rows). The office also gets `salesmen` (everyone who should be working), to show who has not started |
-| `GET /api/tracking` | every salesman's last position, battery, on-duty, `recorded_at` |
+| `GET /api/tracking` | every salesman's last position, battery, on-duty, `recorded_at`, and `location_issue` (`location_off` / `permission_off` / null) with `issue_since` |
 | `GET /api/tracking/:userId?date=` | that day's trail |
+| `GET /api/location/events?from=&to=&user=` | when a salesman's location was turned off / permission removed: `{ periods: [{ user_id, user_name, date, kind: "location"\|"permission", from, to (null = still off), minutes, ongoing }] }` |
 | `GET /api/handovers` (`accounts.edit`) | every salesman: `{ user_id, name, collected, handed_over, balance }` |
 | `GET /api/handovers?user=<id>&range=` | one salesman's cash statement |
 | `POST /api/handovers` | `{ user_id, amount, method_id?, note?, date? }` the office received money from him; cannot exceed what he holds |
@@ -66,4 +68,4 @@ Approving twice returns the same result and changes nothing. If stock or the cus
 ## Go-live checklist
 1. Run `0016_field_work.sql` and `0018_salesman_account.sql` (add tables, functions and the new permissions; nothing existing changes). The salesman cash account counts from the day you run 0018 (`app_users.cash_start`).
 2. Test with the Android app and the approval screens.
-3. Run `0017_salesman_approval_switch.sql` to stop salesmen creating invoices/payments directly.
+3. Run `0021_salesman_approval_switch.sql` to stop salesmen creating invoices/payments directly.

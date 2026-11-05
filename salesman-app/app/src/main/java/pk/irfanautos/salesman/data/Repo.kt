@@ -82,6 +82,21 @@ object Pings {
     @Synchronized fun count(): Int = read().size
 }
 
+/** Location-off / location-on moments waiting to be uploaded. */
+object Events {
+    @Synchronized private fun read(): List<LocEvent> = runCatching { Api.json.decodeFromString<List<LocEvent>>(App.prefs.events) }.getOrDefault(emptyList())
+
+    @Synchronized fun add(type: String, ts: Long = System.currentTimeMillis()) {
+        App.prefs.events = Api.json.encodeToString(read().takeLast(199) + LocEvent(type, ts))
+    }
+
+    @Synchronized fun peek(n: Int): List<LocEvent> = read().take(n)
+
+    @Synchronized fun drop(n: Int) {
+        App.prefs.events = Api.json.encodeToString(read().drop(n))
+    }
+}
+
 sealed class SubmitResult {
     data class Sent(val no: String) : SubmitResult()
     object Queued : SubmitResult()

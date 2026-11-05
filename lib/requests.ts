@@ -95,11 +95,12 @@ export async function createPaymentRequest(sb: SB, user: SessionUser, b: Body) {
 export async function createReturnRequest(sb: SB, user: SessionUser, b: Body) {
   const saleId = String(b.sale_id ?? "");
   if (!isUuid(saleId)) return bad("Find the invoice first.");
-  const { data: s } = await sb.from("sales").select("id,no,customer_id,customer_name,route_id,status").eq("id", saleId).maybeSingle();
+  const { data: s } = await sb.from("sales").select("id,no,customer_id,customer_name,route_id,status,fulfil_status").eq("id", saleId).maybeSingle();
   if (!s) return bad("Invoice not found.", 404);
   const mine = await allowedRouteIds(sb, user);
   if (mine && !(s.route_id && mine.includes(s.route_id))) return bad("Invoice not found.", 404);
   if (s.status !== "confirmed") return bad("This invoice is cancelled.", 409);
+  if (!["delivered", "completed"].includes(String(s.fulfil_status))) return bad("A return or claim can only be made for an order that has been delivered.", 409);
 
   const raw = Array.isArray(b.lines) ? (b.lines as Body[]) : [];
   const want = new Map<string, number>();
