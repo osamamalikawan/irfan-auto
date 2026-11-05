@@ -33,6 +33,8 @@ body{background:var(--bg);color:var(--ink);-webkit-tap-highlight-color:transpare
   .inv-total .btn-primary{background:#fff;border-color:#fff;color:var(--g-strong2);font-weight:700}
   .inv-total .btn{border-color:rgb(255 255 255/.5);color:var(--ink)}
   .inv-total .btn-primary{color:var(--g-strong2)}
+  .inv-total-over{background:linear-gradient(135deg,#dc2626,#991b1b);box-shadow:0 10px 24px -12px rgb(153 27 27/.7)}
+  .inv-total-over .btn-primary{color:#991b1b}
   .spinner{@apply inline-block size-4 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent align-[-0.15em]}
   .loadbar{@apply relative h-0.5 overflow-hidden rounded-full}
   .loadbar-on{@apply bg-line}

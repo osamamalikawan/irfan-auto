@@ -8,6 +8,7 @@ import { useMe } from "./Me";
 import { withArea } from "@/lib/cust";
 import { FULFIL, saleKind, statusPill } from "@/lib/sale-types";
 import PayInvoiceModal from "./PayInvoiceModal";
+import ScheduleModal from "./ScheduleModal";
 import PrintModal, { type PrintJob } from "./PrintModal";
 import Toast from "./Toast";
 import { PageLoading, Spinner } from "./Loading";
@@ -17,7 +18,7 @@ type Item = {
   allocs: { qty: number; location: string; racks: string[] }[];
 };
 type Detail = {
-  sale: { fulfil_status: string; sale_kind: string; pay_term: string; local_charges: number; contact_phone: string | null; id: string; no: string; sale_date: string; created_at: string; customer_id: string; customer_name: string; discount: number; line_discount: number; bilti: number; total: number; paid: number; status: string; remarks: string | null };
+  sale: { edit_count?: number; fulfil_status: string; sale_kind: string; pay_term: string; local_charges: number; contact_phone: string | null; id: string; no: string; sale_date: string; created_at: string; customer_id: string; customer_name: string; discount: number; line_discount: number; bilti: number; total: number; paid: number; status: string; remarks: string | null };
   customer: { id: string; code: string; name: string; phone: string | null; address: string | null; is_walk_in: boolean; area: { name: string } | null; route: { name: string } | null } | null;
   items: Item[]; payments: { method: string; amount: number }[]; prev_balance: number; final_balance: number;
 };
@@ -28,6 +29,10 @@ export default function InvoiceView({ id, autoPrint = false }: { id: string; aut
   const [error, setError] = useState("");
   const [collect, setCollect] = useState(false);
   const [payInv, setPayInv] = useState(false);
+  const [sched, setSched] = useState(false);
+  const [tasks, setTasks] = useState<{ id: string; action: string; due_date: string; done_at: string | null }[]>([]);
+  const loadTasks = useCallback(() => { fetch("/api/sales/" + id + "/tasks").then((r) => r.json()).then((j) => setTasks(j.items ?? [])).catch(() => {}); }, [id]);
+  useEffect(() => { loadTasks(); }, [loadTasks]);
   const [job, setJob] = useState<PrintJob | null>(null);
   const printed = useRef(false);
   useEffect(() => { if (autoPrint && d && !printed.current) { printed.current = true; setJob({ ids: [id], type: "invoice", layout: "roll" }); } }, [autoPrint, d, id]);
@@ -110,6 +115,13 @@ export default function InvoiceView({ id, autoPrint = false }: { id: string; aut
           </section>
         )}
 
+        {(tasks.some((t) => !t.done_at) || (s.edit_count ?? 0) > 0) && (
+          <section data-noprint className="card space-y-1 p-3 text-sm">
+            {tasks.filter((t) => !t.done_at).map((t) => <p key={t.id}><span className="pill mr-2 border border-accent text-accent">Scheduled</span>{({ pack: "Packing", deliver: "Delivery", complete: "Completion" } as Record<string, string>)[t.action]} on <b>{niceDate(t.due_date)}</b></p>)}
+            {(s.edit_count ?? 0) > 0 && <p className="text-muted">This order was edited {s.edit_count} time{s.edit_count === 1 ? "" : "s"}.</p>}
+          </section>
+        )}
+
         <section className="card p-4">
           <ul className="divide-y divide-line">
             {d.items.map((i) => (
@@ -156,6 +168,9 @@ export default function InvoiceView({ id, autoPrint = false }: { id: string; aut
           <button className="btn" onClick={() => setJob({ ids: [id], type: "invoice", layout: "roll" })}>Print invoice (80mm)</button>
           {s.status === "confirmed" && <button className="btn" onClick={() => setJob({ ids: [id], type: "gateout", layout: "roll" })}>Gate-out slip (80mm)</button>}
           {s.status === "confirmed" && <button className="btn" onClick={() => setJob({ ids: [id], type: "delivery", layout: "a4" })}>Delivery slip (A4)</button>}
+          {s.status === "confirmed" && ["active", "packed"].includes(s.fulfil_status) && can("sales.edit") && <Link className="btn btn-primary" href={"/sales/" + id + "/edit"}>Edit order</Link>}
+          {s.status === "confirmed" && s.fulfil_status !== "completed" && can("sales.status") && <button className="btn" onClick={() => setSched(true)}>Schedule</button>}
+          {s.status === "confirmed" && ["delivered", "completed"].includes(s.fulfil_status) && can("sales.return") && <><Link className="btn" href={"/returns?sale=" + id}>Return</Link><Link className="btn" href={"/returns?sale=" + id + "&kind=claim"}>Claim</Link></>}
           <button className="btn" onClick={share}>Share</button>
           {(can("payments.receive") || can("sales.create")) && due > 0 && <button className="btn btn-primary" onClick={() => setPayInv(true)}>Receive payment ({rs(due)})</button>}
           {can("payments.receive") && !c?.is_walk_in && s.status === "confirmed" && d.final_balance > 0 && <button className="btn" onClick={() => setCollect(true)}>Collect from customer</button>}
@@ -164,6 +179,7 @@ export default function InvoiceView({ id, autoPrint = false }: { id: string; aut
         </div>
       </div>
 
+      {sched && <ScheduleModal saleId={id} no={s.no} onClose={() => { setSched(false); loadTasks(); }} onChanged={(m) => { setToast(m); load(); loadTasks(); }} />}
       {job && <PrintModal job={job} onClose={() => setJob(null)} />}
       {payInv && <PayInvoiceModal saleId={id} no={s.no} due={due} onClose={() => setPayInv(false)} onDone={(m) => { setPayInv(false); setToast(m); load(); }} />}
       {collect && c && <CollectModal customer={{ id: c.id, name: withArea(c.name, c.area?.name) }} onClose={() => setCollect(false)} onDone={(m) => { setCollect(false); setToast(m); load(); }} />}

@@ -14,7 +14,7 @@ import PaySplit, { newRow, paysTotal, toPayments, usePaymentMethods, type PayRow
  * Keyboard-first invoice screen for the desktop (the phone keeps the touch form).
  *  customer: type, Enter  ->  product: type, Enter  ->  quantity, Enter  ->  price, Enter  ->  next row.
  *  F2 counter/ledger   F3 customer   F4 payment (counter) or cash/credit (ledger)   F7 buy from market
- *  F8 hold   F9 list   F10 save (Shift+F10 save and print)   Shift+F6 delete row   Up/Down rows
+ *  F9 list   F10 save (Shift+F10 save and print)   Shift+F6 delete row   Up/Down rows
  */
 
 type Row = { key: string; p?: Prod; q: string; price: string; disc: string; market?: MarketInfo };
@@ -31,7 +31,7 @@ const freeFor = (p: Prod, q: number) => {
 
 /** Search as you type. Results count only when they belong to the text now in the box. */
 function useSearch<T>(path: string, q: string, enabled: boolean, limit = 8) {
-  const [state, setState] = useState<{ q: string; items: T[] }>({ q: "\u0000", items: [] });
+  const [state, setState] = useState<{ q: string; items: T[]; total: number }>({ q: "\u0000", items: [], total: 0 });
   const req = useRef(0);
   useEffect(() => {
     if (!enabled) return;
@@ -40,25 +40,29 @@ function useSearch<T>(path: string, q: string, enabled: boolean, limit = 8) {
       try {
         const r = await fetch(path + "?limit=" + limit + "&q=" + encodeURIComponent(q));
         const j = await r.json();
-        if (id === req.current && r.ok) setState({ q, items: j.items ?? [] });
+        if (id === req.current && r.ok) setState({ q, items: j.items ?? [], total: Number(j.total ?? (j.items ?? []).length) });
       } catch { /* the next keystroke retries */ }
     }, 120);
     return () => clearTimeout(t);
   }, [path, q, enabled, limit]);
-  return { items: state.q === q ? state.items : [], ready: state.q === q };
+  return { items: state.q === q ? state.items : [], ready: state.q === q, total: state.q === q ? state.total : 0 };
 }
 
+/** Urdu name for the list: the text in brackets is left out. */
+const plainUrdu = (s: string | null) => (s ?? "").replace(/\s*[(（][^)）]*[)）]/g, "").trim();
 const ago = (n: number) => (n <= 0 ? "Today" : n === 1 ? "Yesterday" : n + " days ago");
 
 const Key = ({ k }: { k: string }) => <kbd className="rounded border border-line bg-bg px-1.5 py-0.5 font-sans text-[11px] font-semibold text-ink">{k}</kbd>;
 
-export default function InvoiceGrid({ customerId }: { customerId?: string }) {
+export default function InvoiceGrid({ customerId, editId }: { customerId?: string; editId?: string }) {
   const router = useRouter();
   const { can } = useMe();
   const canDiscount = can("sales.discount");
   const { methods } = usePaymentMethods();
 
-  const [kind, setKind] = useState<"counter" | "ledger">(customerId ? "ledger" : "counter");
+  const editing = !!editId;
+  const [edit, setEdit] = useState<{ no: string; oldTotal: number; paid: number; fulfil: string } | null>(null);
+  const [kind, setKind] = useState<"counter" | "ledger">(customerId || editId ? "ledger" : "counter");
   const [term, setTerm] = useState<"credit" | "cash">("credit");
   const [cust, setCust] = useState<Cust | null>(null);
   const [rows, setRows] = useState<Row[]>([blank()]);
@@ -79,7 +83,7 @@ export default function InvoiceGrid({ customerId }: { customerId?: string }) {
   const [hist, setHist] = useState<Record<string, Hist | null>>({});
   const histAsked = useRef<Record<string, Set<string>>>({});
   const [pickRow, setPickRow] = useState("");
-  const [busy, setBusy] = useState<"" | "hold" | "save" | "print">("");
+  const [busy, setBusy] = useState<"" | "save" | "print">("");
   const [error, setError] = useState("");
   const [idem] = useState(() => crypto.randomUUID());
 
@@ -110,11 +114,27 @@ export default function InvoiceGrid({ customerId }: { customerId?: string }) {
   useEffect(() => {
     if (started.current) return;
     started.current = true;
-    if (customerId) chooseCustomer({ id: customerId, name: "" }); else { useWalkIn(); focus("cust"); }
-  }, [customerId]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (editId) {
+      fetch("/api/sales/" + editId + "/edit-data").then(async (r) => ({ ok: r.ok, j: await r.json() })).then(async ({ ok, j }) => {
+        if (!ok) return setError(j.error || "Could not open this order for editing");
+        const sale = j.sale;
+        setKind(sale.sale_kind === "counter" ? "counter" : "ledger"); setTerm(sale.pay_term === "cash" ? "cash" : "credit");
+        setEdit({ no: sale.no, oldTotal: Number(sale.total), paid: Number(sale.paid), fulfil: sale.fulfil_status });
+        setDiscount(Number(sale.discount) > 0 ? String(Number(sale.discount)) : ""); setLocal(Number(sale.local_charges) > 0 ? String(Number(sale.local_charges)) : "");
+        setBilti(Number(sale.bilti) > 0 ? String(Number(sale.bilti)) : ""); setRemarks(sale.remarks ?? "");
+        const loaded: Row[] = j.lines.map((l: { key: string; qty: number; price: number; disc_pct: number; market: MarketInfo | null; product: Prod }) => ({
+          key: l.key, p: l.product, q: String(l.qty), price: String(l.price), disc: String(l.disc_pct), market: l.market ?? undefined,
+        }));
+        const blankRow = blank();
+        setRows([...loaded, blankRow]);
+        await chooseCustomer({ id: sale.customer_id, name: sale.customer_name }, false);
+        focus("prod:" + blankRow.key);
+      }).catch(() => setError("Could not open this order for editing"));
+    } else if (customerId) chooseCustomer({ id: customerId, name: "" }); else { useWalkIn(); focus("cust"); }
+  }, [customerId, editId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function pickKind(k: "counter" | "ledger") {
-    if (k === kind) return;
+    if (editing || k === kind) return;
     setKind(k); setError(""); setSplit(false); setRecv("");
     if (k === "counter") { if (!cust || !cust.is_walk_in) useWalkIn(); }
     else if (cust?.is_walk_in) { setCust(null); focus("cust"); }
@@ -195,29 +215,32 @@ export default function InvoiceGrid({ customerId }: { customerId?: string }) {
   const counterPays = toPayments(pay, split, total);
   const counterOk = split ? Math.abs(paysTotal(pay) - total) < 0.005 && counterPays.length > 0 : counterPays.length > 0;
   const received = counter ? total : Math.min(money(recv), total);
-  const balanceAfter = cust && !walkIn ? cust.balance + total - (counter ? total : money(recv)) : 0;
+  const balanceAfter = cust && !walkIn ? (edit ? cust.balance + total - edit.oldTotal : cust.balance + total - (counter ? total : Math.min(money(recv), total))) : 0;
+  // credit limit: highlighted as soon as this invoice would take the customer over it
+  const overBy = cust && !walkIn && !counter && cust.credit_limit > 0 && balanceAfter > cust.credit_limit ? balanceAfter - cust.credit_limit : 0;
+  const overBlocked = overBy > 0 && (!edit || total > edit.oldTotal);
   const problem = !cust ? "Choose a customer" : !filled.length ? "Add at least one item" : filled.some((x) => x.c.q <= 0) ? "Enter a quantity for every item" : filled.some((x) => x.c.price <= 0) ? "An item has no price" : !counter && walkIn ? "Choose a customer for a ledger sale" : filled.find((x) => x.r.p!.market_list && !x.r.market) ? "Enter the market details for " + filled.find((x) => x.r.p!.market_list && !x.r.market)!.r.p!.name_en : "";
   const canSave = !problem && !busy && total >= 0;
   const canPay = canSave && total > 0 && counterOk;
-  const overLimit = !counter && !!cust && !walkIn && cust.credit_limit > 0 && total - money(recv) > 0 && cust.balance + total - money(recv) > cust.credit_limit;
 
-  async function save(mode: "hold" | "save" | "print") {
+  async function save(mode: "save" | "print") {
     if (!cust || busy) return;
-    if (mode !== "hold" && counter && !canPay) return setError(problem || "Pay the full amount to complete the sale");
+    if (!editing && counter && !canPay) return setError(problem || "Pay the full amount to complete the sale");
     if (problem) return setError(problem);
     setBusy(mode); setError("");
-    const hold = mode === "hold";
     const body = {
-      customer_id: cust.id, kind, term, hold, idem_key: idem, discount: money(discount), bilti: money(bilti), local_charges: money(local), remarks,
+      customer_id: cust.id, kind, term, hold: false, idem_key: idem, discount: money(discount), bilti: money(bilti), local_charges: money(local), remarks,
       contact_name: walkIn ? contactName : "", contact_phone: walkIn ? contactPhone : "",
-      payments: hold ? [] : counter ? counterPays : money(recv) > 0 && recvMethod ? [{ method_id: recvMethod, amount: Math.min(money(recv), total) }] : [],
+      payments: counter ? counterPays : money(recv) > 0 && recvMethod ? [{ method_id: recvMethod, amount: Math.min(money(recv), total) }] : [],
       lines: filled.map(({ r }) => ({ product_id: r.p!.id, qty: money(r.q), price: r.price !== "" ? money(r.price) : undefined, disc_pct: r.disc !== "" ? money(r.disc) : undefined, market: r.market })),
     };
-    const res = await fetch("/api/sales", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const res = editing
+      ? await fetch("/api/sales/" + editId, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lines: body.lines, discount: body.discount, bilti: body.bilti, local_charges: body.local_charges, remarks, term }) })
+      : await fetch("/api/sales", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const j = await res.json().catch(() => ({}));
     setBusy("");
     if (!res.ok) return setError(j.error || "Could not save the invoice");
-    router.replace("/sales/" + j.id + (mode === "print" ? "?print=1" : ""));
+    router.replace("/sales/" + (editing ? editId : j.id) + (mode === "print" ? "?print=1" : ""));
   }
 
   /* ---------- shortcut keys ---------- */
@@ -240,7 +263,6 @@ export default function InvoiceGrid({ customerId }: { customerId?: string }) {
       const mr = rowKey ? rows.find((x) => x.key === rowKey) : undefined;
       if (mr?.p?.market_list) { mkAfter.current = "price"; setMkRow(mr.key); setModal("mkdetails"); } else setModal("market");
     });
-    else if (e.key === "F8") run(() => { if (counter) save("hold"); });
     else if (e.key === "F9") run(() => { if (el?.dataset?.cell === "cust") setModal("cust"); else { setPickRow(rowKey ?? rows.find((r) => !r.p)?.key ?? ""); setModal("prod"); } });
     else if (e.key === "F10") run(() => save(e.shiftKey ? "print" : "save"));
     else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") run(() => save("save"));
@@ -249,7 +271,7 @@ export default function InvoiceGrid({ customerId }: { customerId?: string }) {
   useEffect(() => { const h = (e: KeyboardEvent) => keys.current(e); window.addEventListener("keydown", h); return () => window.removeEventListener("keydown", h); }, []);
 
   /* ---------- footer: Enter walks down the fields, then lands on Save ---------- */
-  const flow = [...(canDiscount ? listGroups.map((_, i) => "ld:" + i) : []), canDiscount ? "disc" : "", "local", "bilti", "remarks", counter ? "" : "recv", "save"].filter(Boolean);
+  const flow = [...(canDiscount ? listGroups.map((_, i) => "ld:" + i) : []), canDiscount ? "disc" : "", "local", "bilti", "remarks", editing || counter ? "" : "recv", "save"].filter(Boolean);
   const nextField = (cur: string) => focus(flow[flow.indexOf(cur) + 1] ?? "save");
   const enterTo = (cur: string) => (e: React.KeyboardEvent) => { if (e.key === "Enter") { e.preventDefault(); nextField(cur); } };
 
@@ -258,13 +280,21 @@ export default function InvoiceGrid({ customerId }: { customerId?: string }) {
 
   return (
     <div className="inv-page flex min-h-[calc(100dvh-7rem)] flex-col gap-3 p-4">
+      {editing && (
+        <section className="inv-card flex flex-wrap items-center gap-3 px-4 py-2.5">
+          <b className="text-[color:var(--g-ink)]">Editing {edit?.no ?? "…"}</b>
+          {edit && <span className="pill bg-amber-bg text-amber">{edit.fulfil === "packed" ? "Packed" : "Active"}</span>}
+          <span className="text-sm text-muted">Stock and the customer&apos;s account are corrected when you save. Received so far: <b className="text-ink">{rs(edit?.paid ?? 0)}</b></span>
+        </section>
+      )}
+
       {/* top strip */}
-      <section className="inv-card grid grid-cols-[auto_1fr_auto] items-start gap-x-4 gap-y-2 p-4">
+      <section className={"inv-card grid grid-cols-[auto_1fr_auto] items-start gap-x-4 gap-y-2 p-4 " + (overBy > 0 ? "!border-red ring-2 ring-red" : "")}>
         <div className="flex flex-col gap-1">
           <span className="text-xs font-semibold text-muted">Sale <Key k="F2" /></span>
           <div role="radiogroup" aria-label="Sale type" className="flex gap-1">
             {([["counter", "Counter"], ["ledger", "Ledger"]] as const).map(([k, l]) => (
-              <button key={k} type="button" tabIndex={-1} role="radio" aria-checked={kind === k} onClick={() => pickKind(k)} className={"chip " + (kind === k ? "chip-on" : "")}>{l}</button>
+              <button key={k} type="button" tabIndex={-1} role="radio" aria-checked={kind === k} onClick={() => pickKind(k)} disabled={editing} className={"chip " + (kind === k ? "chip-on" : "") + (editing ? " opacity-60" : "")}>{l}</button>
             ))}
           </div>
           {!counter && (
@@ -275,15 +305,15 @@ export default function InvoiceGrid({ customerId }: { customerId?: string }) {
           )}
         </div>
 
-        <CustomerBox cust={cust} kind={kind} reg={reg} onPick={(c) => chooseCustomer(c)} onEmptyEnter={() => focus("prod:0")} />
+        <CustomerBox cust={cust} kind={kind} locked={editing} reg={reg} onPick={(c) => chooseCustomer(c)} onEmptyEnter={() => focus("prod:0")} />
 
         <div className="min-w-48 text-right">
           <p className="text-xs text-muted">Previous balance</p>
           <p className={"text-xl font-bold " + (cust && !walkIn && cust.balance > 0 ? "text-red" : "")}>{cust && !walkIn ? rs(cust.balance) : "—"}</p>
-          {cust && !walkIn && <p className="text-xs text-muted">{cust.route ? cust.route + " · " : ""}{cust.credit_limit > 0 ? "limit " + rs(cust.credit_limit) : "no limit"}</p>}
+          {cust && !walkIn && <p className={"text-xs " + (overBy > 0 ? "font-bold text-red" : "text-muted")}>{cust.route ? cust.route + " · " : ""}{cust.credit_limit > 0 ? "limit " + rs(cust.credit_limit) : "no limit"}</p>}
         </div>
 
-        {walkIn && (
+        {walkIn && !editing && (
           <div className="col-span-3 grid grid-cols-2 gap-3">
             <div><label className="label" htmlFor="g-cname">Customer name (optional, printed on this invoice only)</label><input id="g-cname" className="input" maxLength={80} value={contactName} onChange={(e) => setContactName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); document.getElementById("g-cphone")?.focus(); } }} /></div>
             <div><label className="label" htmlFor="g-cphone">Phone (optional)</label><input id="g-cphone" className="input" type="tel" maxLength={30} value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focus("prod:0"); } }} /></div>
@@ -292,6 +322,12 @@ export default function InvoiceGrid({ customerId }: { customerId?: string }) {
       </section>
 
       {error && <p role="alert" className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+      {overBy > 0 && cust && (
+        <p role="alert" className="rounded-xl border-2 border-red bg-red-bg px-4 py-2 text-sm font-semibold text-red">
+          ⚠ Credit limit exceeded by {rs(overBy)}. Limit {rs(cust.credit_limit)}, balance after this invoice {rs(balanceAfter)}.
+          {overBlocked ? " It cannot be saved like this: reduce the bill or receive cash now." : " (The balance was already over the limit before this change.)"}
+        </p>
+      )}
 
       {/* items grid */}
       <section className="inv-card p-0">
@@ -370,7 +406,9 @@ export default function InvoiceGrid({ customerId }: { customerId?: string }) {
           <div className={canDiscount ? "" : "col-span-2"}><label className="label" htmlFor="g-rem">Remarks</label><input id="g-rem" ref={reg("remarks")} className="input" maxLength={500} placeholder="BY HAND" value={remarks} onChange={(e) => setRemarks(e.target.value)} onKeyDown={enterTo("remarks")} /></div>
 
           <div className="col-span-4 border-t border-line pt-3">
-            {counter ? (
+            {editing ? (
+              <p className="text-sm text-muted">Received so far <b className="text-ink">{rs(edit?.paid ?? 0)}</b>. {term === "cash" ? "The rest is collected on delivery." : "The rest stays on the customer's account."} Payments are recorded from the invoice page.</p>
+            ) : counter ? (
               <div className="flex flex-wrap items-center gap-3">
                 <span className="text-sm font-semibold">Paid by <Key k="F4" /></span>
                 <div className="min-w-0 flex-1"><PaySplit methods={methods} rows={pay} setRows={setPay} split={split} setSplit={setSplit} total={total} mode="full" /></div>
@@ -381,23 +419,21 @@ export default function InvoiceGrid({ customerId }: { customerId?: string }) {
                 <input id="g-recv" ref={reg("recv")} className="input w-40 text-right text-lg font-semibold" inputMode="decimal" value={recv} onChange={(e) => setRecv(e.target.value.replace(/[^\d.]/g, ""))} onKeyDown={enterTo("recv")} />
                 <select className="input w-40" aria-label="Received by" value={recvMethod} onChange={(e) => setRecvMethod(e.target.value)}>{methods.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select>
                 <span className="text-sm text-muted">{term === "cash" ? "Rest is collected on delivery" : "Rest goes on credit"}</span>
-                {overLimit && <span className="rounded bg-amber-bg px-2 py-0.5 text-sm text-amber">Over the credit limit</span>}
               </div>
             )}
           </div>
         </div>
 
-        <div className="inv-total min-w-64 space-y-2 p-4 text-right">
+        <div className={"inv-total min-w-64 space-y-2 p-4 text-right " + (overBy > 0 ? "inv-total-over" : "")}>
           <p className="text-xs uppercase tracking-wide opacity-80">Total bill</p>
           <p className="text-4xl font-bold leading-none">{rs(total)}</p>
-          {!counter && cust && !walkIn && <p className="text-sm opacity-90">Receivable after: <b>{rs(balanceAfter)}</b></p>}
+          {!counter && cust && !walkIn && <p className="text-sm opacity-90">Receivable after: <b>{rs(balanceAfter)}</b>{overBy > 0 && <span className="ml-1 rounded bg-white px-1.5 py-0.5 text-xs font-bold text-red">over limit</span>}</p>}
           {counter && <p className="text-sm opacity-90">{received > 0 ? "Paid in full at the counter" : ""}</p>}
           <div className="flex flex-wrap justify-end gap-2 pt-1">
-            <button className="btn" tabIndex={-1} onClick={() => { if (!filled.length || confirm("Discard this invoice?")) router.push("/sales"); }}>Cancel</button>
-            {counter && <button className="btn" tabIndex={-1} disabled={!canSave} onClick={() => save("hold")}>{busy === "hold" ? <><Spinner /> Holding…</> : <>Hold <Key k="F8" /></>}</button>}
-            <button ref={reg("save")} className="btn btn-primary" disabled={counter ? !canPay : !canSave} onClick={() => save("save")}>{busy === "save" ? <><Spinner /> Saving…</> : <>{counter ? "Pay & complete" : "Save"} <Key k="F10" /></>}</button>
+            <button className="btn" tabIndex={-1} onClick={() => { if (editing) router.push("/sales/" + editId); else if (!filled.length || confirm("Discard this invoice?")) router.push("/sales"); }}>Cancel</button>
+            <button ref={reg("save")} className="btn btn-primary" disabled={editing ? !canSave : counter ? !canPay : !canSave} onClick={() => save("save")}>{busy === "save" ? <><Spinner /> Saving…</> : <>{editing ? "Save changes" : counter ? "Pay & complete" : "Save"} <Key k="F10" /></>}</button>
           </div>
-          <button className="text-sm text-white underline" tabIndex={-1} disabled={counter ? !canPay : !canSave} onClick={() => save("print")}>{busy === "print" ? "Saving…" : "Save and print"} <Key k="⇧F10" /></button>
+          <button className="text-sm text-white underline" tabIndex={-1} disabled={editing ? !canSave : counter ? !canPay : !canSave} onClick={() => save("print")}>{busy === "print" ? "Saving…" : "Save and print"} <Key k="⇧F10" /></button>
           {problem && !busy && <p className="text-xs opacity-90">{problem}</p>}
         </div>
       </section>
@@ -432,7 +468,7 @@ function ProductCell({ row, reg, onPick, onClear, onEmptyEnter, onArrow }: {
   const [open, setOpen] = useState(false);
   const [at, setAt] = useState(0);
   const [wait, setWait] = useState(false);
-  const { items, ready } = useSearch<Prod>("/api/inventory/products", q.trim(), !row.p && q.trim().length > 0);
+  const { items, ready, total } = useSearch<Prod>("/api/inventory/products", q.trim(), !row.p && q.trim().length > 0, 40);
   useEffect(() => { setAt(0); }, [items]);
   const choose = useCallback((p: Prod) => { setQ(""); setOpen(false); setWait(false); onPick(p); }, [onPick]);
   useEffect(() => { if (wait && ready && items.length) choose(items[Math.min(at, items.length - 1)]); else if (wait && ready) setWait(false); }, [wait, ready, items, at, choose]);
@@ -459,20 +495,26 @@ function ProductCell({ row, reg, onPick, onClear, onEmptyEnter, onArrow }: {
           else if (e.key === "Escape") { setOpen(false); }
         }} />
       {open && q.trim() && (
-        <ul role="listbox" className="absolute left-1 top-full z-40 mt-1 max-h-80 w-[min(46rem,calc(100vw-4rem))] overflow-auto rounded-xl border border-line bg-surface p-1 shadow-lg">
+        <ul role="listbox" className="absolute left-1 top-full z-40 mt-1 max-h-96 w-[min(62rem,calc(100vw-4rem))] overflow-auto rounded-xl border border-line bg-surface p-1 shadow-lg">
           {!ready && <li className="flex items-center gap-2 px-3 py-2 text-sm text-muted"><Spinner /> Searching…</li>}
           {ready && !items.length && <li className="px-3 py-2 text-sm text-muted">No part matches “{q}”.</li>}
-          {items.map((p, k) => (
-            <li key={p.id} role="option" aria-selected={k === at} onMouseDown={(e) => { e.preventDefault(); choose(p); }} onMouseEnter={() => setAt(k)}
-              className={"flex cursor-pointer items-center gap-3 rounded-lg px-3 py-1.5 text-sm " + (k === at ? "bg-accent text-accent-ink" : "")}>
-              <span className="min-w-0 flex-1 truncate font-medium">{p.name_en}{p.name_ur ? "  ·  " + p.name_ur : ""}</span>
-              {p.scheme && <span className="shrink-0 rounded-full border border-amber bg-amber-bg px-2 py-0.5 text-[11px] font-bold text-amber">Scheme {p.scheme}</span>}
-              {p.market_list && <span className="shrink-0 rounded-full border border-line bg-bg px-2 py-0.5 text-[11px] font-bold text-ink">Market</span>}
-              <span className={"w-24 shrink-0 truncate text-xs " + (k === at ? "" : "text-muted")}>{p.code_name ?? ""}</span>
-              <span className={"w-20 shrink-0 text-right text-xs " + (k === at ? "" : p.on_hand <= 0 ? "text-red" : "text-muted")}>stock {fmtQty(p.on_hand)}</span>
-              <span className="w-20 shrink-0 text-right font-semibold">{rs(p.cp)}</span>
-            </li>
-          ))}
+          {items.map((p, k) => {
+            const on = k === at;
+            const dim = on ? "opacity-80" : "text-muted";
+            return (
+              <li key={p.id} role="option" aria-selected={on} onMouseDown={(e) => { e.preventDefault(); choose(p); }} onMouseEnter={() => setAt(k)}
+                className={"flex cursor-pointer items-center gap-3 rounded-lg px-3 py-1.5 text-sm " + (on ? "bg-accent text-accent-ink" : "")}>
+                <span className="w-24 shrink-0 truncate font-semibold" title={p.code_name ?? ""}>{p.code_name ?? "—"}</span>
+                <span className="min-w-0 flex-1 truncate font-medium">{p.name_en}</span>
+                <span className="w-32 shrink-0 truncate text-right" style={{ fontFamily: "var(--font-urdu), serif", direction: "rtl" }}>{plainUrdu(p.name_ur)}</span>
+                <span className={"w-28 shrink-0 truncate text-xs " + dim} title={p.list_name ?? ""}>{p.list_name ?? ""}</span>
+                <span className="flex w-20 shrink-0 justify-center">{p.scheme && <span className="rounded-full border border-amber bg-amber-bg px-2 py-0.5 text-[11px] font-bold text-amber">{p.scheme}</span>}</span>
+                <span className="w-20 shrink-0 text-right font-semibold">{rs(p.cp)}</span>
+                <span className={"w-14 shrink-0 text-right text-[11px] " + (on ? "opacity-80" : p.on_hand <= 0 ? "text-red" : "text-muted")}>{p.market_list ? "market" : fmtQty(p.on_hand)}</span>
+              </li>
+            );
+          })}
+          {ready && total > items.length && <li className="px-3 py-1.5 text-center text-xs text-muted">Showing the first {items.length} of {total} matches. Keep typing to narrow it down.</li>}
         </ul>
       )}
     </>
@@ -480,7 +522,7 @@ function ProductCell({ row, reg, onPick, onClear, onEmptyEnter, onArrow }: {
 }
 
 /** Customer cell: type to search, arrows and Enter to choose, Enter on an unchanged customer goes on to the items. */
-function CustomerBox({ cust, kind, reg, onPick, onEmptyEnter }: { cust: Cust | null; kind: "counter" | "ledger"; reg: (id: string) => (el: HTMLElement | null) => void; onPick: (c: PickedCustomer) => void; onEmptyEnter: () => void }) {
+function CustomerBox({ cust, kind, locked, reg, onPick, onEmptyEnter }: { cust: Cust | null; kind: "counter" | "ledger"; locked?: boolean; reg: (id: string) => (el: HTMLElement | null) => void; onPick: (c: PickedCustomer) => void; onEmptyEnter: () => void }) {
   const [q, setQ] = useState<string | null>(null);   // null: show the chosen customer
   const [open, setOpen] = useState(false);
   const [at, setAt] = useState(0);
@@ -495,7 +537,7 @@ function CustomerBox({ cust, kind, reg, onPick, onEmptyEnter }: { cust: Cust | n
   return (
     <div className="relative">
       <label className="mb-1 block text-xs font-semibold text-muted" htmlFor="g-cust">Customer <kbd className="rounded border border-line bg-bg px-1.5 py-0.5 font-sans text-[11px] font-semibold text-ink">F3</kbd></label>
-      <input id="g-cust" ref={reg("cust")} data-cell="cust" role="combobox" aria-expanded={open && items.length > 0} aria-autocomplete="list" autoComplete="off" className="input text-lg font-semibold" value={shown}
+      <input id="g-cust" ref={reg("cust")} data-cell="cust" role="combobox" aria-expanded={open && items.length > 0} aria-autocomplete="list" autoComplete="off" readOnly={locked} className={"input text-lg font-semibold " + (locked ? "bg-bg" : "")} value={shown}
         placeholder={kind === "ledger" ? "Type a name, phone or code, then Enter" : "Walk-in. Type to pick a registered customer"}
         onFocus={(e) => e.currentTarget.select()} onChange={(e) => { setQ(e.target.value); setOpen(true); setWait(false); }}
         onBlur={() => setTimeout(() => { setOpen(false); setQ(null); }, 120)}

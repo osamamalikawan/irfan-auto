@@ -66,6 +66,9 @@ export const MENU: MenuGroup[] = [
     { label: "Live map", href: "/tracking", perms: ["tracking.view"] },
     { label: "Salesman cash", href: "/salesman-cash", perms: ["accounts.edit"] },
   ] },
+  { label: "Tasks", items: [
+    { label: "Tasks calendar", href: "/tasks", perms: ["sales.create", "sales.status", "payments.receive", "visits.record", "reports.view", "customers.view"] },
+  ] },
 ];
 
 /** The menu this person is allowed to see. */

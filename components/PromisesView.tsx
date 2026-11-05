@@ -6,12 +6,14 @@ import { rs } from "@/lib/format";
 import { telLink, waLink } from "@/lib/phone";
 import type { PromiseStatus } from "@/lib/promises";
 import { VISIT_OUTCOMES } from "@/lib/schedule";
+import { withArea } from "@/lib/cust";
 import CollectModal from "./CollectModal";
+import NewPromiseModal from "./NewPromiseModal";
 import { useMe } from "./Me";
 import Toast from "./Toast";
 
 type P = {
-  customer: { id: string; code: string; name: string; phone: string | null; route: string };
+  customer: { id: string; code: string; name: string; area?: string; phone: string | null; route: string };
   date: string; amount: number; notes: string | null; made_on: string; by: string; paid_since: number; balance: number; status: PromiseStatus;
 };
 type Data = { today: string; items: P[]; counts: { attention: number; upcoming: number; kept: number } };
@@ -26,6 +28,7 @@ export default function PromisesView() {
   const [collect, setCollect] = useState<{ id: string; name: string } | null>(null);
   const [follow, setFollow] = useState<{ id: string; name: string } | null>(null);
   const [toast, setToast] = useState("");
+  const [adding, setAdding] = useState(false);
 
   const load = useCallback(async () => {
     const r = await fetch("/api/promises");
@@ -41,13 +44,14 @@ export default function PromisesView() {
   return (
     <div>
       <header className="sticky top-0 z-20 border-b border-line bg-bg px-3 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] lg:static lg:border-0 lg:px-5 lg:pt-4">
-        <h1 className="mb-2 text-lg font-bold lg:text-xl">Customer promises</h1>
+        <div className="mb-2 flex items-center gap-2"><h1 className="flex-1 text-lg font-bold lg:text-xl">Customer promises</h1>
+          {(can("visits.record") || can("payments.receive") || can("sales.create")) && <button className="btn btn-primary" onClick={() => setAdding(true)}>＋ New promise</button>}</div>
         <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 lg:mx-0 lg:px-0">
           {TABS.map(([k, label]) => <button key={k} className={"chip " + (tab === k ? "chip-on" : "")} onClick={() => setTab(k)}>{label}{d ? " (" + d.counts[k] + ")" : ""}</button>)}
         </div>
       </header>
       <div className="space-y-3 p-3 lg:px-5">
-        <p className="text-sm text-muted">A promise to pay is recorded when a salesman saves a customer&apos;s response on a route visit. The latest promise of each customer is shown; it is kept once they have paid the promised amount.</p>
+        <p className="text-sm text-muted">Add a promise with “New promise”; a promise is also recorded when a salesman saves a customer&apos;s response on a route visit. The latest promise of each customer is shown; it is kept once they have paid the promised amount.</p>
         {tab === "attention" && owedOverdue > 0 && <p className="rounded-lg bg-amber-bg p-2 text-sm text-amber">Promised but not yet received: <b>{rs(owedOverdue)}</b></p>}
         {error && <p className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
         {!d && !error && <p className="text-sm text-muted">Loading…</p>}
@@ -58,7 +62,7 @@ export default function PromisesView() {
             return (
               <li key={p.customer.id} className="card p-3">
                 <div className="flex items-start gap-2">
-                  <div className="min-w-0 flex-1"><Link href={"/customers/" + p.customer.id} className="block truncate font-semibold hover:underline">{p.customer.name}</Link><p className="text-xs text-muted">{[p.customer.code, p.customer.route].filter(Boolean).join(" · ")}</p></div>
+                  <div className="min-w-0 flex-1"><Link href={"/customers/" + p.customer.id} className="block truncate font-semibold hover:underline">{withArea(p.customer.name, p.customer.area)}</Link><p className="text-xs text-muted">{[p.customer.code, p.customer.route].filter(Boolean).join(" · ")}</p></div>
                   <span className={"pill " + cls}>{label}</span>
                 </div>
                 <p className="mt-2 text-sm">Promised {p.amount ? <b>{rs(p.amount)}</b> : "to pay"} by <b>{niceDate(p.date)}</b></p>
@@ -75,6 +79,7 @@ export default function PromisesView() {
           })}
         </ul>
       </div>
+      {adding && <NewPromiseModal onClose={() => setAdding(false)} onSaved={(m) => { setAdding(false); setToast(m); load(); }} />}
       {collect && <CollectModal customer={collect} onClose={() => setCollect(null)} onDone={(m) => { setCollect(null); setToast(m); load(); }} />}
       {follow && <FollowUp customer={follow} onClose={() => setFollow(null)} onDone={() => { setFollow(null); setToast("Follow-up saved"); load(); }} />}
       {toast && <Toast msg={toast} onHide={() => setToast("")} />}

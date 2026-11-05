@@ -2,56 +2,41 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase";
 import { authorize } from "@/lib/auth";
 import { allowedRouteIds } from "@/lib/customer-scope";
-import { chunk } from "@/lib/chunks";
-import { addDays } from "@/lib/schedule";
-import { comparePromises, promiseStatus } from "@/lib/promises";
+import { loadPromises } from "@/lib/promises-data";
+import { cleanDate } from "@/lib/schedule";
 
 export const dynamic = "force-dynamic";
-const one = <T,>(x: T | T[] | null | undefined): T | null => (Array.isArray(x) ? x[0] ?? null : x ?? null);
 const todayPk = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Karachi" });
 
-/** Each customer's latest promise to pay (from the last 90 days of visits) and whether it has been kept. */
+/** Each customer's latest promise to pay (from the last 90 days) and whether it has been kept. */
 export async function GET(_req: NextRequest) {
   const a = await authorize("visits.record", "payments.receive", "reports.view", "customers.view");
   if (a.error) return a.error;
-  const sb = db(), today = todayPk();
+  const r = await loadPromises(db(), a.user, todayPk());
+  if (!r.ok) return NextResponse.json({ error: r.error }, { status: 500 });
+  return NextResponse.json({ today: r.today, items: r.items, counts: r.counts });
+}
+
+/** Add a promise to pay. Body: { customer_id, promise_date, promise_amount, notes? } */
+export async function POST(req: NextRequest) {
+  const a = await authorize("visits.record", "payments.receive", "sales.create");
+  if (a.error) return a.error;
+  const b = await req.json().catch(() => null);
+  const today = todayPk();
+  const date = cleanDate(b?.promise_date);
+  const amount = Math.max(0, Number(b?.promise_amount) || 0);
+  if (!date) return NextResponse.json({ error: "Enter the date the customer promised to pay." }, { status: 400 });
+  if (date < today) return NextResponse.json({ error: "A promise date cannot be in the past." }, { status: 400 });
+  if (amount <= 0) return NextResponse.json({ error: "Enter the amount the customer promised." }, { status: 400 });
+  const sb = db();
+  const c = await sb.from("customers").select("id,route_id,area_id,is_walk_in").eq("id", String(b?.customer_id ?? "")).maybeSingle();
+  if (!c.data || c.data.is_walk_in) return NextResponse.json({ error: "Choose a customer." }, { status: 404 });
   const mine = await allowedRouteIds(sb, a.user);
-  if (mine && !mine.length) return NextResponse.json({ items: [], counts: { attention: 0, upcoming: 0, kept: 0 } });
-
-  const vs = await sb.from("visits").select("customer_id,visit_date,notes,promise_date,promise_amount,created_at,by:app_users(name)")
-    .not("promise_date", "is", null).gte("visit_date", addDays(today, -90)).order("created_at", { ascending: false }).limit(3000);
-  if (vs.error) return NextResponse.json({ error: vs.error.message }, { status: 500 });
-  const latest = new Map<string, { customer_id: string; visit_date: string; notes: string | null; promise_date: string; promise_amount: number | null; created_at: string; by: unknown }>();
-  for (const v of vs.data ?? []) if (!latest.has(v.customer_id)) latest.set(v.customer_id, v as never);
-  const ids = [...latest.keys()];
-  if (!ids.length) return NextResponse.json({ items: [], counts: { attention: 0, upcoming: 0, kept: 0 } });
-
-  const cust = new Map<string, { id: string; code: string; name: string; phone: string | null; route_id: string | null; route: string }>();
-  const balance = new Map<string, number>(), paid = new Map<string, number>();
-  for (const part of chunk(ids)) {
-    const [c, b, p] = await Promise.all([
-      sb.from("customers").select("id,code,name,phone,route_id,route:routes(name)").in("id", part),
-      sb.from("customer_balances").select("customer_id,balance").in("customer_id", part),
-      sb.from("payments").select("customer_id,amount,created_at").in("customer_id", part).eq("reversed", false).gte("created_at", addDays(today, -91)),
-    ]);
-    const err = c.error ?? b.error ?? p.error;
-    if (err) return NextResponse.json({ error: err.message }, { status: 500 });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const x of (c.data ?? []) as any[]) cust.set(x.id, { id: x.id, code: x.code, name: x.name, phone: x.phone, route_id: x.route_id, route: one(x.route)?.name ?? "" });
-    for (const x of b.data ?? []) balance.set(x.customer_id, Number(x.balance));
-    for (const x of p.data ?? []) {
-      const pr = latest.get(x.customer_id);
-      if (pr && x.created_at >= pr.created_at) paid.set(x.customer_id, (paid.get(x.customer_id) ?? 0) + Number(x.amount));   // paid since the promise was made
-    }
-  }
-
-  const items = [...latest.values()].flatMap((v) => {
-    const c = cust.get(v.customer_id);
-    if (!c || (mine && !(c.route_id && mine.includes(c.route_id)))) return [];
-    const amount = Number(v.promise_amount ?? 0), paidSince = paid.get(v.customer_id) ?? 0, bal = balance.get(v.customer_id) ?? 0;
-    return [{ customer: { id: c.id, code: c.code, name: c.name, phone: c.phone, route: c.route }, date: v.promise_date, amount, notes: v.notes, made_on: v.visit_date, by: one(v.by as { name: string } | { name: string }[] | null)?.name ?? "",
-      paid_since: paidSince, balance: bal, status: promiseStatus({ date: v.promise_date, amount, paidSince, balance: bal }, today) }];
-  }).sort(comparePromises);
-  const counts = { attention: items.filter((i) => i.status === "overdue" || i.status === "due").length, upcoming: items.filter((i) => i.status === "upcoming").length, kept: items.filter((i) => i.status === "kept").length };
-  return NextResponse.json({ today, items, counts });
+  if (mine && !(c.data.route_id && mine.includes(c.data.route_id))) return NextResponse.json({ error: "That customer is not on your routes." }, { status: 403 });
+  const { error } = await sb.from("visits").insert({
+    customer_id: c.data.id, route_id: c.data.route_id, area_id: c.data.area_id, user_id: a.user.id, outcome: "Visited", visit_date: today,
+    notes: String(b?.notes ?? "").trim().slice(0, 300) || null, promise_date: date, promise_amount: amount,
+  });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true }, { status: 201 });
 }

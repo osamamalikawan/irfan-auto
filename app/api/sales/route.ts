@@ -5,6 +5,7 @@ import { allowedRouteIds, safeWord } from "@/lib/customer-scope";
 import { hasPerm } from "@/lib/permissions";
 import { dbError } from "@/lib/sql-error";
 import { cleanPays } from "@/lib/pays";
+import { mapLines } from "@/lib/sale-lines";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,7 @@ export async function GET(req: NextRequest) {
   if (sp.get("customer")) q = q.eq("customer_id", sp.get("customer")!);
   const st = sp.get("status") ?? "";
   if (st === "cancelled") q = q.eq("status", "cancelled");
+  else if (st === "returnable") q = q.eq("status", "confirmed").in("fulfil_status", ["delivered", "completed"]);
   else if (["active", "packed", "delivered", "completed"].includes(st)) q = q.eq("status", "confirmed").eq("fulfil_status", st);
   const kind = sp.get("kind") ?? "";
   if (kind === "counter") q = q.eq("sale_kind", "counter");
@@ -57,13 +59,7 @@ export async function POST(req: NextRequest) {
     const c = await sb.from("customers").select("route_id,is_walk_in").eq("id", b.customer_id).maybeSingle();
     if (!c.data || (!c.data.is_walk_in && !(c.data.route_id && mine.includes(c.data.route_id)))) return NextResponse.json({ error: "That customer is not on your routes." }, { status: 403 });
   }
-  const lines = Array.isArray(b.lines) ? b.lines.map((l: Record<string, unknown>) => ({
-    product_id: l.product_id, qty: Number(l.qty),
-    price: l.price === undefined || l.price === null || l.price === "" ? null : Number(l.price),
-    disc_pct: l.disc_pct === undefined || l.disc_pct === null || l.disc_pct === "" ? null : Number(l.disc_pct),
-    location_id: l.location_id || null,
-    market: l.market && typeof l.market === "object" ? { cost: Number((l.market as { cost?: unknown }).cost), vendor: String((l.market as { vendor?: unknown }).vendor ?? "").slice(0, 80), supplier_id: (l.market as { supplier_id?: unknown }).supplier_id || null } : undefined,
-  })) : [];
+  const lines = mapLines(b.lines);
   const { data, error } = await sb.rpc("create_sale", {
     p_customer: b.customer_id, p_location: b.location_id || null, p_lines: lines,
     p_discount: Number(b.discount) || 0, p_bilti: Number(b.bilti) || 0,

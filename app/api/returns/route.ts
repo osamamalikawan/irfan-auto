@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   const sb = db();
   const mine = await allowedRouteIds(sb, a.user);
   if (mine && !mine.length) return NextResponse.json({ items: [] });
-  let q = sb.from("sale_returns").select("id,no,return_date,amount,damaged,reason,created_at,sale:sales(id,no,customer_id,customer_name),lines:sale_return_lines(qty,name),by:app_users!sale_returns_created_by_fkey(name)")
+  let q = sb.from("sale_returns").select("id,no,kind,return_date,amount,damaged,reason,created_at,sale:sales(id,no,customer_id,customer_name),lines:sale_return_lines(qty,name),by:app_users!sale_returns_created_by_fkey(name)")
     .order("created_at", { ascending: false }).limit(60);
   if (mine) q = q.in("route_id", mine);
   if (sp.get("from")) q = q.gte("return_date", sp.get("from")!);
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ items: (data ?? []).map((r: any) => ({ ...r, sale: one(r.sale), by: one(r.by)?.name ?? "" })) });
 }
 
-/** Body: { sale_id, lines: [{ item_id, qty }], damaged?, reason? } */
+/** Body: { sale_id, lines: [{ item_id, qty }], kind?: "return" | "claim", damaged?, reason? } */
 export async function POST(req: NextRequest) {
   const a = await authorize("sales.return");
   if (a.error) return a.error;
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     if (!s.data?.route_id || !mine.includes(s.data.route_id)) return NextResponse.json({ error: "Invoice not found." }, { status: 404 });
   }
   const lines = Array.isArray(b.lines) ? b.lines.map((l: { item_id: string; qty: unknown }) => ({ item_id: l.item_id, qty: Number(l.qty) })).filter((l: { qty: number }) => l.qty > 0) : [];
-  const { data, error } = await sb.rpc("create_return", { p_sale: b.sale_id, p_lines: lines, p_damaged: !!b.damaged, p_reason: String(b.reason ?? "").slice(0, 300), p_user: a.user.id });
+  const { data, error } = await sb.rpc("create_return", { p_sale: b.sale_id, p_lines: lines, p_damaged: !!b.damaged, p_reason: String(b.reason ?? "").slice(0, 300), p_user: a.user.id, p_kind: b.kind === "claim" ? "claim" : "return" });
   if (error) return dbError(error);
   return NextResponse.json({ id: data }, { status: 201 });
 }

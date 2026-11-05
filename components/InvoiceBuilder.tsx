@@ -41,7 +41,7 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
   const [split, setSplit] = useState(false);
   const [receiveNow, setReceiveNow] = useState(false);
   const [remarks, setRemarks] = useState("");
-  const [busy, setBusy] = useState<"" | "hold" | "pay" | "save">("");
+  const [busy, setBusy] = useState<"" | "pay" | "save">("");
   const [error, setError] = useState("");
   const [idem] = useState(() => crypto.randomUUID());
 
@@ -114,13 +114,13 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
   const canPay = baseReady && total > 0 && counterPaid;
   const canSave = baseReady && ledgerPaid <= total && (!receiveNow || toPayments(rows, true, 0).length > 0 || ledgerPaid === 0);
 
-  async function save(mode: "hold" | "pay" | "save") {
+  async function save(mode: "pay" | "save") {
     if (!cust) return;
     setBusy(mode); setError("");
     const body = {
-      customer_id: cust.id, kind, term, hold: mode === "hold", idem_key: idem, discount: money(discount), bilti: money(bilti), local_charges: money(local), remarks,
+      customer_id: cust.id, kind, term, hold: false, idem_key: idem, discount: money(discount), bilti: money(bilti), local_charges: money(local), remarks,
       contact_name: walkIn ? contactName : "", contact_phone: walkIn ? contactPhone : "",
-      payments: mode === "hold" ? [] : counter ? counterPays : receiveNow ? toPayments(rows, true, 0) : [],
+      payments: counter ? counterPays : receiveNow ? toPayments(rows, true, 0) : [],
       lines: lines.map((l) => ({ product_id: l.p.id, qty: money(l.qty), price: l.price !== "" ? money(l.price) : undefined, disc_pct: l.disc !== "" ? money(l.disc) : undefined, market: l.market })),
     };
     const r = await fetch("/api/sales", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -137,7 +137,6 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
         <div className="min-w-0 flex-1"><h1 className="text-base font-bold leading-tight">{counter ? "Counter sale" : "Ledger sale"}</h1><p className="text-xs text-muted">Total {rs(total)}</p></div>
         {counter ? (
           <>
-            <button className="btn" disabled={!baseReady} onClick={() => save("hold")}>{busy === "hold" ? <><Spinner /> Holding…</> : "Hold"}</button>
             <button className="btn btn-primary" disabled={!canPay} onClick={() => save("pay")}>{busy === "pay" ? <><Spinner /> Saving…</> : "Pay & complete"}</button>
           </>
         ) : (
@@ -149,7 +148,7 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
         {error && <p role="alert" className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
 
         <div role="radiogroup" aria-label="Sale type" className="grid grid-cols-2 gap-2">
-          {([["counter", "Counter sale", "Paid now. Can be put on hold."], ["ledger", "Ledger sale", "Delivered later, cash or credit."]] as const).map(([k, label, note]) => (
+          {([["counter", "Counter sale", "Paid now at the counter."], ["ledger", "Ledger sale", "Delivered later, cash or credit."]] as const).map(([k, label, note]) => (
             <button key={k} type="button" role="radio" aria-checked={kind === k} onClick={() => pickKind(k)}
               className={"rounded-xl border p-3 text-left active:opacity-70 " + (kind === k ? "border-accent ring-2 ring-accent" : "border-line bg-surface")}>
               <span className="block font-semibold">{label}</span><span className="block text-xs text-muted">{note}</span>
@@ -263,7 +262,7 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
             <div>
               <p className="label">Paid by</p>
               <PaySplit methods={methods} rows={rows} setRows={setRows} split={split} setSplit={setSplit} total={total} mode="full" />
-              <p className="mt-2 text-xs text-muted">“Pay &amp; complete” takes the payment and completes the sale. “Hold” keeps it Active without payment; stock is deducted now and comes back if you cancel.</p>
+              <p className="mt-2 text-xs text-muted">“Pay &amp; complete” takes the payment and completes the sale.</p>
             </div>
           )}
           {!counter && cust && !walkIn && (
