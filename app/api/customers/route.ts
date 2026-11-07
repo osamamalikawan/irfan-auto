@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase";
 import { authorize } from "@/lib/auth";
-import { canAddCustomer, hasPerm } from "@/lib/permissions";
+import { canAddCustomer, hasPerm, isAdmin } from "@/lib/permissions";
+import { cleanPhones, phoneColumns, saveGroups, savePhones } from "@/lib/customer-extras";
 import { allowedRouteIds, safeWord } from "@/lib/customer-scope";
 
 export const dynamic = "force-dynamic";
 const READERS = ["customers.view", "customers.edit", "sales.create"];
 
 const SELECT =
-  "id,code,name,name_ur,owner,phone,credit_limit,status,customer_remarks(text,created_at),area:areas(id,name,city:cities(name)),route:routes(id,name,visit_days,salesman:app_users(id,name))";
+  "id,code,name,name_ur,owner,phone,phone2,credit_limit,status,customer_remarks(text,created_at),groups:customer_group_members(group:customer_groups(id,name)),area:areas(id,name,city:cities(name)),route:routes(id,name,visit_days,salesman:app_users(id,name))";
 
-/** ?q=&route=&area=&status=active|archived&offset=&limit= */
+/** ?q=&route=&area=&group=&status=active|archived&offset=&limit= */
 export async function GET(req: NextRequest) {
   const a = await authorize(...READERS);
   if (a.error) return a.error;
@@ -28,9 +29,15 @@ export async function GET(req: NextRequest) {
   if (mine) q = q.in("route_id", mine);
   if (sp.get("route")) q = q.eq("route_id", sp.get("route")!);
   if (sp.get("area")) q = q.eq("area_id", sp.get("area")!);
+  if (sp.get("group")) {
+    const m = await sb.from("customer_group_members").select("customer_id").eq("group_id", sp.get("group")!).limit(20000);
+    if (m.error) return NextResponse.json({ error: m.error.message }, { status: 500 });
+    if (!m.data?.length) return NextResponse.json({ items: [], total: 0 });
+    q = q.in("id", m.data.map((x: { customer_id: string }) => x.customer_id));
+  }
   for (const raw of (sp.get("q") ?? "").split(/\s+/)) {
     const w = safeWord(raw);
-    if (w) q = q.or(["name", "name_ur", "owner", "phone", "phone2", "code"].map((c) => c + ".ilike.%" + w + "%").join(","));
+    if (w) q = q.or(["name", "name_ur", "owner", "phone", "phone2", "phone_search", "code"].map((c) => c + ".ilike.%" + w + "%").join(","));
   }
   const { data, count, error } = await q;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -39,17 +46,18 @@ export async function GET(req: NextRequest) {
   const balance = new Map((bal.data ?? []).map((b) => [b.customer_id, Number(b.balance)]));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const items = (data ?? []).map((c: any) => {
-    const { customer_remarks, ...rest } = c;
+    const { customer_remarks, groups, ...rest } = c;
     const one = <T,>(x: T | T[] | null): T | null => (Array.isArray(x) ? x[0] ?? null : x ?? null);
     const route = one(c.route);
-    return { ...rest, area: one(c.area), route: route ? { ...route, salesman: one(route.salesman) } : null, last_remark: customer_remarks?.[0]?.text ?? null, balance: balance.get(c.id) ?? 0 };
+    return { ...rest, area: one(c.area), route: route ? { ...route, salesman: one(route.salesman) } : null, last_remark: customer_remarks?.[0]?.text ?? null, balance: balance.get(c.id) ?? 0,
+      groups: (groups ?? []).map((g: { group: unknown }) => one(g.group as { id: string; name: string } | { id: string; name: string }[] | null)).filter(Boolean) };
   });
   return NextResponse.json({ items, total: count ?? 0 });
 }
 
-const TEXT = ["name_ur", "owner", "phone", "phone2", "address", "cnic", "ntn", "email", "gps"] as const;
+const TEXT = ["name_ur", "owner", "address", "cnic", "ntn", "email", "gps"] as const;
 
-/** Body: { name, name_ur?, owner?, phone?, phone2?, address?, cnic?, ntn?, email?, credit_limit?, credit_days?, opening_balance?, area_id?, route_id?, remarks? } */
+/** Body: { name, name_ur?, owner?, phones?: string[] (or phone / phone2), address?, cnic?, ntn?, email?, credit_limit?, credit_days?, invoice_days_limit? (admin only), opening_balance?, area_id?, route_id?, group_ids?: string[], remarks? } */
 export async function POST(req: NextRequest) {
   const a = await authorize();
   if (a.error) return a.error;
@@ -69,7 +77,8 @@ export async function POST(req: NextRequest) {
     if (!own.data) return NextResponse.json({ error: "You can only add customers to your own routes." }, { status: 403 });
   }
 
-  const phone = String(b?.phone ?? "").trim();
+  const phones = cleanPhones(b);
+  const phone = phones[0] ?? "";
   let dup = sb.from("customers").select("id").ilike("name", name.replace(/[\\%_]/g, "\\$&")).limit(1);
   dup = phone ? dup.eq("phone", phone) : dup.is("phone", null);
   const d = await dup;
@@ -79,10 +88,18 @@ export async function POST(req: NextRequest) {
   const row: Record<string, unknown> = {
     name, credit_limit: full ? Math.max(0, Number(b?.credit_limit) || 0) : 0, credit_days: full ? Math.max(0, Math.round(Number(b?.credit_days) || 0)) : 0,
     opening_balance: full ? Number(b?.opening_balance) || 0 : 0, area_id: b?.area_id || null, route_id: b?.route_id || null,
+    ...phoneColumns(phones),
   };
+  if (isAdmin(a.user) && b?.invoice_days_limit !== undefined && b.invoice_days_limit !== "") row.invoice_days_limit = Math.max(0, Math.round(Number(b.invoice_days_limit) || 0));
   for (const k of TEXT) row[k] = String(b?.[k] ?? "").trim() || null;
   const { data, error } = await sb.from("customers").insert(row).select("id,code").single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  try {
+    await savePhones(sb, data.id, phones);
+    if (full && Array.isArray(b?.group_ids)) await saveGroups(sb, data.id, b.group_ids);
+  } catch (e) {
+    return NextResponse.json({ error: "Customer saved, but: " + (e as Error).message, id: data.id }, { status: 500 });
+  }
   if (Number(row.opening_balance)) await sb.from("customer_ledger").insert({ customer_id: data.id, type: "opening", amount: row.opening_balance, ref: data.id });
   if (row.route_id) await sb.from("customer_route_history").insert({ customer_id: data.id, route_id: row.route_id });
   const remark = String(b?.remarks ?? "").trim().slice(0, 500);

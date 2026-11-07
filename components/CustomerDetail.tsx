@@ -15,7 +15,8 @@ import { PageLoading, Spinner } from "./Loading";
 type Detail = {
   customer: {
     id: string; code: string; name: string; name_ur: string | null; owner: string | null; phone: string | null; phone2: string | null; address: string | null;
-    cnic: string | null; ntn: string | null; email: string | null; gps: string | null; credit_limit: number; credit_days: number; opening_balance: number; balance: number; status: string; is_walk_in: boolean;
+    cnic: string | null; ntn: string | null; email: string | null; gps: string | null; credit_limit: number; credit_days: number; invoice_days_limit: number; opening_balance: number; balance: number; status: string; is_walk_in: boolean;
+    phones: string[]; groups: { id: string; name: string }[]; overdue: number; remaining_limit: number | null;
     area: { name: string; city: { name: string } | null } | null;
     route: { id: string; name: string; code: string | null; visit_days: string[]; salesman: { name: string } | null } | null;
   };
@@ -69,7 +70,8 @@ export default function CustomerDetail({ id }: { id: string }) {
   if (!d) return <PageLoading />;
   const c = d.customer;
   const place = [c.area?.name, c.area?.city?.name].filter(Boolean).join(", ");
-  const phones = [c.phone, c.phone2].filter(Boolean) as string[];
+  const phones = c.phones?.length ? c.phones : ([c.phone, c.phone2].filter(Boolean) as string[]);
+  const overLimit = c.invoice_days_limit > 0 && c.overdue > 0;
   const canRemark = canAny(["customers.edit", "visits.record", "sales.create"]);
 
   return (
@@ -86,6 +88,7 @@ export default function CustomerDetail({ id }: { id: string }) {
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted">{c.code}</span>
               {c.status === "archived" && <span className="pill bg-amber-bg text-amber">Archived</span>}
+              {c.groups.map((g) => <span key={g.id} className="pill bg-bg text-muted">{g.name}</span>)}
             </div>
             {c.name_ur && <p className="ur text-lg">{c.name_ur}</p>}
             {c.owner && <p className="text-sm text-muted">Owner: {c.owner}</p>}
@@ -109,8 +112,11 @@ export default function CustomerDetail({ id }: { id: string }) {
               <div><dt className="text-xs text-muted">Visit days</dt><dd className="font-medium">{c.route?.visit_days.length ? c.route.visit_days.join(", ") : "—"}</dd></div>
               <div><dt className="text-xs text-muted">Credit limit</dt><dd className="font-medium">{c.credit_limit > 0 ? rs(c.credit_limit) : "None"}</dd></div>
               <div><dt className="text-xs text-muted">Credit days</dt><dd className="font-medium">{c.credit_days || "—"}</dd></div>
+              <div><dt className="text-xs text-muted">Remaining limit</dt><dd className="font-medium">{c.remaining_limit === null ? "No limit set" : rs(c.remaining_limit)}</dd></div>
+              <div><dt className="text-xs text-muted">Invoice days limit</dt><dd className="font-medium">{c.invoice_days_limit > 0 ? c.invoice_days_limit + " days" : "Off"}</dd></div>
               <div><dt className="text-xs text-muted">Balance now</dt><dd className={"font-medium " + (c.balance > 0 ? "text-red" : "")}>{rs(c.balance)}</dd></div>
             </dl>
+            {overLimit && <p role="alert" className="mt-3 rounded-lg bg-red-bg p-2 text-sm text-red">New credit invoices are blocked: {rs(c.overdue)} is unpaid for more than {c.invoice_days_limit} days. Collect payment first.</p>}
             <div className="mt-3 flex flex-wrap gap-2">
               {can("routes.manage") && !c.is_walk_in && <button className="btn" onClick={() => setMoving(true)}>Change route</button>}
               {can("customers.edit") && !c.is_walk_in && (c.status === "active"

@@ -10,7 +10,7 @@ import Toast from "./Toast";
 import { ListSkeleton, LoadingBar, Spinner } from "./Loading";
 
 type Customer = {
-  id: string; code: string; name: string; name_ur: string | null; owner: string | null; phone: string | null; credit_limit: number; balance: number; last_remark: string | null;
+  id: string; code: string; name: string; name_ur: string | null; owner: string | null; phone: string | null; phone2?: string | null; credit_limit: number; balance: number; last_remark: string | null; groups?: { id: string; name: string }[];
   area: { id: string; name: string; city: { name: string } | null } | null;
   route: { id: string; name: string; visit_days: string[]; salesman: { id: string; name: string } | null } | null;
 };
@@ -24,6 +24,8 @@ export default function CustomersList() {
   const [q, setQ] = useState("");
   const [route, setRoute] = useState("");
   const [area, setArea] = useState("");
+  const [group, setGroup] = useState("");
+  const [groups, setGroups] = useState<{ id: string; name: string; customers: number }[]>([]);
   const [routes, setRoutes] = useState<Route[]>([]);
   const [cities, setCities] = useState<City[]>([]);
   const [items, setItems] = useState<Customer[]>([]);
@@ -38,6 +40,7 @@ export default function CustomersList() {
   useEffect(() => {
     fetch("/api/routes").then((r) => r.json()).then((j) => setRoutes(j.routes ?? [])).catch(() => {});
     fetch("/api/geo").then((r) => r.json()).then((j) => setCities(j.cities ?? [])).catch(() => {});
+    fetch("/api/customer-groups").then((r) => r.json()).then((j) => setGroups(j.groups ?? [])).catch(() => {});
   }, []);
 
   const load = useCallback(async (offset: number) => {
@@ -46,6 +49,7 @@ export default function CustomersList() {
     const p = new URLSearchParams({ q, status, offset: String(offset), limit: String(PAGE) });
     if (route) p.set("route", route);
     if (area) p.set("area", area);
+    if (group) p.set("group", group);
     try {
       const r = await fetch("/api/customers?" + p);
       const j = await r.json();
@@ -58,7 +62,7 @@ export default function CustomersList() {
     } finally {
       if (id === req.current) setLoading(false);
     }
-  }, [q, status, route, area]);
+  }, [q, status, route, area, group]);
 
   useEffect(() => {
     const t = setTimeout(() => { setSel(new Set()); load(0); }, 250);
@@ -99,6 +103,12 @@ export default function CustomersList() {
         <div className="mt-2 flex gap-2 lg:mt-3">
           <button className={"chip " + (status === "active" ? "chip-on" : "")} onClick={() => setStatus("active")}>Active</button>
           <button className={"chip " + (status === "archived" ? "chip-on" : "")} onClick={() => setStatus("archived")}>Archived</button>
+          {groups.length > 0 && (
+            <select className="input ml-auto w-44" value={group} onChange={(e) => setGroup(e.target.value)} aria-label="Group">
+              <option value="">All groups</option>
+              {groups.map((g) => <option key={g.id} value={g.id}>{g.name} ({g.customers})</option>)}
+            </select>
+          )}
         </div>
         <LoadingBar active={loading} className="mt-2" />
       </header>
@@ -121,6 +131,7 @@ export default function CustomersList() {
                 {c.route ? <span className="pill bg-bg text-muted">{c.route.name}{dayText(c) ? " · " + dayText(c) : ""}</span> : <span className="pill bg-red-bg text-red">No route</span>}
                 {c.balance > 0 && <span className="pill bg-red-bg text-red">Due {rs(c.balance)}</span>}
                 {c.credit_limit > 0 && <span className="pill bg-bg text-muted">Limit {rs(c.credit_limit)}</span>}
+                {c.groups?.map((g) => <span key={g.id} className="pill bg-amber-bg text-amber">{g.name}</span>)}
               </div>
               {c.last_remark && <p className="mt-1 truncate text-xs italic text-muted">“{c.last_remark}”</p>}
             </Link>
@@ -154,7 +165,8 @@ export default function CustomersList() {
                   <td className="border-b border-line px-2 py-2">
                     <Link href={"/customers/" + c.id} className="font-semibold hover:underline">{withArea(c.name, c.area?.name)}</Link>
                     {c.name_ur && <div className="ur text-[13px] leading-8 text-muted">{c.name_ur}</div>}
-                    <div className="text-xs text-muted">{[c.owner, c.phone].filter(Boolean).join(" · ")}</div>
+                    <div className="text-xs text-muted">{[c.owner, c.phone, c.phone2].filter(Boolean).join(" · ")}</div>
+                    {!!c.groups?.length && <div className="mt-0.5 flex flex-wrap gap-1">{c.groups.map((g) => <span key={g.id} className="pill bg-amber-bg text-amber">{g.name}</span>)}</div>}
                     {c.last_remark && <div className="max-w-xs truncate text-xs italic text-muted" title={c.last_remark}>“{c.last_remark}”</div>}
                   </td>
                   <td className="border-b border-line px-2 py-2">

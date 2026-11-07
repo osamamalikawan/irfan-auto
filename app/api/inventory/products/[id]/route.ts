@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase";
 import { authorize } from "@/lib/auth";
 import { applyPlacement, ensureNamed } from "@/lib/placement-db";
+import { setProductSuppliers } from "@/lib/product-suppliers";
 import type { Placement } from "@/lib/placement";
 
 export const dynamic = "force-dynamic";
@@ -12,14 +13,15 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
   if (a.error) return a.error;
   const { id } = await params;
   const sb = db();
-  const [prod, levels, pls, prs, moves] = await Promise.all([
+  const [prod, levels, pls, prs, moves, sups] = await Promise.all([
     sb.from("products").select("*, brand:brands(name), company:companies(name), list:price_lists(name)").eq("id", id).maybeSingle(),
     sb.from("stock_levels").select("location_id, qty").eq("product_id", id),
     sb.from("product_locations").select("location:locations(id,name)").eq("product_id", id),
     sb.from("product_racks").select("rack:racks(code, location_id)").eq("product_id", id),
     sb.from("stock_movements").select("id, qty, type, note, created_at, location:locations(name)").eq("product_id", id).order("created_at", { ascending: false }).limit(50),
+    sb.from("product_suppliers").select("supplier:suppliers(id,name)").eq("product_id", id),
   ]);
-  const err = prod.error ?? levels.error ?? pls.error ?? prs.error ?? moves.error;
+  const err = prod.error ?? levels.error ?? pls.error ?? prs.error ?? moves.error ?? sups.error;
   if (err) return NextResponse.json({ error: err.message }, { status: 500 });
   if (!prod.data) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -38,7 +40,8 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
   for (const r of (prs.data ?? []) as any[]) if (r.rack) byLoc.get(r.rack.location_id)?.racks.push(r.rack.code);
   const locations = [...byLoc.values()].map((l) => ({ ...l, racks: l.racks.sort() })).sort((a, b) => a.name.localeCompare(b.name));
   return NextResponse.json({
-    product: prod.data, locations,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    product: { ...prod.data, suppliers: ((sups.data ?? []) as any[]).map((s) => (Array.isArray(s.supplier) ? s.supplier[0] : s.supplier)).filter(Boolean) }, locations,
     onHand: locations.reduce((s, l) => s + l.qty, 0),
     movements: moves.data,
   });
@@ -68,6 +71,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     const { error } = await sb.from("products").update(patch).eq("id", id);
     if (error) throw new Error(error.message);
     if (Array.isArray(b.placement)) await applyPlacement(sb, id, b.placement as Placement);
+    if (Array.isArray(b.supplier_ids)) await setProductSuppliers(sb, id, b.supplier_ids);
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });

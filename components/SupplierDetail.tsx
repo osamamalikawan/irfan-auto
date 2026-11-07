@@ -8,6 +8,8 @@ import { useMe } from "./Me";
 import PaySupplierModal from "./PaySupplierModal";
 import StatementTable, { type Statement } from "./StatementTable";
 import SupplierForm, { type SupplierRow } from "./SupplierForm";
+import SupplierProductsTab from "./SupplierProductsTab";
+import SupplierOrdersTab from "./SupplierOrdersTab";
 import Toast from "./Toast";
 import { PageLoading } from "./Loading";
 
@@ -19,6 +21,7 @@ export default function SupplierDetail({ id }: { id: string }) {
   const [error, setError] = useState("");
   const [edit, setEdit] = useState(false);
   const [pay, setPay] = useState(false);
+  const [tab, setTab] = useState<"overview" | "products" | "orders">("overview");
   const [toast, setToast] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -60,7 +63,14 @@ export default function SupplierDetail({ id }: { id: string }) {
         <h1 className="min-w-0 flex-1 truncate text-base font-bold">{s.name}</h1>
         {can("suppliers.edit") && <button className="btn" onClick={() => setEdit(true)}>Edit</button>}
       </header>
-      <div className="space-y-3 p-3 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0 lg:px-5">
+      <div role="tablist" aria-label="Supplier sections" className="flex gap-2 px-3 pt-2 lg:px-5">
+        {([["overview", "Overview"], ["products", "Products"], ["orders", "Purchase orders"]] as const).map(([k, label]) => (
+          <button key={k} role="tab" aria-selected={tab === k} className={"chip " + (tab === k ? "chip-on" : "")} onClick={() => setTab(k)}>{label}</button>
+        ))}
+      </div>
+      {tab === "products" && <SupplierProductsTab supplierId={id} onToast={setToast} />}
+      {tab === "orders" && <SupplierOrdersTab supplierId={id} active={s.status === "active"} onToast={setToast} />}
+      {tab === "overview" && <div className="space-y-3 p-3 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0 lg:px-5">
         <div className="space-y-3">
           <section className="card p-4">
             <div className="flex items-center gap-2"><span className="text-xs text-muted">{s.code}</span>{s.status === "archived" && <span className="pill bg-amber-bg text-amber">Archived</span>}</div>
@@ -108,7 +118,7 @@ export default function SupplierDetail({ id }: { id: string }) {
           </div>
           {st && <StatementTable d={st} from={from} debitLabel="Purchases" creditLabel="Paid" />}
         </section>
-      </div>
+      </div>}
       {edit && <SupplierForm supplier={s} onClose={() => setEdit(false)} onSaved={(m) => { setEdit(false); setToast(m); load(); }} />}
       {pay && <PaySupplierModal supplier={{ id, name: s.name }} balance={s.balance} onClose={() => setPay(false)} onDone={(m) => { setPay(false); setToast(m); load(); loadSt(); }} />}
       {toast && <Toast msg={toast} onHide={() => setToast("")} />}

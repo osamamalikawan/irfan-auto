@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase";
 import { authorize } from "@/lib/auth";
 import { applyPlacement, ensureLocation, ensureNamed } from "@/lib/placement-db";
+import { setProductSuppliers, suppliersOf } from "@/lib/product-suppliers";
 import { marketLists } from "@/lib/market-lists";
 import type { Placement } from "@/lib/placement";
 
@@ -28,7 +29,8 @@ export async function GET(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   const rows = (data ?? []) as { total: number }[];
   const market = await marketLists(sb);
-  return NextResponse.json({ items: rows.map(({ total, ...r }) => ({ ...r, market_list: !!(r as { list_name?: string }).list_name && market.has((r as { list_name: string }).list_name) })), total: rows[0] ? Number(rows[0].total) : 0 });
+  const sups = await suppliersOf(sb, (data ?? []).map((r: { id: string }) => r.id));
+  return NextResponse.json({ items: rows.map(({ total, ...r }) => ({ ...r, suppliers: sups.get((r as { id?: string }).id ?? "") ?? [], market_list: !!(r as { list_name?: string }).list_name && market.has((r as { list_name: string }).list_name) })), total: rows[0] ? Number(rows[0].total) : 0 });
 }
 
 export async function POST(req: NextRequest) {
@@ -48,6 +50,7 @@ export async function POST(req: NextRequest) {
       reorder_level: Number(b.reorder_level) || 0, list_id, brand_id, company_id,
     }).select("id").single();
     if (error) throw new Error(error.message);
+    if (Array.isArray(b.supplier_ids)) await setProductSuppliers(sb, p.id, b.supplier_ids);
     const placement: Placement = Array.isArray(b.placement) ? b.placement : [];
     const first = await applyPlacement(sb, p.id, placement);
     const opening = Number(b.opening_stock) || 0;

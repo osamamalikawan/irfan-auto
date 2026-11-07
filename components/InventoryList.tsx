@@ -12,7 +12,7 @@ import { ListSkeleton, LoadingBar, Spinner } from "./Loading";
 type Loc = { location: string; qty: number; racks: string[] };
 type Item = {
   id: string; legacy_no: number | null; name_en: string; code_name: string | null; name_ur: string | null;
-  scheme: string | null; cp: number; unit: string; reorder_level: number; list_name: string | null; brand: string | null;
+  scheme: string | null; cp: number; unit: string; reorder_level: number; list_name: string | null; brand: string | null; company?: string | null; suppliers?: { id: string; name: string }[];
   on_hand: number; racks: string[]; locations: string[]; by_location: Loc[];
 };
 type MetaLoc = { id: string; name: string };
@@ -137,6 +137,9 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
                   {it.name_ur && <p className="ur text-sm text-muted">{it.name_ur}</p>}
                   <div className="mt-1 flex flex-wrap gap-1 text-xs text-muted">
                     {it.list_name && <span className="pill bg-bg">{it.list_name}</span>}
+                    {it.company && <span className="pill bg-bg">{it.company}</span>}
+                    {it.brand && <span className="pill bg-bg">{it.brand}</span>}
+                    {it.suppliers?.map((s) => <span key={s.id} className="pill bg-bg">{s.name}</span>)}
                     {it.scheme && <span className="pill bg-bg">Scheme {it.scheme}</span>}
                     {it.racks.map((r) => <span key={r} className="pill bg-bg">Rack {r}</span>)}
                     {!it.racks.length && it.locations.map((l) => <span key={l} className="pill bg-bg">{l}</span>)}
@@ -161,6 +164,9 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
             <thead>
               <tr className="text-left text-[12.5px] text-muted">
                 <th className="border-b border-line px-2 py-1.5 font-semibold">Part</th>
+                <th className="border-b border-line px-2 py-1.5 font-semibold">Company</th>
+                <th className="border-b border-line px-2 py-1.5 font-semibold">Brand</th>
+                <th className="border-b border-line px-2 py-1.5 font-semibold">Suppliers</th>
                 {locs.map((l) => (
                   <th key={l.id} className="whitespace-nowrap border-b border-line px-2 py-1.5 text-right font-semibold">{l.name}<br /><span className="text-xs font-normal">qty · racks</span></th>
                 ))}
@@ -177,8 +183,11 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
                     <td className="border-b border-line px-2 py-2 align-middle">
                       <Link href={"/inventory/" + it.id} className="font-semibold hover:underline">{it.name_en}</Link>
                       {it.name_ur && <div className="ur text-[13px] leading-8 text-muted">{it.name_ur}</div>}
-                      <div className="text-xs text-muted">{[it.brand, it.list_name, it.scheme && "Scheme " + it.scheme].filter(Boolean).join(" · ") || "—"}</div>
+                      <div className="text-xs text-muted">{[it.list_name, it.scheme && "Scheme " + it.scheme].filter(Boolean).join(" · ") || "—"}</div>
                     </td>
+                    <td className="border-b border-line px-2 py-2 align-middle">{it.company ?? <span className="text-muted">—</span>}</td>
+                    <td className="border-b border-line px-2 py-2 align-middle">{it.brand ?? <span className="text-muted">—</span>}</td>
+                    <td className="border-b border-line px-2 py-2 align-middle">{it.suppliers?.length ? it.suppliers.map((s) => <span key={s.id} className="pill mr-1 bg-bg text-muted">{s.name}</span>) : <span className="text-muted">—</span>}</td>
                     {locs.map((l) => {
                       const c = qtyAt(it, l.name);
                       return (

@@ -4,7 +4,7 @@ Mobile-first stock screens. No users or login yet (that is a later module).
 
 ## 1. Database
 1. Create a Supabase project.
-2. SQL Editor: run, in order, `0001_inventory.sql`, `0002_settings.sql` (list visibility, CP rename), `0003_search.sql` (word-by-word search) and `0004_users_roles.sql` (users, roles, PIN login) `0006_customers_routes.sql` (customers, cities, areas, routes) `0007_sales.sql` (invoices, payments, customer balances) `0008_returns_money.sql` (returns, expenses, vouchers, dispatch) `0009_purchases_suppliers.sql` (suppliers, purchases, supplier payments, accounts) `0010_planner.sql` (route types, visits) `0011_route_plans.sql` (completed routes, promises to pay) and `0012_team_dashboard.sql` (team figures, dashboard numbers). `0005_legacy_ids.sql` is only needed for the old-system import.
+2. SQL Editor: run, in order, `0001_inventory.sql`, `0002_settings.sql` (list visibility, CP rename), `0003_search.sql` (word-by-word search) and `0004_users_roles.sql` (users, roles, PIN login) `0006_customers_routes.sql` (customers, cities, areas, routes) `0007_sales.sql` (invoices, payments, customer balances) `0008_returns_money.sql` (returns, expenses, vouchers, dispatch) `0009_purchases_suppliers.sql` (suppliers, purchases, supplier payments, accounts) `0010_planner.sql` (route types, visits) `0011_route_plans.sql` (completed routes, promises to pay) and `0012_team_dashboard.sql` (team figures, dashboard numbers). `0005_legacy_ids.sql` is only needed for the old-system import. Run `0022_groups_phones_rules_products_po.sql` last (customer groups, several phone numbers, invoice rules, product suppliers, purchase orders).
 
 ## 2. Run locally
 ```bash
@@ -123,3 +123,13 @@ visit recording for today (outcome + note), every route's schedule with "Edit", 
   target is shared between the areas on it. Colours: red below 70%, green from 100% (change them in Settings > Target colours).
 - `/dashboard` is the home page for everyone and shows only what the role may see: today's sales and collections, what customers owe, money in hand,
   visits left today, targets this month, low stock and the latest invoices.
+
+## Customer groups, phones and invoice rules (0022)
+- **Groups**: any number per customer (Archive, Dead, Defaulter, Closed are created for you; add more in the customer form). Filter the Customers list by group.
+- **Mobile numbers**: add as many as needed in the customer form. The first two are also kept in `customers.phone` / `phone2` for the Android app.
+- **Invoice rules** (checked in `create_sale`, for credit invoices): the invoice must fit the remaining credit limit, and the customer must have no invoice unpaid for more than their *invoice days limit* (default 30; only an administrator can change it; 0 turns the day check off). Payments and returns are applied to the oldest invoices first (`customer_overdue()`).
+
+## Products page, suppliers and purchase orders (0022)
+- `/products`: products of active price lists only, with company, brand and suppliers; search, filters, edit, and "Move to list" (an inactive list takes the product off the page).
+- A product can have several suppliers (edit product, or the supplier's **Products** tab). Suppliers already used in purchases are linked automatically by the migration.
+- Supplier page tabs: **Overview**, **Products**, **Purchase orders** (pick products, quantities and rates, then print / save as PDF).

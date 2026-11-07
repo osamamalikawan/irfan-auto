@@ -2,25 +2,33 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { isAdmin } from "@/lib/permissions";
 import { useMe } from "./Me";
 import { Loading, Spinner } from "./Loading";
 
 type City = { id: string; name: string; areas: { id: string; name: string }[] };
+type Group = { id: string; name: string };
 
 export default function CustomerForm({ id }: { id?: string }) {
   const router = useRouter();
-  const { can } = useMe();
+  const { can, user } = useMe();
+  const admin = isAdmin(user);
   const full = can("customers.edit"); // salesmen add customers to their own routes only, without credit terms
   const [cities, setCities] = useState<City[]>([]);
   const [routes, setRoutes] = useState<{ id: string; name: string }[]>([]);
   const [loaded, setLoaded] = useState(!id);
-  const [f, setF] = useState({ name: "", name_ur: "", owner: "", phone: "", phone2: "", address: "", cnic: "", ntn: "", email: "", credit_limit: "", credit_days: "", area_id: "", route_id: "", opening_balance: "", remarks: "" });
+  const [f, setF] = useState({ name: "", name_ur: "", owner: "", address: "", cnic: "", ntn: "", email: "", credit_limit: "", credit_days: "", invoice_days_limit: "30", area_id: "", route_id: "", opening_balance: "", remarks: "" });
+  const [phones, setPhones] = useState<string[]>([""]);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [newGroup, setNewGroup] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF((s) => ({ ...s, [k]: e.target.value }));
 
   useEffect(() => {
     fetch("/api/geo").then((r) => r.json()).then((j) => setCities(j.cities ?? [])).catch(() => {});
+    fetch("/api/customer-groups").then((r) => r.json()).then((j) => setGroups(j.groups ?? [])).catch(() => {});
     if (!id) fetch("/api/routes").then((r) => r.json()).then((j) => setRoutes(j.routes ?? [])).catch(() => {});
   }, [id]);
   useEffect(() => {
@@ -28,8 +36,10 @@ export default function CustomerForm({ id }: { id?: string }) {
     fetch("/api/customers/" + id).then((r) => r.json()).then((d) => {
       if (d.error) return setError(d.error);
       const c = d.customer;
-      setF((s) => ({ ...s, name: c.name ?? "", name_ur: c.name_ur ?? "", owner: c.owner ?? "", phone: c.phone ?? "", phone2: c.phone2 ?? "", address: c.address ?? "", cnic: c.cnic ?? "", ntn: c.ntn ?? "", email: c.email ?? "",
-        credit_limit: Number(c.credit_limit) ? String(c.credit_limit) : "", credit_days: Number(c.credit_days) ? String(c.credit_days) : "", area_id: c.area?.id ?? c.area_id ?? "" }));
+      setF((s) => ({ ...s, name: c.name ?? "", name_ur: c.name_ur ?? "", owner: c.owner ?? "", address: c.address ?? "", cnic: c.cnic ?? "", ntn: c.ntn ?? "", email: c.email ?? "",
+        credit_limit: Number(c.credit_limit) ? String(c.credit_limit) : "", credit_days: Number(c.credit_days) ? String(c.credit_days) : "", invoice_days_limit: String(c.invoice_days_limit ?? 30), area_id: c.area?.id ?? c.area_id ?? "" }));
+      setPhones(c.phones?.length ? c.phones : [""]);
+      setPicked(new Set((c.groups ?? []).map((g: Group) => g.id)));
       setLoaded(true);
     }).catch(() => setError("Could not load"));
   }, [id]);
@@ -37,7 +47,9 @@ export default function CustomerForm({ id }: { id?: string }) {
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true); setError("");
-    const body: Record<string, unknown> = { ...f };
+    const body: Record<string, unknown> = { ...f, phones: phones.map((p) => p.trim()).filter(Boolean) };
+    if (full) body.group_ids = [...picked];
+    if (!admin) delete body.invoice_days_limit;
     if (id) { delete body.route_id; delete body.opening_balance; delete body.remarks; }
     const r = await fetch(id ? "/api/customers/" + id : "/api/customers", { method: id ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const j = await r.json().catch(() => ({}));
@@ -45,6 +57,18 @@ export default function CustomerForm({ id }: { id?: string }) {
     if (!r.ok) return setError(j.error || "Could not save");
     router.replace("/customers/" + (id ?? j.id));
     router.refresh();
+  }
+
+  const togglePick = (gid: string) => setPicked((s) => { const n = new Set(s); if (n.has(gid)) n.delete(gid); else n.add(gid); return n; });
+  async function addGroup() {
+    const name = newGroup.trim();
+    if (!name) return;
+    const r = await fetch("/api/customer-groups", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return setError(j.error || "Could not add the group");
+    setGroups((g) => [...g, j.group].sort((a, b) => a.name.localeCompare(b.name)));
+    setPicked((s) => new Set(s).add(j.group.id));
+    setNewGroup("");
   }
 
   const L = (label: string, htmlFor: string, input: React.ReactNode) => (<div><label className="label" htmlFor={htmlFor}>{label}</label>{input}</div>);
@@ -64,9 +88,20 @@ export default function CustomerForm({ id }: { id?: string }) {
           {L("Business name (Urdu)", "c-ur", <input id="c-ur" className="input ur" dir="rtl" value={f.name_ur} onChange={set("name_ur")} />)}
           <div className="grid grid-cols-2 gap-3">
             {L("Owner", "c-owner", <input id="c-owner" className="input" value={f.owner} onChange={set("owner")} />)}
-            {L("Phone", "c-phone", <input id="c-phone" className="input" type="tel" inputMode="tel" value={f.phone} onChange={set("phone")} />)}
-            {L("Second phone", "c-phone2", <input id="c-phone2" className="input" type="tel" inputMode="tel" value={f.phone2} onChange={set("phone2")} />)}
             {L("Email", "c-email", <input id="c-email" className="input" type="email" value={f.email} onChange={set("email")} />)}
+          </div>
+          <div>
+            <label className="label" htmlFor="c-phone-0">Mobile numbers</label>
+            <div className="space-y-2">
+              {phones.map((p, i) => (
+                <div key={i} className="flex gap-2">
+                  <input id={"c-phone-" + i} className="input" type="tel" inputMode="tel" placeholder={i === 0 ? "Main number" : "Another number"} value={p}
+                    onChange={(e) => setPhones((ps) => ps.map((x, j) => (j === i ? e.target.value : x)))} aria-label={"Mobile number " + (i + 1)} />
+                  {phones.length > 1 && <button type="button" className="btn px-3" onClick={() => setPhones((ps) => ps.filter((_, j) => j !== i))} aria-label={"Remove number " + (i + 1)}>✕</button>}
+                </div>
+              ))}
+              {phones.length < 10 && <button type="button" className="btn w-full" onClick={() => setPhones((ps) => [...ps, ""])}>＋ Add another number</button>}
+            </div>
           </div>
           {L("Address", "c-addr", <textarea id="c-addr" className="input min-h-16 py-2" rows={2} value={f.address} onChange={set("address")} />)}
           <div className="grid grid-cols-2 gap-3">
@@ -93,8 +128,28 @@ export default function CustomerForm({ id }: { id?: string }) {
             {L("Credit days", "c-days", <input id="c-days" className="input" type="number" inputMode="numeric" min="0" value={f.credit_days} onChange={set("credit_days")} />)}
             {!id && L("Opening balance (Rs)", "c-open", <input id="c-open" className="input" type="number" inputMode="decimal" value={f.opening_balance} onChange={set("opening_balance")} />)}
           </div>}
+          {admin && L("Invoice days limit", "c-invdays", <div>
+            <input id="c-invdays" className="input" type="number" inputMode="numeric" min="0" value={f.invoice_days_limit} onChange={set("invoice_days_limit")} />
+            <p className="mt-1 text-xs text-muted">No new credit invoice while an invoice is unpaid for more than this many days. 0 turns the check off.</p>
+          </div>)}
           {!id && L("Remarks (optional)", "c-rem", <textarea id="c-rem" className="input min-h-16 py-2" rows={2} maxLength={500} placeholder="e.g. pays on Fridays, call before visiting" value={f.remarks} onChange={set("remarks")} />)}
         </section>
+        {full && (
+          <section className="card space-y-3 p-4">
+            <h2 className="font-semibold">Groups</h2>
+            <div className="flex flex-wrap gap-2">
+              {groups.map((g) => (
+                <button key={g.id} type="button" className={"chip " + (picked.has(g.id) ? "chip-on" : "")} aria-pressed={picked.has(g.id)} onClick={() => togglePick(g.id)}>{g.name}</button>
+              ))}
+              {!groups.length && <p className="text-sm text-muted">No groups yet.</p>}
+            </div>
+            <div className="flex gap-2">
+              <input className="input" placeholder="New group name" maxLength={40} value={newGroup} onChange={(e) => setNewGroup(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addGroup(); } }} aria-label="New group name" />
+              <button type="button" className="btn" disabled={!newGroup.trim()} onClick={addGroup}>Add</button>
+            </div>
+          </section>
+        )}
       </div>
     </form>
   );

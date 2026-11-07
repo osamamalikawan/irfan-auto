@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Loading, Spinner } from "./Loading";
+import SupplierPicks, { type SupplierOpt } from "./SupplierPicks";
 
 type Row = { location: string; racks: string };
 type Meta = { lists: { id: string; name: string }[]; locations: { id: string; name: string }[]; companies: string[]; brands: string[] };
@@ -15,11 +16,14 @@ export default function ProductForm({ id }: { id?: string }) {
   const [loaded, setLoaded] = useState(!id);
   const [f, setF] = useState({ name_en: "", code_name: "", name_ur: "", company: "", brand: "", list: "", scheme: "", cp: "", unit: "pc", reorder_level: "", opening_stock: "" });
   const [rows, setRows] = useState<Row[]>([{ location: "", racks: "" }]);
+  const [suppliers, setSuppliers] = useState<SupplierOpt[]>([]);
+  const [sup, setSup] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF((s) => ({ ...s, [k]: e.target.value }));
 
   useEffect(() => { fetch("/api/inventory/meta").then((r) => r.json()).then(setMeta).catch(() => {}); }, []);
+  useEffect(() => { fetch("/api/products/meta").then((r) => r.json()).then((m) => setSuppliers(m.suppliers ?? [])).catch(() => {}); }, []);
   useEffect(() => {
     if (!id) return;
     fetch("/api/inventory/products/" + id).then((r) => r.json()).then((d) => {
@@ -27,6 +31,7 @@ export default function ProductForm({ id }: { id?: string }) {
       const p = d.product;
       setF((s) => ({ ...s, name_en: p.name_en ?? "", code_name: p.code_name ?? "", name_ur: p.name_ur ?? "", company: p.company?.name ?? "", brand: p.brand?.name ?? "",
         list: p.list?.name ?? "", scheme: p.scheme ?? "", cp: String(p.cp ?? ""), unit: p.unit ?? "pc", reorder_level: Number(p.reorder_level) ? String(p.reorder_level) : "" }));
+      setSup((p.suppliers ?? []).map((s: SupplierOpt) => s.id));
       setRows(d.locations.length ? d.locations.map((l: { name: string; racks: string[] }) => ({ location: l.name, racks: l.racks.join(", ") })) : [{ location: "", racks: "" }]);
       setLoaded(true);
     }).catch(() => setError("Could not load"));
@@ -36,7 +41,7 @@ export default function ProductForm({ id }: { id?: string }) {
     e.preventDefault();
     setBusy(true); setError("");
     const body = {
-      ...f, placement: rows.filter((r) => r.location.trim()).map((r) => ({ location: r.location.trim(), racks: splitRacks(r.racks) })),
+      ...f, supplier_ids: sup, placement: rows.filter((r) => r.location.trim()).map((r) => ({ location: r.location.trim(), racks: splitRacks(r.racks) })),
     };
     const r = await fetch(id ? "/api/inventory/products/" + id : "/api/inventory/products", {
       method: id ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
@@ -79,6 +84,11 @@ export default function ProductForm({ id }: { id?: string }) {
             <div><label className="label" htmlFor="f-reorder">Reorder level</label><input id="f-reorder" className="input" type="number" inputMode="decimal" min="0" step="any" value={f.reorder_level} onChange={set("reorder_level")} /></div>
             {!id && <div><label className="label" htmlFor="f-open">Opening stock</label><input id="f-open" className="input" type="number" inputMode="decimal" min="0" step="any" value={f.opening_stock} onChange={set("opening_stock")} /></div>}
           </div>
+        </section>
+
+        <section className="card space-y-3 p-4">
+          <h2 className="font-semibold">Suppliers</h2>
+          <SupplierPicks options={suppliers} value={sup} onChange={setSup} />
         </section>
 
         <section className="card space-y-3 p-4">

@@ -11,7 +11,7 @@ import PaySplit, { newRow, paysTotal, toPayments, usePaymentMethods, type PayRow
 
 export type Prod = { id: string; name_en: string; code_name: string | null; name_ur: string | null; unit: string; cp: number; scheme: string | null; on_hand: number; racks: string[]; list_name?: string | null; market_list?: boolean };
 type Line = { key: string; p: Prod; qty: string; price: string; disc: string; market?: { cost: number; vendor: string } };
-type Cust = { id: string; name: string; area: string | null; is_walk_in: boolean; credit_limit: number; balance: number; route: string | null };
+type Cust = { id: string; name: string; area: string | null; is_walk_in: boolean; credit_limit: number; balance: number; route: string | null; overdue: number; days: number };
 
 const freeFor = (p: Prod, q: number) => {
   const m = /^(\d+)\+(\d+)$/.exec(p.scheme ?? "");
@@ -55,7 +55,7 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
     const j = await r.json();
     if (!r.ok) return setError(j.error || "Could not load the customer");
     const x = j.customer;
-    setCust({ id: x.id, name: x.name, area: x.area?.name ?? null, is_walk_in: !!x.is_walk_in, credit_limit: Number(x.credit_limit), balance: Number(x.balance), route: x.route?.name ?? null });
+    setCust({ id: x.id, name: x.name, area: x.area?.name ?? null, is_walk_in: !!x.is_walk_in, credit_limit: Number(x.credit_limit), balance: Number(x.balance), route: x.route?.name ?? null, overdue: Number(x.overdue ?? 0), days: Number(x.invoice_days_limit ?? 0) });
   }
   async function useWalkIn() {
     setError("");
@@ -110,9 +110,10 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
   const ledgerPaid = receiveNow ? paysTotal(rows) : 0;
   const due = counter ? 0 : total - ledgerPaid;
   const overLimit = !counter && !!cust && !walkIn && cust.credit_limit > 0 && due > 0 && cust.balance + due > cust.credit_limit;
+  const overdueBlock = !counter && !!cust && !walkIn && cust.days > 0 && cust.overdue > 0 && due > 0;
   const baseReady = !!cust && lines.length > 0 && calc.every((c) => c.q > 0 && c.price > 0) && total >= 0 && !busy && (counter || !walkIn);
   const canPay = baseReady && total > 0 && counterPaid;
-  const canSave = baseReady && ledgerPaid <= total && (!receiveNow || toPayments(rows, true, 0).length > 0 || ledgerPaid === 0);
+  const canSave = baseReady && !overdueBlock && ledgerPaid <= total && (!receiveNow || toPayments(rows, true, 0).length > 0 || ledgerPaid === 0);
 
   async function save(mode: "pay" | "save") {
     if (!cust) return;
@@ -277,7 +278,8 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
                 </>
               )}
               <p className="mt-2 text-sm text-muted">{term === "cash" ? "To collect on delivery" : "Goes on credit"}: <b className="text-ink">{rs(Math.max(due, 0))}</b></p>
-              {overLimit && <p className="mt-1 rounded-lg bg-amber-bg p-2 text-sm text-amber">This would take the customer over the credit limit of {rs(cust.credit_limit)}. The invoice will be refused.</p>}
+              {overLimit && <p className="mt-1 rounded-lg bg-amber-bg p-2 text-sm text-amber">The invoice goes over the remaining credit limit of {rs(Math.max(cust.credit_limit - cust.balance, 0))}. It will be refused.</p>}
+              {overdueBlock && <p role="alert" className="mt-1 rounded-lg bg-red-bg p-2 text-sm text-red">{rs(cust.overdue)} is unpaid for more than {cust.days} days. Collect payment before making a credit invoice.</p>}
             </div>
           )}
           <div><label className="label" htmlFor="inv-rem">Remarks (optional)</label><input id="inv-rem" className="input" maxLength={500} placeholder="For example: BY HAND" value={remarks} onChange={(e) => setRemarks(e.target.value)} /></div>
