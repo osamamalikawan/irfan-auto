@@ -4,7 +4,7 @@ Mobile-first stock screens. No users or login yet (that is a later module).
 
 ## 1. Database
 1. Create a Supabase project.
-2. SQL Editor: run, in order, `0001_inventory.sql`, `0002_settings.sql` (list visibility, CP rename), `0003_search.sql` (word-by-word search) and `0004_users_roles.sql` (users, roles, PIN login) `0006_customers_routes.sql` (customers, cities, areas, routes) `0007_sales.sql` (invoices, payments, customer balances) `0008_returns_money.sql` (returns, expenses, vouchers, dispatch) `0009_purchases_suppliers.sql` (suppliers, purchases, supplier payments, accounts) `0010_planner.sql` (route types, visits) `0011_route_plans.sql` (completed routes, promises to pay) and `0012_team_dashboard.sql` (team figures, dashboard numbers). `0005_legacy_ids.sql` is only needed for the old-system import. Run `0022_groups_phones_rules_products_po.sql` last (customer groups, several phone numbers, invoice rules, product suppliers, purchase orders).
+2. SQL Editor: run, in order, `0001_inventory.sql`, `0002_settings.sql` (list visibility, CP rename), `0003_search.sql` (word-by-word search) and `0004_users_roles.sql` (users, roles, PIN login) `0006_customers_routes.sql` (customers, cities, areas, routes) `0007_sales.sql` (invoices, payments, customer balances) `0008_returns_money.sql` (returns, expenses, vouchers, dispatch) `0009_purchases_suppliers.sql` (suppliers, purchases, supplier payments, accounts) `0010_planner.sql` (route types, visits) `0011_route_plans.sql` (completed routes, promises to pay) and `0012_team_dashboard.sql` (team figures, dashboard numbers). `0005_legacy_ids.sql` is only needed for the old-system import. Then run `0022_groups_phones_rules_products_po.sql` (customer groups, several phone numbers, invoice rules, product suppliers, purchase orders) and `0023_retail_price.sql` (retail price RP).
 
 ## 2. Run locally
 ```bash
@@ -128,6 +128,13 @@ visit recording for today (outcome + note), every route's schedule with "Edit", 
 - **Groups**: any number per customer (Archive, Dead, Defaulter, Closed are created for you; add more in the customer form). Filter the Customers list by group.
 - **Mobile numbers**: add as many as needed in the customer form. The first two are also kept in `customers.phone` / `phone2` for the Android app.
 - **Invoice rules** (checked in `create_sale`, for credit invoices): the invoice must fit the remaining credit limit, and the customer must have no invoice unpaid for more than their *invoice days limit* (default 30; only an administrator can change it; 0 turns the day check off). Payments and returns are applied to the oldest invoices first (`customer_overdue()`).
+
+## Retail price (0023)
+- Products have **CP** (ledger sales) and **RP** (retail / counter sales). Edit them on the product form, the Products page or the product edit window.
+- New invoice: counter sale starts on RP, ledger sale on CP. The RP / CP switch (F8 on the desktop screen) changes the price for items without a typed price. If a part has no price of the chosen type, the other one is used.
+- `create_sale` / `edit_sale` take an optional `price_type` per line. Choosing a product's RP or CP never needs the "change prices" permission.
+- Products page: select products, then "Change company / brand / supplier…" (suppliers can be added, replaced or removed) or "Move to list…".
+- Printed invoices show the Urdu name with the brand in ( ).
 
 ## Products page, suppliers and purchase orders (0022)
 - `/products`: products of active price lists only, with company, brand and suppliers; search, filters, edit, and "Move to list" (an inactive list takes the product off the page).

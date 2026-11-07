@@ -29,8 +29,11 @@ export async function GET(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   const rows = (data ?? []) as { total: number }[];
   const market = await marketLists(sb);
-  const sups = await suppliersOf(sb, (data ?? []).map((r: { id: string }) => r.id));
-  return NextResponse.json({ items: rows.map(({ total, ...r }) => ({ ...r, suppliers: sups.get((r as { id?: string }).id ?? "") ?? [], market_list: !!(r as { list_name?: string }).list_name && market.has((r as { list_name: string }).list_name) })), total: rows[0] ? Number(rows[0].total) : 0 });
+  const ids = (data ?? []).map((r: { id: string }) => r.id);
+  const sups = await suppliersOf(sb, ids);
+  const rps = new Map<string, number>();
+  if (ids.length) { const rr = await sb.from("products").select("id,rp").in("id", ids); for (const r of rr.data ?? []) rps.set(r.id, Number(r.rp)); }
+  return NextResponse.json({ items: rows.map(({ total, ...r }) => ({ ...r, rp: rps.get((r as { id?: string }).id ?? "") ?? 0, suppliers: sups.get((r as { id?: string }).id ?? "") ?? [], market_list: !!(r as { list_name?: string }).list_name && market.has((r as { list_name: string }).list_name) })), total: rows[0] ? Number(rows[0].total) : 0 });
 }
 
 export async function POST(req: NextRequest) {
@@ -46,7 +49,7 @@ export async function POST(req: NextRequest) {
     ]);
     const { data: p, error } = await sb.from("products").insert({
       name_en: name, code_name: b.code_name?.trim() || null, name_ur: b.name_ur?.trim() || null,
-      scheme: b.scheme?.trim() || null, cp: Number(b.cp) || 0, unit: b.unit?.trim() || "pc",
+      scheme: b.scheme?.trim() || null, cp: Number(b.cp) || 0, rp: Math.max(0, Number(b.rp) || 0), unit: b.unit?.trim() || "pc",
       reorder_level: Number(b.reorder_level) || 0, list_id, brand_id, company_id,
     }).select("id").single();
     if (error) throw new Error(error.message);

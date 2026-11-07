@@ -6,6 +6,7 @@ export function mapLines(x: unknown) {
     price: l.price === undefined || l.price === null || l.price === "" ? null : Number(l.price),
     disc_pct: l.disc_pct === undefined || l.disc_pct === null || l.disc_pct === "" ? null : Number(l.disc_pct),
     location_id: l.location_id || null,
+    price_type: l.price_type === "rp" || l.price_type === "cp" ? l.price_type : undefined,
     market: l.market && typeof l.market === "object"
       ? { cost: Number((l.market as { cost?: unknown }).cost), vendor: String((l.market as { vendor?: unknown }).vendor ?? "").slice(0, 80), supplier_id: (l.market as { supplier_id?: unknown }).supplier_id || null }
       : undefined,

@@ -8,7 +8,7 @@ import { PageLoading } from "./Loading";
 
 type Detail = {
   product: {
-    id: string; name_en: string; code_name: string | null; name_ur: string | null; scheme: string | null; cp: number;
+    id: string; name_en: string; code_name: string | null; name_ur: string | null; scheme: string | null; cp: number; rp?: number;
     unit: string; reorder_level: number; legacy_no: number | null;
     brand: { name: string } | null; company: { name: string } | null; list: { name: string } | null;
   };
@@ -61,8 +61,8 @@ export default function ProductDetail({ id }: { id: string }) {
               <p className={"pill text-3xl " + toneClass[tone]}>{qty(d.onHand)} <span className="ml-1 text-base font-normal">{p.unit}</span></p>
             </div>
             <div className="text-right text-sm">
-              <p className="text-xs text-muted">Counter price (CP)</p>
-              <p className="text-lg font-semibold">{rs(p.cp)}</p>
+              <p className="text-xs text-muted">CP (ledger) · RP (retail)</p>
+              <p className="text-lg font-semibold">{rs(p.cp)} <span className="text-muted">·</span> {Number(p.rp) > 0 ? rs(p.rp!) : "no RP"}</p>
             </div>
           </div>
           <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">

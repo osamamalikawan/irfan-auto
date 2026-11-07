@@ -62,6 +62,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     }
     for (const k of ["code_name", "name_ur", "scheme", "unit"] as const) if (b[k] !== undefined) patch[k] = String(b[k]).trim() || (k === "unit" ? "pc" : null);
     if (b.cp !== undefined) patch.cp = Number(b.cp) || 0;
+    if (b.rp !== undefined) patch.rp = Math.max(0, Number(b.rp) || 0);
     if (b.purchase_price !== undefined) patch.purchase_price = Math.max(0, Number(b.purchase_price) || 0);
     if (typeof b.active === "boolean") patch.active = b.active;   // soft delete / restore
     if (b.reorder_level !== undefined) patch.reorder_level = Number(b.reorder_level) || 0;

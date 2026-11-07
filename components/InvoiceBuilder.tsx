@@ -4,12 +4,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { withArea } from "@/lib/cust";
 import { qty as fmtQty, rs } from "@/lib/format";
+import { cpRpText, defaultPriceType, priceFor, priceUsed, PRICE_LABEL, type PriceType } from "@/lib/price";
 import CustomerPicker, { type PickedCustomer } from "./CustomerPicker";
 import { useMe } from "./Me";
 import { Loading, LoadingBar, Spinner } from "./Loading";
 import PaySplit, { newRow, paysTotal, toPayments, usePaymentMethods, type PayRow } from "./PaySplit";
 
-export type Prod = { id: string; name_en: string; code_name: string | null; name_ur: string | null; unit: string; cp: number; scheme: string | null; on_hand: number; racks: string[]; list_name?: string | null; market_list?: boolean };
+export type Prod = { id: string; name_en: string; code_name: string | null; name_ur: string | null; unit: string; cp: number; rp?: number; brand?: string | null; scheme: string | null; on_hand: number; racks: string[]; list_name?: string | null; market_list?: boolean };
 type Line = { key: string; p: Prod; qty: string; price: string; disc: string; market?: { cost: number; vendor: string } };
 type Cust = { id: string; name: string; area: string | null; is_walk_in: boolean; credit_limit: number; balance: number; route: string | null; overdue: number; days: number };
 
@@ -26,6 +27,7 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
   const { methods } = usePaymentMethods();
   const [kind, setKind] = useState<"counter" | "ledger">(customerId ? "ledger" : "counter");
   const [term, setTerm] = useState<"credit" | "cash">("credit");
+  const [priceType, setPriceType] = useState<PriceType>(defaultPriceType(customerId ? "ledger" : "counter"));
   const [cust, setCust] = useState<Cust | null>(null);
   const [pickCust, setPickCust] = useState(false);
   const [pickProd, setPickProd] = useState(false);
@@ -73,7 +75,7 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
 
   function pickKind(k: "counter" | "ledger") {
     if (k === kind) return;
-    setKind(k); setError(""); resetPay();
+    setKind(k); setPriceType(defaultPriceType(k)); setError(""); resetPay();
     if (k === "counter") { if (!cust || !cust.is_walk_in) useWalkIn(); }
     else if (cust?.is_walk_in) setCust(null);
   }
@@ -95,7 +97,7 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
   const upd = (key: string, patch: Partial<Line>) => setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
 
   const calc = lines.map((l) => {
-    const q = money(l.qty), price = l.price !== "" ? money(l.price) : l.p.cp, pct = l.disc !== "" ? money(l.disc) : defPct[l.p.id] ?? 0;
+    const q = money(l.qty), price = l.price !== "" ? money(l.price) : priceFor(l.p, priceType), pct = l.disc !== "" ? money(l.disc) : defPct[l.p.id] ?? 0;
     const free = freeFor(l.p, q), ld = Math.round((q * price * pct) / 100);
     return { q, price, pct, free, ld, amount: q * price - ld, short: !l.market && q + free > l.p.on_hand };
   });
@@ -122,7 +124,7 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
       customer_id: cust.id, kind, term, hold: false, idem_key: idem, discount: money(discount), bilti: money(bilti), local_charges: money(local), remarks,
       contact_name: walkIn ? contactName : "", contact_phone: walkIn ? contactPhone : "",
       payments: counter ? counterPays : receiveNow ? toPayments(rows, true, 0) : [],
-      lines: lines.map((l) => ({ product_id: l.p.id, qty: money(l.qty), price: l.price !== "" ? money(l.price) : undefined, disc_pct: l.disc !== "" ? money(l.disc) : undefined, market: l.market })),
+      lines: lines.map((l) => ({ product_id: l.p.id, qty: money(l.qty), price: l.price !== "" ? money(l.price) : undefined, price_type: priceType, disc_pct: l.disc !== "" ? money(l.disc) : undefined, market: l.market })),
     };
     const r = await fetch("/api/sales", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const j = await r.json().catch(() => ({}));
@@ -155,6 +157,14 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
               <span className="block font-semibold">{label}</span><span className="block text-xs text-muted">{note}</span>
             </button>
           ))}
+        </div>
+
+        <div role="radiogroup" aria-label="Price type" className="flex items-center gap-2">
+          <span className="text-sm text-muted">Price list</span>
+          {(["rp", "cp"] as const).map((t) => (
+            <button key={t} type="button" role="radio" aria-checked={priceType === t} onClick={() => setPriceType(t)} className={"chip " + (priceType === t ? "chip-on" : "")}>{PRICE_LABEL[t]}</button>
+          ))}
+          <span className="text-xs text-muted">{priceType === "rp" ? "Retail price (counter)" : "Ledger price"}; the other is used when a part has none.</span>
         </div>
 
         <section className="card p-4">
@@ -212,7 +222,7 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
                     <div className="min-w-0 flex-1">
                       <p className="font-medium leading-snug">{l.p.name_en}</p>
                       {l.p.name_ur && <p className="ur text-sm text-muted">{l.p.name_ur}</p>}
-                      <p className="text-xs text-muted">{rs(c.price)} each · stock {fmtQty(l.p.on_hand)}{l.p.racks.length ? " · rack " + l.p.racks.join(", ") : ""}</p>
+                      <p className="text-xs text-muted">{rs(c.price)} each{l.price === "" && !l.market && priceUsed(l.p, priceType) ? " (" + PRICE_LABEL[priceUsed(l.p, priceType)!] + ")" : ""} · stock {fmtQty(l.p.on_hand)}{l.p.racks.length ? " · rack " + l.p.racks.join(", ") : ""}</p>
                     </div>
                     <button className="btn min-h-9 border-0 bg-transparent px-2 text-muted" onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))} aria-label={"Remove " + l.p.name_en}>✕</button>
                   </div>
@@ -232,7 +242,7 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
                     <details className="mt-1 text-sm">
                       <summary className="cursor-pointer text-muted">Change price or discount</summary>
                       <div className="mt-2 grid grid-cols-2 gap-2">
-                        <div><label className="label" htmlFor={"pr" + l.key}>Price (Rs)</label><input id={"pr" + l.key} className="input" type="number" inputMode="decimal" min="0" placeholder={String(l.p.cp)} value={l.price} onChange={(e) => upd(l.key, { price: e.target.value })} /></div>
+                        <div><label className="label" htmlFor={"pr" + l.key}>Price (Rs)</label><input id={"pr" + l.key} className="input" type="number" inputMode="decimal" min="0" placeholder={String(priceFor(l.p, priceType))} value={l.price} onChange={(e) => upd(l.key, { price: e.target.value })} /></div>
                         <div><label className="label" htmlFor={"ds" + l.key}>Discount %</label><input id={"ds" + l.key} className="input" type="number" inputMode="decimal" min="0" max="100" placeholder={String(defPct[l.p.id] ?? 0)} value={l.disc} onChange={(e) => upd(l.key, { disc: e.target.value })} /></div>
                       </div>
                     </details>
@@ -331,14 +341,14 @@ export function ProductPicker({ onAdd, inInvoice, onClose, allowNoPrice }: { onA
             const n = inInvoice[p.id];
             return (
               <li key={p.id}>
-                <button className="flex min-h-16 w-full items-center gap-2 py-2 text-left active:bg-bg disabled:opacity-50" disabled={!allowNoPrice && !(p.cp > 0)} onClick={() => onAdd(p)}>
+                <button className="flex min-h-16 w-full items-center gap-2 py-2 text-left active:bg-bg disabled:opacity-50" disabled={!allowNoPrice && !(p.cp > 0 || Number(p.rp) > 0)} onClick={() => onAdd(p)}>
                   <span className="min-w-0 flex-1">
-                    <span className="block font-medium leading-snug">{p.name_en}</span>
+                    <span className="block font-medium leading-snug">{p.code_name && <span className="mr-1.5 font-semibold text-muted">{p.code_name}</span>}{p.name_en}{p.brand ? " (" + p.brand + ")" : ""}</span>
                     {p.name_ur && <span className="ur block text-sm text-muted">{p.name_ur}</span>}
-                    <span className="block text-xs text-muted">{p.scheme ? "Scheme " + p.scheme + " · " : ""}{p.racks.length ? "Rack " + p.racks.join(", ") : ""}</span>
+                    <span className="block text-xs text-muted">{[p.list_name, p.scheme && "Scheme " + p.scheme, p.racks.length ? "Rack " + p.racks.join(", ") : ""].filter(Boolean).join(" · ")}</span>
                   </span>
                   <span className="shrink-0 text-right">
-                    <span className="block font-semibold">{p.cp > 0 ? rs(p.cp) : "No price"}</span>
+                    <span className="block text-sm font-semibold">{p.cp > 0 || Number(p.rp) > 0 ? cpRpText(p) : "No price"}</span>
                     <span className={"pill " + (p.on_hand > 0 ? "bg-green-bg text-green" : "bg-red-bg text-red")}>{fmtQty(p.on_hand)} {p.unit}</span>
                     {n ? <span className="block text-xs text-accent">In invoice × {n}</span> : null}
                   </span>

@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { withArea } from "@/lib/cust";
 import { qty as fmtQty, rs } from "@/lib/format";
+import { cpRpText, defaultPriceType, priceFor, PRICE_LABEL, type PriceType } from "@/lib/price";
 import CustomerPicker, { type PickedCustomer } from "./CustomerPicker";
 import { MarketModal, ProductPicker, type Prod } from "./InvoiceBuilder";
 import MarketDetailsModal, { type MarketInfo } from "./MarketDetailsModal";
@@ -13,7 +14,7 @@ import PaySplit, { newRow, paysTotal, toPayments, usePaymentMethods, type PayRow
 /*
  * Keyboard-first invoice screen for the desktop (the phone keeps the touch form).
  *  customer: type, Enter  ->  product: type, Enter  ->  quantity, Enter  ->  price, Enter  ->  next row.
- *  F2 counter/ledger   F3 customer   F4 payment (counter) or cash/credit (ledger)   F7 buy from market
+ *  F2 counter/ledger   F8 RP/CP price   F3 customer   F4 payment (counter) or cash/credit (ledger)   F7 buy from market
  *  F9 list   F10 save (Shift+F10 save and print)   Shift+F6 delete row   Up/Down rows
  */
 
@@ -64,6 +65,7 @@ export default function InvoiceGrid({ customerId, editId }: { customerId?: strin
   const [edit, setEdit] = useState<{ no: string; oldTotal: number; paid: number; fulfil: string } | null>(null);
   const [kind, setKind] = useState<"counter" | "ledger">(customerId || editId ? "ledger" : "counter");
   const [term, setTerm] = useState<"credit" | "cash">("credit");
+  const [priceType, setPriceType] = useState<PriceType>(defaultPriceType(customerId || editId ? "ledger" : "counter"));
   const [cust, setCust] = useState<Cust | null>(null);
   const [rows, setRows] = useState<Row[]>([blank()]);
   const [defPct, setDefPct] = useState<Record<string, number>>({});
@@ -135,7 +137,7 @@ export default function InvoiceGrid({ customerId, editId }: { customerId?: strin
 
   function pickKind(k: "counter" | "ledger") {
     if (editing || k === kind) return;
-    setKind(k); setError(""); setSplit(false); setRecv("");
+    setKind(k); setPriceType(defaultPriceType(k)); setError(""); setSplit(false); setRecv("");
     if (k === "counter") { if (!cust || !cust.is_walk_in) useWalkIn(); }
     else if (cust?.is_walk_in) { setCust(null); focus("cust"); }
   }
@@ -191,7 +193,7 @@ export default function InvoiceGrid({ customerId, editId }: { customerId?: strin
   /* ---------- numbers ---------- */
   const calc = rows.map((r) => {
     if (!r.p) return null;
-    const q = money(r.q), price = r.price !== "" ? money(r.price) : r.p.cp, pct = r.disc !== "" ? money(r.disc) : defPct[r.p.id] ?? 0;
+    const q = money(r.q), price = r.price !== "" ? money(r.price) : priceFor(r.p, priceType), pct = r.disc !== "" ? money(r.disc) : defPct[r.p.id] ?? 0;
     const free = freeFor(r.p, q), ld = Math.round((q * price * pct) / 100);
     return { q, price, pct, free, ld, value: q * price - ld, tot: q + free, after: r.market || r.p.market_list ? null : r.p.on_hand - (q + free) };
   });
@@ -232,7 +234,7 @@ export default function InvoiceGrid({ customerId, editId }: { customerId?: strin
       customer_id: cust.id, kind, term, hold: false, idem_key: idem, discount: money(discount), bilti: money(bilti), local_charges: money(local), remarks,
       contact_name: walkIn ? contactName : "", contact_phone: walkIn ? contactPhone : "",
       payments: counter ? counterPays : money(recv) > 0 && recvMethod ? [{ method_id: recvMethod, amount: Math.min(money(recv), total) }] : [],
-      lines: filled.map(({ r }) => ({ product_id: r.p!.id, qty: money(r.q), price: r.price !== "" ? money(r.price) : undefined, disc_pct: r.disc !== "" ? money(r.disc) : undefined, market: r.market })),
+      lines: filled.map(({ r }) => ({ product_id: r.p!.id, qty: money(r.q), price: r.price !== "" ? money(r.price) : undefined, price_type: priceType, disc_pct: r.disc !== "" ? money(r.disc) : undefined, market: r.market })),
     };
     const res = editing
       ? await fetch("/api/sales/" + editId, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lines: body.lines, discount: body.discount, bilti: body.bilti, local_charges: body.local_charges, remarks, term }) })
@@ -252,6 +254,7 @@ export default function InvoiceGrid({ customerId, editId }: { customerId?: strin
     const run = (fn: () => void) => { e.preventDefault(); fn(); };
     if (e.key === "F2") run(() => pickKind(counter ? "ledger" : "counter"));
     else if (e.key === "F3") run(() => focus("cust"));
+    else if (e.key === "F8") run(() => setPriceType((t) => (t === "rp" ? "cp" : "rp")));
     else if (e.key === "F4") run(() => {
       if (counter) {
         if (!methods.length) return;
@@ -296,6 +299,10 @@ export default function InvoiceGrid({ customerId, editId }: { customerId?: strin
             {([["counter", "Counter"], ["ledger", "Ledger"]] as const).map(([k, l]) => (
               <button key={k} type="button" tabIndex={-1} role="radio" aria-checked={kind === k} onClick={() => pickKind(k)} disabled={editing} className={"chip " + (kind === k ? "chip-on" : "") + (editing ? " opacity-60" : "")}>{l}</button>
             ))}
+          </div>
+          <div className="mt-1 flex items-center gap-1" role="radiogroup" aria-label="Price type" title="Price list for new items. RP is used when a part has no CP, and the other way round.">
+            {(["rp", "cp"] as const).map((t) => <button key={t} type="button" tabIndex={-1} role="radio" aria-checked={priceType === t} onClick={() => setPriceType(t)} className={"chip " + (priceType === t ? "chip-on" : "")}>{PRICE_LABEL[t]}</button>)}
+            <Key k="F8" />
           </div>
           {!counter && (
             <div className="mt-1 flex items-center gap-1" role="radiogroup" aria-label="Cash or credit">
@@ -349,7 +356,7 @@ export default function InvoiceGrid({ customerId, editId }: { customerId?: strin
                   </td>
                   <td className="border-b border-[var(--g-line)] px-1 py-0.5"><input ref={reg("qty:" + r.key)} data-row={r.key} data-cell="qty" disabled={!r.p} className={cell + " text-right"} inputMode="decimal" aria-label={"Quantity, row " + (i + 1)} value={r.q} onChange={(e) => patch(r.key, { q: e.target.value.replace(/[^\d.]/g, "") })}
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (money(r.q) > 0) focus("price:" + r.key); } else if (e.key === "ArrowUp") { e.preventDefault(); goRow(r, -1, "qty"); } else if (e.key === "ArrowDown") { e.preventDefault(); goRow(r, 1, "qty"); } else if (e.key === "Backspace" && r.q === "") { e.preventDefault(); focus("prod:" + r.key); } }} /></td>
-                  <td className="border-b border-[var(--g-line)] px-1 py-0.5"><input ref={reg("price:" + r.key)} data-row={r.key} data-cell="price" disabled={!r.p} readOnly={!canDiscount} className={cell + " text-right"} inputMode="decimal" aria-label={"Price, row " + (i + 1)} value={r.price !== "" ? r.price : r.p ? String(r.p.cp) : ""} onChange={(e) => patch(r.key, { price: e.target.value.replace(/[^\d.]/g, "") })}
+                  <td className="border-b border-[var(--g-line)] px-1 py-0.5"><input ref={reg("price:" + r.key)} data-row={r.key} data-cell="price" disabled={!r.p} readOnly={!canDiscount} className={cell + " text-right"} inputMode="decimal" aria-label={"Price, row " + (i + 1)} value={r.price !== "" ? r.price : r.p ? String(priceFor(r.p, priceType)) : ""} onChange={(e) => patch(r.key, { price: e.target.value.replace(/[^\d.]/g, "") })}
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); afterPrice(r); } else if (e.key === "ArrowUp") { e.preventDefault(); goRow(r, -1, "price"); } else if (e.key === "ArrowDown") { e.preventDefault(); goRow(r, 1, "price"); } }} /></td>
                   <td className="border-b border-[var(--g-line)] px-1 py-0.5"><input ref={reg("disc:" + r.key)} data-row={r.key} data-cell="disc" disabled={!r.p} readOnly={!canDiscount || !!r.market || !!r.p?.market_list} className={cell + " text-right"} inputMode="decimal" aria-label={"Discount percent, row " + (i + 1)} value={r.disc !== "" ? r.disc : c && c.pct ? String(c.pct) : ""} onChange={(e) => patch(r.key, { disc: e.target.value.replace(/[^\d.]/g, "") })}
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); nextRowProduct(r); } else if (e.key === "ArrowUp") { e.preventDefault(); goRow(r, -1, "disc"); } else if (e.key === "ArrowDown") { e.preventDefault(); goRow(r, 1, "disc"); } }} /></td>
@@ -441,7 +448,7 @@ export default function InvoiceGrid({ customerId, editId }: { customerId?: strin
       {/* key legend */}
       <p data-noprint className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
         <span><Key k="Enter" /> next</span><span><Key k="F2" /> counter / ledger</span><span><Key k="F3" /> customer</span><span><Key k="F4" /> {counter ? "payment method" : "cash / credit"}</span>
-        <span><Key k="F7" /> buy from market</span><span><Key k="F9" /> list</span><span><Key k="↑↓" /> rows</span><span><Key k="⇧F6" /> delete row</span><span><Key k="Backspace" /> change part</span><span><Key k="F10" /> save</span>
+        <span><Key k="F8" /> RP / CP</span><span><Key k="F7" /> buy from market</span><span><Key k="F9" /> list</span><span><Key k="↑↓" /> rows</span><span><Key k="⇧F6" /> delete row</span><span><Key k="Backspace" /> change part</span><span><Key k="F10" /> save</span>
       </p>
 
       {modal === "cust" && <CustomerPicker allowAdd onPick={(c) => { setModal(""); chooseCustomer(c); }} onClose={() => { setModal(""); focus("cust"); }} />}
@@ -505,11 +512,11 @@ function ProductCell({ row, reg, onPick, onClear, onEmptyEnter, onArrow }: {
               <li key={p.id} role="option" aria-selected={on} onMouseDown={(e) => { e.preventDefault(); choose(p); }} onMouseEnter={() => setAt(k)}
                 className={"flex cursor-pointer items-center gap-3 rounded-lg px-3 py-1.5 text-sm " + (on ? "bg-accent text-accent-ink" : "")}>
                 <span className="w-24 shrink-0 truncate font-semibold" title={p.code_name ?? ""}>{p.code_name ?? "—"}</span>
-                <span className="min-w-0 flex-1 truncate font-medium">{p.name_en}</span>
+                <span className="min-w-0 flex-1 truncate font-medium">{p.name_en}{p.brand ? " (" + p.brand + ")" : ""}</span>
                 <span className="w-32 shrink-0 truncate text-right" style={{ fontFamily: "var(--font-urdu), serif", direction: "rtl" }}>{plainUrdu(p.name_ur)}</span>
                 <span className={"w-28 shrink-0 truncate text-xs " + dim} title={p.list_name ?? ""}>{p.list_name ?? ""}</span>
                 <span className="flex w-20 shrink-0 justify-center">{p.scheme && <span className="rounded-full border border-amber bg-amber-bg px-2 py-0.5 text-[11px] font-bold text-amber">{p.scheme}</span>}</span>
-                <span className="w-20 shrink-0 text-right font-semibold">{rs(p.cp)}</span>
+                <span className="w-40 shrink-0 text-right text-xs font-semibold">{cpRpText(p)}</span>
                 <span className={"w-14 shrink-0 text-right text-[11px] " + (on ? "opacity-80" : p.on_hand <= 0 ? "text-red" : "text-muted")}>{p.market_list ? "market" : fmtQty(p.on_hand)}</span>
               </li>
             );

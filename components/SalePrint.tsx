@@ -34,9 +34,10 @@ const custName = (d: Detail) => withArea(d.sale.customer_name, d.customer && !d.
 const Logo = ({ src, className }: { src: string | null; className: string }) => (src ? <img src={src} alt="" className={className} /> : null);
 const phoneOf = (d: Detail) => d.sale.contact_phone ?? d.customer?.phone ?? null;
 
-/** Product name on every slip: the Urdu name only. The English name is used only when a product has no Urdu name yet. */
+/** Product name on every slip: the Urdu name with the brand in ( ). The English name is used only when a product has no Urdu name yet. */
 function Name({ i, className = "" }: { i: Item; className?: string }) {
-  return i.name_ur ? <span className={className} style={urdu}>{i.name_ur}</span> : <span className={className} dir="ltr">{i.name}</span>;
+  const brand = i.brand ? <bdi dir="ltr"> ({i.brand})</bdi> : null;
+  return i.name_ur ? <span className={className} style={urdu}>{i.name_ur}{brand}</span> : <span className={className} dir="ltr">{i.name}{brand}</span>;
 }
 
 /* ------------------------------------------------------------------ 80mm roll ------------------------------------------------------------------ */

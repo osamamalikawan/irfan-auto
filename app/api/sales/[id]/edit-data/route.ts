@@ -25,7 +25,7 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
   if (items.error) return NextResponse.json({ error: items.error.message }, { status: 500 });
   const pids = [...new Set((items.data ?? []).map((i: { product_id: string }) => i.product_id))];
   const [prods, racks, stock, mkt, markets] = await Promise.all([
-    sb.from("products").select("id,name_en,code_name,name_ur,unit,cp,scheme_buy,scheme_free,list:price_lists(name)").in("id", pids),
+    sb.from("products").select("id,name_en,code_name,name_ur,unit,cp,rp,scheme_buy,scheme_free,brand:brands(name),list:price_lists(name)").in("id", pids),
     sb.from("product_racks").select("product_id,rack:racks(code)").in("product_id", pids),
     sb.rpc("stock_on_hand", { p_products: pids }),
     sb.from("market_purchases").select("product_id,vendor,supplier_id").eq("sale_id", id),
@@ -51,7 +51,7 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
       key: i.id, qty: Number(i.qty), price: Number(i.price), disc_pct: Number(i.disc_pct),
       market: i.market ? { cost: Number(i.market_cost ?? 0), vendor: mmap.get(i.product_id)?.vendor ?? "", supplier_id: mmap.get(i.product_id)?.supplier_id ?? undefined } : null,
       product: {
-        id: i.product_id, name_en: p?.name_en ?? "", code_name: p?.code_name ?? null, name_ur: p?.name_ur ?? null, unit: p?.unit ?? "pc", cp: Number(p?.cp ?? 0),
+        id: i.product_id, name_en: p?.name_en ?? "", code_name: p?.code_name ?? null, name_ur: p?.name_ur ?? null, unit: p?.unit ?? "pc", cp: Number(p?.cp ?? 0), rp: Number(p?.rp ?? 0), brand: one(p?.brand)?.name ?? null,
         scheme: p?.scheme_buy && p?.scheme_free ? p.scheme_buy + "+" + p.scheme_free : null, on_hand: (onHand.get(i.product_id) ?? 0) + (held.get(i.product_id) ?? 0),
         racks: rackMap.get(i.product_id) ?? [], list_name: listName, market_list: !!listName && markets.has(listName),
       },

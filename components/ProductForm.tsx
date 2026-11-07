@@ -14,7 +14,7 @@ export default function ProductForm({ id }: { id?: string }) {
   const router = useRouter();
   const [meta, setMeta] = useState<Meta | null>(null);
   const [loaded, setLoaded] = useState(!id);
-  const [f, setF] = useState({ name_en: "", code_name: "", name_ur: "", company: "", brand: "", list: "", scheme: "", cp: "", unit: "pc", reorder_level: "", opening_stock: "" });
+  const [f, setF] = useState({ name_en: "", code_name: "", name_ur: "", company: "", brand: "", list: "", scheme: "", cp: "", rp: "", unit: "pc", reorder_level: "", opening_stock: "" });
   const [rows, setRows] = useState<Row[]>([{ location: "", racks: "" }]);
   const [suppliers, setSuppliers] = useState<SupplierOpt[]>([]);
   const [sup, setSup] = useState<string[]>([]);
@@ -30,7 +30,7 @@ export default function ProductForm({ id }: { id?: string }) {
       if (d.error) return setError(d.error);
       const p = d.product;
       setF((s) => ({ ...s, name_en: p.name_en ?? "", code_name: p.code_name ?? "", name_ur: p.name_ur ?? "", company: p.company?.name ?? "", brand: p.brand?.name ?? "",
-        list: p.list?.name ?? "", scheme: p.scheme ?? "", cp: String(p.cp ?? ""), unit: p.unit ?? "pc", reorder_level: Number(p.reorder_level) ? String(p.reorder_level) : "" }));
+        list: p.list?.name ?? "", scheme: p.scheme ?? "", cp: String(p.cp ?? ""), rp: Number(p.rp) ? String(p.rp) : "", unit: p.unit ?? "pc", reorder_level: Number(p.reorder_level) ? String(p.reorder_level) : "" }));
       setSup((p.suppliers ?? []).map((s: SupplierOpt) => s.id));
       setRows(d.locations.length ? d.locations.map((l: { name: string; racks: string[] }) => ({ location: l.name, racks: l.racks.join(", ") })) : [{ location: "", racks: "" }]);
       setLoaded(true);
@@ -79,7 +79,8 @@ export default function ProductForm({ id }: { id?: string }) {
             <div><label className="label" htmlFor="f-brand">Brand</label><input id="f-brand" className="input" list="dl-brand" value={f.brand} onChange={set("brand")} /></div>
             <div><label className="label" htmlFor="f-list">List</label><input id="f-list" className="input" list="dl-list" value={f.list} onChange={set("list")} /></div>
             <div><label className="label" htmlFor="f-scheme">Scheme (e.g. 9+1)</label><input id="f-scheme" className="input" value={f.scheme} onChange={set("scheme")} /></div>
-            <div><label className="label" htmlFor="f-cp">Counter price (CP)</label><input id="f-cp" className="input" type="number" inputMode="decimal" min="0" step="any" value={f.cp} onChange={set("cp")} /></div>
+            <div><label className="label" htmlFor="f-cp">CP (ledger sales)</label><input id="f-cp" className="input" type="number" inputMode="decimal" min="0" step="any" value={f.cp} onChange={set("cp")} /></div>
+            <div><label className="label" htmlFor="f-rp">RP (retail / counter sales)</label><input id="f-rp" className="input" type="number" inputMode="decimal" min="0" step="any" value={f.rp} onChange={set("rp")} /></div>
             <div><label className="label" htmlFor="f-unit">Unit</label><input id="f-unit" className="input" value={f.unit} onChange={set("unit")} /></div>
             <div><label className="label" htmlFor="f-reorder">Reorder level</label><input id="f-reorder" className="input" type="number" inputMode="decimal" min="0" step="any" value={f.reorder_level} onChange={set("reorder_level")} /></div>
             {!id && <div><label className="label" htmlFor="f-open">Opening stock</label><input id="f-open" className="input" type="number" inputMode="decimal" min="0" step="any" value={f.opening_stock} onChange={set("opening_stock")} /></div>}

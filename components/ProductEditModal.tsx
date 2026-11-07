@@ -10,7 +10,7 @@ export type ProductMeta = {
   suppliers: SupplierOpt[];
 };
 export type ProductRow = {
-  id: string; name_en: string; name_ur: string | null; code_name: string | null; scheme: string | null; cp: number; purchase_price: number; unit: string;
+  id: string; name_en: string; name_ur: string | null; code_name: string | null; scheme: string | null; cp: number; rp: number; purchase_price: number; unit: string;
   reorder_level: number; list_id: string | null; list_name: string | null; company: string | null; brand: string | null; on_hand: number; suppliers: SupplierOpt[];
 };
 
@@ -19,7 +19,7 @@ export default function ProductEditModal({ product, meta, onClose, onSaved }: { 
   const p = product;
   const [f, setF] = useState({
     name_en: p.name_en, name_ur: p.name_ur ?? "", code_name: p.code_name ?? "", company: p.company ?? "", brand: p.brand ?? "", list: p.list_name ?? "",
-    scheme: p.scheme ?? "", cp: String(p.cp ?? ""), purchase_price: Number(p.purchase_price) ? String(p.purchase_price) : "", unit: p.unit ?? "pc", reorder_level: Number(p.reorder_level) ? String(p.reorder_level) : "",
+    scheme: p.scheme ?? "", cp: String(p.cp ?? ""), rp: Number(p.rp) ? String(p.rp) : "", purchase_price: Number(p.purchase_price) ? String(p.purchase_price) : "", unit: p.unit ?? "pc", reorder_level: Number(p.reorder_level) ? String(p.reorder_level) : "",
   });
   const [sup, setSup] = useState<string[]>(p.suppliers.map((s) => s.id));
   const [busy, setBusy] = useState(false);
@@ -53,7 +53,8 @@ export default function ProductEditModal({ product, meta, onClose, onSaved }: { 
             <div><label className="label" htmlFor="pe-scheme">Scheme (e.g. 9+1)</label><input id="pe-scheme" className="input" value={f.scheme} onChange={set("scheme")} /></div>
             <div><label className="label" htmlFor="pe-company">Company</label><input id="pe-company" className="input" list="pe-dl-company" value={f.company} onChange={set("company")} /></div>
             <div><label className="label" htmlFor="pe-brand">Brand</label><input id="pe-brand" className="input" list="pe-dl-brand" value={f.brand} onChange={set("brand")} /></div>
-            <div><label className="label" htmlFor="pe-cp">Counter price (CP)</label><input id="pe-cp" className="input" type="number" inputMode="decimal" min="0" step="any" value={f.cp} onChange={set("cp")} /></div>
+            <div><label className="label" htmlFor="pe-cp">CP (ledger sales)</label><input id="pe-cp" className="input" type="number" inputMode="decimal" min="0" step="any" value={f.cp} onChange={set("cp")} /></div>
+            <div><label className="label" htmlFor="pe-rp">RP (retail / counter sales)</label><input id="pe-rp" className="input" type="number" inputMode="decimal" min="0" step="any" value={f.rp} onChange={set("rp")} /></div>
             <div><label className="label" htmlFor="pe-pp">Purchase price</label><input id="pe-pp" className="input" type="number" inputMode="decimal" min="0" step="any" value={f.purchase_price} onChange={set("purchase_price")} /></div>
             <div><label className="label" htmlFor="pe-unit">Unit</label><input id="pe-unit" className="input" value={f.unit} onChange={set("unit")} /></div>
             <div><label className="label" htmlFor="pe-reorder">Reorder level</label><input id="pe-reorder" className="input" type="number" inputMode="decimal" min="0" step="any" value={f.reorder_level} onChange={set("reorder_level")} /></div>

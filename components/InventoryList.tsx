@@ -12,7 +12,7 @@ import { ListSkeleton, LoadingBar, Spinner } from "./Loading";
 type Loc = { location: string; qty: number; racks: string[] };
 type Item = {
   id: string; legacy_no: number | null; name_en: string; code_name: string | null; name_ur: string | null;
-  scheme: string | null; cp: number; unit: string; reorder_level: number; list_name: string | null; brand: string | null; company?: string | null; suppliers?: { id: string; name: string }[];
+  scheme: string | null; cp: number; rp?: number; unit: string; reorder_level: number; list_name: string | null; brand: string | null; company?: string | null; suppliers?: { id: string; name: string }[];
   on_hand: number; racks: string[]; locations: string[]; by_location: Loc[];
 };
 type MetaLoc = { id: string; name: string };
@@ -148,7 +148,7 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
                 <div className="shrink-0 text-right">
                   <span className={"pill text-base " + toneClass[tone]}>{qty(it.on_hand)}</span>
                   <p className="mt-1 text-xs text-muted">{it.unit}</p>
-                  <p className="mt-1.5 text-sm font-semibold">{rs(it.cp)}</p>
+                  <p className="mt-1.5 text-sm font-semibold">CP {rs(it.cp)}{Number(it.rp) > 0 ? " · RP " + rs(it.rp!) : ""}</p>
                 </div>
               </Link>
             </li>
@@ -171,7 +171,8 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
                   <th key={l.id} className="whitespace-nowrap border-b border-line px-2 py-1.5 text-right font-semibold">{l.name}<br /><span className="text-xs font-normal">qty · racks</span></th>
                 ))}
                 <th className="whitespace-nowrap border-b border-line px-2 py-1.5 text-right font-semibold">Total on hand</th>
-                <th className="whitespace-nowrap border-b border-line px-2 py-1.5 text-right font-semibold">Price (CP)</th>
+                <th className="whitespace-nowrap border-b border-line px-2 py-1.5 text-right font-semibold">CP</th>
+                <th className="whitespace-nowrap border-b border-line px-2 py-1.5 text-right font-semibold">RP</th>
                 <th className="border-b border-line px-2 py-1.5" />
               </tr>
             </thead>
@@ -201,6 +202,7 @@ export default function InventoryList({ initialFilter }: { initialFilter: string
                       <b>{qty(it.on_hand)}</b>{low ? " ▼" : ""} <span className="text-xs font-normal text-muted">{it.unit}</span>
                     </td>
                     <td className="whitespace-nowrap border-b border-line px-2 py-2 text-right align-middle font-semibold">{rs(it.cp)}</td>
+                    <td className="whitespace-nowrap border-b border-line px-2 py-2 text-right align-middle font-semibold">{Number(it.rp) > 0 ? rs(it.rp!) : <span className="font-normal text-muted">—</span>}</td>
                     <td className="whitespace-nowrap border-b border-line px-2 py-2 text-right align-middle">
                       <Link href={"/inventory/" + it.id} className="btn min-h-8 px-2 text-[13px]">Where is it?</Link>{" "}
                       {canStock && <><button className="btn min-h-8 px-2 text-[13px]" onClick={() => setRestock(it)}>Change stock</button>{" "}</>}

@@ -4,11 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { qty, rs } from "@/lib/format";
 import { useMe } from "./Me";
 import ProductEditModal, { type ProductMeta, type ProductRow } from "./ProductEditModal";
+import SupplierPicks from "./SupplierPicks";
 import Toast from "./Toast";
 import { ListSkeleton, LoadingBar, Spinner } from "./Loading";
 
 const PAGE = 30;
-const FILTERS: [string, string][] = [["all", "All"], ["low", "Low stock"], ["nosupplier", "No supplier"], ["nobrand", "No brand"], ["nocompany", "No company"], ["nolist", "No list"]];
+const FILTERS: [string, string][] = [["all", "All"], ["low", "Low stock"], ["nosupplier", "No supplier"], ["nobrand", "No brand"], ["nocompany", "No company"], ["nolist", "No list"], ["norp", "No RP"]];
 
 /** Products of active lists: search, filter, edit, and move to an inactive list. */
 export default function ProductsView() {
@@ -28,6 +29,7 @@ export default function ProductsView() {
   const [edit, setEdit] = useState<ProductRow | null>(null);
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [moving, setMoving] = useState(false);
+  const [changing, setChanging] = useState(false);
   const [toast, setToast] = useState("");
   const req = useRef(0);
 
@@ -101,9 +103,10 @@ export default function ProductsView() {
           {FILTERS.map(([k, label]) => <button key={k} className={"chip " + (filter === k ? "chip-on" : "")} aria-pressed={filter === k} onClick={() => setFilter(k)}>{label}</button>)}
         </div>
         {canEdit && sel.size > 0 && (
-          <div className="mt-2 flex items-center gap-2 rounded-lg bg-surface p-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-surface p-2">
             <span className="flex-1 text-sm">{sel.size} selected</span>
             <button className="btn min-h-9" onClick={() => setSel(new Set())}>Clear</button>
+            <button className="btn min-h-9" onClick={() => setChanging(true)}>Change company / brand / supplier…</button>
             <button className="btn btn-primary min-h-9" onClick={() => setMoving(true)}>Move to list…</button>
           </div>
         )}
@@ -129,7 +132,8 @@ export default function ProductsView() {
                 <p className="mt-1 text-xs"><span className="text-muted">Suppliers: </span><Suppliers it={it} /></p>
               </div>
               <div className="shrink-0 text-right">
-                <p className="text-sm font-semibold">{rs(it.cp)}</p>
+                <p className="text-sm font-semibold">CP {rs(it.cp)}</p>
+                <p className="text-xs text-muted">{Number(it.rp) > 0 ? "RP " + rs(it.rp) : "No RP"}</p>
                 <p className="text-xs text-muted">{qty(it.on_hand)} {it.unit}</p>
               </div>
             </div>
@@ -152,6 +156,7 @@ export default function ProductsView() {
                 <th className="border-b border-line px-2 py-1.5 font-semibold">List</th>
                 <th className="border-b border-line px-2 py-1.5 text-right font-semibold">On hand</th>
                 <th className="border-b border-line px-2 py-1.5 text-right font-semibold">CP</th>
+                <th className="border-b border-line px-2 py-1.5 text-right font-semibold">RP</th>
                 <th className="border-b border-line px-2 py-1.5" />
               </tr>
             </thead>
@@ -170,6 +175,7 @@ export default function ProductsView() {
                   <td className="border-b border-line px-2 py-2">{it.list_name ?? <span className="text-muted">—</span>}</td>
                   <td className="whitespace-nowrap border-b border-line px-2 py-2 text-right">{qty(it.on_hand)} <span className="text-xs text-muted">{it.unit}</span></td>
                   <td className="whitespace-nowrap border-b border-line px-2 py-2 text-right font-semibold">{rs(it.cp)}</td>
+                  <td className="whitespace-nowrap border-b border-line px-2 py-2 text-right font-semibold">{Number(it.rp) > 0 ? rs(it.rp) : <span className="font-normal text-muted">—</span>}</td>
                   <td className="whitespace-nowrap border-b border-line px-2 py-2 text-right">{canEdit && meta && <button className="btn min-h-8 px-2 text-[13px]" onClick={() => setEdit(it)}>Edit</button>}</td>
                 </tr>
               ))}
@@ -190,7 +196,78 @@ export default function ProductsView() {
 
       {edit && meta && <ProductEditModal product={edit} meta={meta} onClose={() => setEdit(null)} onSaved={(m) => { setEdit(null); setToast(m); loadMeta(); load(0); }} />}
       {moving && meta && <MoveListModal ids={[...sel]} lists={meta.lists} onClose={() => setMoving(false)} onDone={(m) => { setMoving(false); setSel(new Set()); setToast(m); loadMeta(); load(0); }} />}
+      {changing && meta && <BulkChangeModal ids={[...sel]} meta={meta} onClose={() => setChanging(false)} onDone={(m) => { setChanging(false); setSel(new Set()); setToast(m); loadMeta(); load(0); }} />}
       {toast && <Toast msg={toast} onHide={() => setToast("")} />}
+    </div>
+  );
+}
+
+/** Change company, brand and/or suppliers of every selected product. Only the parts that are switched on are touched. */
+function BulkChangeModal({ ids, meta, onClose, onDone }: { ids: string[]; meta: ProductMeta; onClose: () => void; onDone: (m: string) => void }) {
+  const [on, setOn] = useState({ company: false, brand: false, suppliers: false });
+  const [company, setCompany] = useState("");
+  const [brand, setBrand] = useState("");
+  const [sup, setSup] = useState<string[]>([]);
+  const [mode, setMode] = useState<"add" | "replace" | "remove">("add");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const flip = (k: keyof typeof on) => setOn((s) => ({ ...s, [k]: !s[k] }));
+  const any = on.company || on.brand || on.suppliers;
+  const valid = any && (!on.suppliers || mode === "replace" || sup.length > 0);
+
+  async function go() {
+    setBusy(true); setError("");
+    const body: Record<string, unknown> = { ids };
+    if (on.company) body.company = company;
+    if (on.brand) body.brand = brand;
+    if (on.suppliers) { body.supplier_ids = sup; body.supplier_mode = mode; }
+    const r = await fetch("/api/products/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    setBusy(false);
+    if (!r.ok) return setError(j.error || "Could not change the products");
+    onDone(j.changed + " product(s) updated");
+  }
+  const Switch = ({ k, label }: { k: keyof typeof on; label: string }) => (
+    <label className="flex items-center gap-2 font-medium"><input type="checkbox" className="size-4" checked={on[k]} onChange={() => flip(k)} /> {label}</label>
+  );
+  return (
+    <div className="fixed inset-0 z-50 flex items-end bg-black/50 lg:items-center" onClick={onClose}>
+      <div role="dialog" aria-label="Change selected products" onClick={(e) => e.stopPropagation()}
+        className="mx-auto max-h-[92dvh] w-full max-w-2xl overflow-auto rounded-t-2xl bg-surface p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] lg:max-w-lg lg:rounded-2xl lg:pb-4">
+        <h2 className="text-base font-semibold">Change {ids.length} product(s)</h2>
+        <p className="mt-1 text-sm text-muted">Switch on what you want to change. Everything else stays as it is.</p>
+        <div className="mt-3 space-y-4">
+          <div className="space-y-2">
+            <Switch k="company" label="Company" />
+            {on.company && <><input className="input" list="bk-dl-company" placeholder="Company name (leave empty to clear)" value={company} onChange={(e) => setCompany(e.target.value)} aria-label="Company" />
+              <datalist id="bk-dl-company">{meta.companies.map((c) => <option key={c.id} value={c.name} />)}</datalist></>}
+          </div>
+          <div className="space-y-2">
+            <Switch k="brand" label="Brand" />
+            {on.brand && <><input className="input" list="bk-dl-brand" placeholder="Brand name (leave empty to clear)" value={brand} onChange={(e) => setBrand(e.target.value)} aria-label="Brand" />
+              <datalist id="bk-dl-brand">{meta.brands.map((c) => <option key={c.id} value={c.name} />)}</datalist></>}
+          </div>
+          <div className="space-y-2">
+            <Switch k="suppliers" label="Suppliers" />
+            {on.suppliers && (
+              <>
+                <select className="input" value={mode} onChange={(e) => setMode(e.target.value as typeof mode)} aria-label="How to change suppliers">
+                  <option value="add">Add these suppliers (keep the existing ones)</option>
+                  <option value="replace">Replace all suppliers with these</option>
+                  <option value="remove">Remove these suppliers</option>
+                </select>
+                <SupplierPicks options={meta.suppliers} value={sup} onChange={setSup} />
+                {mode === "replace" && !sup.length && <p className="text-xs text-amber">No supplier chosen: every selected product will end up with no supplier.</p>}
+              </>
+            )}
+          </div>
+        </div>
+        {error && <p role="alert" className="mt-3 rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
+        <div className="mt-4 grid grid-cols-2 gap-2 lg:flex lg:justify-end">
+          <button className="btn" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" disabled={busy || !valid} onClick={go}>{busy ? <><Spinner /> Saving…</> : "Apply"}</button>
+        </div>
+      </div>
     </div>
   );
 }
