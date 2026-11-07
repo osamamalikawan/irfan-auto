@@ -33,7 +33,7 @@ export async function savePhones(sb: SB, customerId: string, phones: string[]) {
 
 /** Replaces the groups of a customer with `ids` (ids that do not exist are ignored). */
 export async function saveGroups(sb: SB, customerId: string, ids: unknown) {
-  const want = [...new Set((Array.isArray(ids) ? ids : []).map(String))].filter((x) => /^[0-9a-f-]{36}$/i.test(x));
+  const want = [...new Set<string>((Array.isArray(ids) ? (ids as unknown[]) : []).map(String))].filter((x) => /^[0-9a-f-]{36}$/i.test(x));
   const known = want.length ? await sb.from("customer_groups").select("id").in("id", want) : { data: [], error: null };
   if (known.error) throw new Error(known.error.message);
   const del = await sb.from("customer_group_members").delete().eq("customer_id", customerId);

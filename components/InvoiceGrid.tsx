@@ -317,7 +317,7 @@ export default function InvoiceGrid({ customerId, editId }: { customerId?: strin
         <div className="min-w-48 text-right">
           <p className="text-xs text-muted">Previous balance</p>
           <p className={"text-xl font-bold " + (cust && !walkIn && cust.balance > 0 ? "text-red" : "")}>{cust && !walkIn ? rs(cust.balance) : "—"}</p>
-          {cust && !walkIn && <p className={"text-xs " + (overBy > 0 ? "font-bold text-red" : "text-muted")}>{cust.route ? cust.route + " · " : ""}{cust.credit_limit > 0 ? "limit " + rs(cust.credit_limit) : "no limit"}</p>}
+          {cust && !walkIn && <p className={"text-xs " + (overBy > 0 ? "font-bold text-red" : "text-muted")}>{cust.credit_limit > 0 ? "limit " + rs(cust.credit_limit) + " · remaining " + rs(Math.max(cust.credit_limit - cust.balance, 0)) : "no limit"}</p>}
         </div>
 
         {walkIn && !editing && (

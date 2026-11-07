@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   if (!ids.length) return NextResponse.json({ error: "Choose at least one product." }, { status: 400 });
   if (ids.length > 500) return NextResponse.json({ error: "Change at most 500 products at a time." }, { status: 400 });
   const mode = ["add", "replace", "remove"].includes(b?.supplier_mode) ? b.supplier_mode : "add";
-  const sups: string[] = b?.supplier_ids === undefined ? [] : [...new Set((Array.isArray(b.supplier_ids) ? b.supplier_ids : []).map(String))].filter((x) => UUID.test(x));
+  const sups: string[] = b?.supplier_ids === undefined ? [] : [...new Set<string>((Array.isArray(b.supplier_ids) ? (b.supplier_ids as unknown[]) : []).map(String))].filter((x) => UUID.test(x));
   const touchSuppliers = b?.supplier_ids !== undefined && (sups.length > 0 || mode === "replace");
   if (b?.company === undefined && b?.brand === undefined && !touchSuppliers) return NextResponse.json({ error: "Choose what to change." }, { status: 400 });
   const sb = db();

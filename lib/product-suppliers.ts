@@ -5,7 +5,7 @@ const UUID = /^[0-9a-f-]{36}$/i;
 
 /** Replaces the suppliers of a product with `ids` (a product can have several). */
 export async function setProductSuppliers(sb: SB, productId: string, ids: unknown) {
-  const want = [...new Set((Array.isArray(ids) ? ids : []).map(String))].filter((x) => UUID.test(x));
+  const want = [...new Set<string>((Array.isArray(ids) ? (ids as unknown[]) : []).map(String))].filter((x) => UUID.test(x));
   const known = want.length ? await sb.from("suppliers").select("id").in("id", want) : { data: [], error: null };
   if (known.error) throw new Error(known.error.message);
   const del = await sb.from("product_suppliers").delete().eq("product_id", productId);
