@@ -3,6 +3,7 @@ import { db } from "@/lib/supabase";
 import { authorize } from "@/lib/auth";
 import { allowedRouteIds } from "@/lib/customer-scope";
 import { cleanDate } from "@/lib/schedule";
+import { fulfilIndex } from "@/lib/sale-types";
 
 type Ctx = { params: Promise<{ id: string }> };
 const TARGET: Record<string, string> = { pack: "packed", deliver: "delivered", complete: "completed" };
@@ -32,8 +33,11 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     if (sale.status !== "confirmed") return NextResponse.json({ error: "This invoice is cancelled." }, { status: 400 });
     const target = TARGET[task.action];
     if (sale.sale_kind === "counter" && Number(sale.paid) < Number(sale.total)) return NextResponse.json({ error: "A counter sale on hold stays Active until it is paid." }, { status: 400 });
-    const r = await sb.from("sales").update({ fulfil_status: target, status_changed_at: new Date().toISOString(), status_changed_by: a.user.id }).eq("id", sale.id);
-    if (r.error) return NextResponse.json({ error: r.error.message }, { status: 500 });
+    // the status only moves forward: if the order is already past this step, the task is just ticked off
+    if (fulfilIndex(target) > fulfilIndex(sale.fulfil_status)) {
+      const r = await sb.from("sales").update({ fulfil_status: target, status_changed_at: new Date().toISOString(), status_changed_by: a.user.id }).eq("id", sale.id);
+      if (r.error) return NextResponse.json({ error: r.error.message }, { status: 500 });
+    }
     const u = await sb.from("sale_tasks").update({ done_at: new Date().toISOString(), done_by: a.user.id }).eq("id", id);
     if (u.error) return NextResponse.json({ error: u.error.message }, { status: 500 });
     return NextResponse.json({ ok: true, status: target });

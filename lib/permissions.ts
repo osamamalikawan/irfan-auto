@@ -34,6 +34,8 @@ export type SessionUser = {
   ownOnly: boolean; locationIds: string[] | null; isSalesman: boolean; mustChangePin: boolean;
 };
 
+/** The administrator role has every permission ("*"). */
+export const isAdmin = (u: { perms: string[] } | null | undefined) => !!u && u.perms.includes("*");
 export const hasPerm = (u: { perms: string[] } | null | undefined, p: string) => !!u && (u.perms.includes("*") || u.perms.includes(p));
 /** Who may add a customer: anyone who can edit customers, and salesmen (limited to their own routes, no credit terms). */
 export const canAddCustomer = (u: { perms: string[]; isSalesman?: boolean } | null | undefined) => hasPerm(u, "customers.edit") || !!u?.isSalesman;

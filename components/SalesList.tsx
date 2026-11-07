@@ -3,9 +3,11 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { monthStart, niceDate, todayPk, weekStart } from "@/lib/dates";
 import { rs } from "@/lib/format";
-import { FULFIL, saleKind, statusPill } from "@/lib/sale-types";
+import { isAdmin } from "@/lib/permissions";
+import { FULFIL, canMoveStatus, saleKind, statusPill } from "@/lib/sale-types";
 import CollectModal from "./CollectModal";
 import PrintModal, { type PrintJob } from "./PrintModal";
+import ScheduleModal from "./ScheduleModal";
 import type { PrintType } from "./SalePrint";
 import { useMe } from "./Me";
 import Toast from "./Toast";
@@ -61,7 +63,9 @@ function PrintMenu({ cancelled, onPick }: { cancelled: boolean; onPick: (type: P
 }
 
 export default function SalesList({ initialStatus = "", initialRange = "today" }: { initialStatus?: string; initialRange?: string }) {
-  const { can } = useMe();
+  const { can, user } = useMe();
+  const admin = isAdmin(user);
+  const [sched, setSched] = useState<{ id: string; no: string } | null>(null);
   const [range, setRange] = useState<(typeof RANGES)[number][0]>(initialRange as (typeof RANGES)[number][0]);
   const [status, setStatus] = useState(initialStatus);
   const [kind, setKind] = useState("");
@@ -173,6 +177,9 @@ export default function SalesList({ initialStatus = "", initialRange = "today" }
                 </div>
                 {s.status === "confirmed" && Number(s.total) - Number(s.paid) > 0 && <p className="text-right text-xs text-red">Due {rs(Number(s.total) - Number(s.paid))}</p>}
               </Link>
+              {s.status === "confirmed" && s.fulfil_status !== "completed" && can("sales.status") && (
+                <div className="-mt-1 flex justify-end px-1 pb-1"><button className="btn min-h-8 px-3 text-[13px]" onClick={() => setSched({ id: s.id, no: s.no })}>Schedule</button></div>
+              )}
             </li>
           );
         })}
@@ -208,13 +215,19 @@ export default function SalesList({ initialStatus = "", initialRange = "today" }
                       {editable ? (
                         <span className="inline-flex items-center gap-1.5">
                           <select className="input min-h-8 w-32 py-0 text-[13px]" aria-label={"Status of " + s.no} value={s.fulfil_status} disabled={changing === s.id} onChange={(e) => changeStatus(s, e.target.value)}>
-                            {FULFIL.map(([key, label]) => <option key={key} value={key}>{key === "active" && s.sale_kind === "counter" && due > 0 ? "Active (Hold)" : label}</option>)}
+                            {FULFIL.map(([key, label]) => <option key={key} value={key} disabled={key !== s.fulfil_status && !canMoveStatus(s.fulfil_status, key, admin)}>{key === "active" && s.sale_kind === "counter" && due > 0 ? "Active (Hold)" : label}</option>)}
                           </select>
                           {changing === s.id && <Spinner />}
                         </span>
                       ) : <span className={"pill " + st.cls}>{st.label}</span>}
                     </td>
-                    <td className="whitespace-nowrap border-b border-line px-2 py-2 text-right"><PrintMenu cancelled={s.status === "cancelled"} onPick={(t, l) => setJob({ ids: [s.id], type: t, layout: l })} /></td>
+                    <td className="whitespace-nowrap border-b border-line px-2 py-2 text-right">
+                      <span className="inline-flex items-center gap-1.5">
+                        {s.status === "confirmed" && ["active", "packed"].includes(s.fulfil_status) && can("sales.edit") && <Link href={"/sales/" + s.id + "/edit"} className="btn min-h-8 px-2.5 text-[13px]">Edit</Link>}
+                        {s.status === "confirmed" && s.fulfil_status !== "completed" && can("sales.status") && <button className="btn min-h-8 px-2.5 text-[13px]" onClick={() => setSched({ id: s.id, no: s.no })}>Schedule</button>}
+                        <PrintMenu cancelled={s.status === "cancelled"} onPick={(t, l) => setJob({ ids: [s.id], type: t, layout: l })} />
+                      </span>
+                    </td>
                   </tr>
                 );
               })}
@@ -230,6 +243,7 @@ export default function SalesList({ initialStatus = "", initialRange = "today" }
       </div>
 
       {collect && <CollectModal onClose={() => setCollect(false)} onDone={(m) => { setCollect(false); setToast(m); load(0); }} />}
+      {sched && <ScheduleModal saleId={sched.id} no={sched.no} onClose={() => setSched(null)} onChanged={(m) => { setToast(m); load(0); }} />}
       {job && <PrintModal job={job} onClose={() => setJob(null)} />}
       {toast && <Toast msg={toast} onHide={() => setToast("")} />}
     </div>

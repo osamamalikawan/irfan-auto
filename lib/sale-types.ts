@@ -12,6 +12,10 @@ export function saleKind(s: KindInput) {
   return { key: "credit" as const, label: "Credit", pill: "bg-amber-bg text-amber", bar: "border-l-amber" };
 }
 
+export const fulfilIndex = (k: string) => FULFIL_KEYS.indexOf(k);
+/** An order's status only moves forward (Active, Packed, Delivered, Completed). An administrator may also move it back. */
+export const canMoveStatus = (from: string, to: string, admin: boolean) => to !== from && fulfilIndex(to) >= 0 && (admin || fulfilIndex(to) > fulfilIndex(from));
+
 export function fulfilLabel(k: string) { return FULFIL.find(([x]) => x === k)?.[1] ?? k; }
 
 /** What to show for an invoice's status: cancelled wins, a counter sale not yet paid is "On hold". */
