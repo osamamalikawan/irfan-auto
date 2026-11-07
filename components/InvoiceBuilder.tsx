@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { withArea } from "@/lib/cust";
 import { qty as fmtQty, rs } from "@/lib/format";
 import { cpRpText, defaultPriceType, priceFor, priceUsed, PRICE_LABEL, type PriceType } from "@/lib/price";
+import CreditSummary from "./CreditSummary";
 import CustomerPicker, { type PickedCustomer } from "./CustomerPicker";
 import { useMe } from "./Me";
 import { Loading, LoadingBar, Spinner } from "./Loading";
@@ -174,9 +175,7 @@ export default function InvoiceBuilder({ customerId }: { customerId?: string }) 
               <div className="flex items-start gap-2">
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold">{walkIn ? "Walk-in customer" : withArea(cust.name, cust.area)}{walkIn && <span className="ml-2 pill bg-bg text-muted">Counter</span>}</p>
-                  {!walkIn && (
-                    <p className="text-sm text-muted">Balance <b className={cust.balance > 0 ? "text-red" : "text-ink"}>{rs(cust.balance)}</b>{cust.credit_limit > 0 ? " · limit " + rs(cust.credit_limit) + " · remaining " + rs(Math.max(cust.credit_limit - cust.balance, 0)) : ""}</p>
-                  )}
+                  {!walkIn && <div className="mt-1"><CreditSummary limit={cust.credit_limit} balance={cust.balance} /></div>}
                 </div>
                 {counter && !walkIn ? <button className="btn min-h-9 px-3" onClick={useWalkIn}>Walk-in</button> : null}
                 {(!counter || !walkIn) && <button className="btn min-h-9 px-3" onClick={() => setPickCust(true)}>Change</button>}

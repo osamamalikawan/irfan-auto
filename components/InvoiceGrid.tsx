@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { withArea } from "@/lib/cust";
 import { qty as fmtQty, rs } from "@/lib/format";
 import { cpRpText, defaultPriceType, priceFor, PRICE_LABEL, type PriceType } from "@/lib/price";
+import CreditSummary from "./CreditSummary";
 import CustomerPicker, { type PickedCustomer } from "./CustomerPicker";
 import { MarketModal, ProductPicker, type Prod } from "./InvoiceBuilder";
 import MarketDetailsModal, { type MarketInfo } from "./MarketDetailsModal";
@@ -314,10 +315,8 @@ export default function InvoiceGrid({ customerId, editId }: { customerId?: strin
 
         <CustomerBox cust={cust} kind={kind} locked={editing} reg={reg} onPick={(c) => chooseCustomer(c)} onEmptyEnter={() => focus("prod:0")} />
 
-        <div className="min-w-48 text-right">
-          <p className="text-xs text-muted">Previous balance</p>
-          <p className={"text-xl font-bold " + (cust && !walkIn && cust.balance > 0 ? "text-red" : "")}>{cust && !walkIn ? rs(cust.balance) : "—"}</p>
-          {cust && !walkIn && <p className={"text-xs " + (overBy > 0 ? "font-bold text-red" : "text-muted")}>{cust.credit_limit > 0 ? "limit " + rs(cust.credit_limit) + " · remaining " + rs(Math.max(cust.credit_limit - cust.balance, 0)) : "no limit"}</p>}
+        <div className="min-w-56">
+          {cust && !walkIn ? <CreditSummary limit={cust.credit_limit} balance={cust.balance} align="right" /> : <p className="text-right text-sm text-muted">Previous Balance: —</p>}
         </div>
 
         {walkIn && !editing && (
