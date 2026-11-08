@@ -1,12 +1,28 @@
 # Old Oracle system -> this app
 
-Source: `combined_outputs_top5.sql` (77 tables, at most 5 rows each). Rows marked "my reading" are guesses from column
+Source: `combined_outputs.sql` (full Oracle dump; 77 tables). Rows marked "my reading" are guesses from column
 names and sample data; confirm them against the old screens.
 
-## 1. Imported now (`npm run import:oracle`)
+## 1. Imported by `npm run import:oracle`
+
+Customers must be imported before dependent sales records. The importer does not create tables or apply migrations;
+it writes only to existing Supabase tables. Preview and import customer rows into the existing `customers` table:
+
+```bash
+npm run import:oracle -- path/to/dump.sql --customers-only
+npm run import:oracle -- path/to/dump.sql --customers-only --apply
+```
+
+The customer stage imports `CUST` rows with `CODE = 'C'`, keyed idempotently by `CCODE` in the existing `ora_ccode`
+column. It maps the core profile, credit terms, active status, and opening balance to existing customer columns and
+syncs `COBAL` as an opening entry in `customer_ledger`. Apply the Supabase migrations, including
+`supabase/migrations/0007_sales.sql`, before importing; the importer stops before writing if the ledger table is
+missing. This imports opening balances only, not historical invoices or payments. City/route assignments and extra
+`CUST2` phone rows are deferred until their mappings are verified.
 
 | Old table.column | Becomes | Notes |
 |---|---|---|
+| CUST where CODE = 'C' | `customers` | `CCODE` -> `ora_ccode`; `CNAME`, contacts, credit fields, `ACTIVE`, and `COBAL` are imported. GODOWN records and other `CODE` values are excluded. |
 | CAT (CATID, CATNAME) | `price_lists` | "IRFAN AUTO SHOP LIST", "SAZ FIX PARTS LIST", ... same lists as the Excel file |
 | DEPT (DEPTID, DEPTNAME) | `companies` | my reading |
 | GEN (GENID, GENNAME, DEPTID) | `brands` (company = its DEPT) | my reading |
@@ -27,7 +43,7 @@ names and sample data; confirm them against the old screens.
 
 | Old tables | New module |
 |---|---|
-| CUST (CODE 'C'), CUST2, PROMISE, DEALER, DISC, DISCHEAD0/1 | Customers (extra mobiles, promise-to-pay dates, dealer price tiers and discounts) |
+| CUST2, PROMISE, DEALER, DISC, DISCHEAD0/1 | Customer extras (additional phones, promise-to-pay dates, dealer price tiers and discounts) |
 | CITY, ROUTE (ROUTEID, COLLECTORID, CATID), ADDA | Routes & Areas (adda = transport depot used on invoices) |
 | COLLECTOR (COMM, ROUTES_ALLOWED), TAR0/TAR1 | Sales Team and targets |
 | INV0S / INV1S | Sales invoices (header, lines; BQTY/GQTY = scheme, QTYTYPE 'L' = loose piece) |

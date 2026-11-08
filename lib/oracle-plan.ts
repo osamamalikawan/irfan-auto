@@ -6,6 +6,24 @@ export const MASTER_TABLES = ["CAT", "DEPT", "GEN", "PROD", "CUST", "COLLECTOR"]
 
 export type Named = { ora: number; name: string };
 
+export type MappedCustomer = {
+  ora_ccode: number;
+  name: string;
+  name_ur: string | null;
+  owner: string | null;
+  phone: string | null;
+  phone2: string | null;
+  address: string | null;
+  cnic: string | null;
+  ntn: string | null;
+  email: string | null;
+  gps: string | null;
+  credit_limit: number;
+  credit_days: number;
+  opening_balance: number;
+  status: "active" | "archived";
+};
+
 export function buildPlan(d: Record<string, Row[]>, cfg: MapConfig = DEFAULT_CONFIG) {
   const warnings: string[] = [];
   const named = (rows: Row[], id: string, name: string): Named[] =>
@@ -17,6 +35,33 @@ export function buildPlan(d: Record<string, Row[]>, cfg: MapConfig = DEFAULT_CON
     r.GENID != null && str(r.GENNAME) ? [{ ora: Number(r.GENID), name: str(r.GENNAME)!, deptid: r.DEPTID == null ? null : Number(r.DEPTID) }] : []);
   // stock locations: the old system keeps godowns in the customer table (GODOWN = 'Y')
   const godowns = named((d.CUST ?? []).filter((c) => c.GODOWN === "Y" || c.CODE === "G"), "CCODE", "CNAME").sort((a, b) => a.ora - b.ora);
+  let skippedCustomers = 0;
+  const customers: MappedCustomer[] = (d.CUST ?? []).flatMap((r) => {
+    if (str(r.CODE)?.toUpperCase() !== "C" || str(r.GODOWN)?.toUpperCase() === "Y") return [];
+    const name = str(r.CNAME);
+    if (r.CCODE == null || !name) {
+      skippedCustomers++;
+      return [];
+    }
+    return [{
+      ora_ccode: Number(r.CCODE),
+      name,
+      name_ur: str(r.CNAMEURDU),
+      owner: str(r.PERSON),
+      phone: str(r.CONTACT),
+      phone2: str(r.PHONENO),
+      address: str(r.ADDRESS),
+      cnic: str(r.CNIC),
+      ntn: str(r.NTNNO),
+      email: str(r.EMAIL),
+      gps: str(r.GPS_LOCATION),
+      credit_limit: num(r.LIMIT),
+      credit_days: Math.trunc(num(r.CDAYS)),
+      opening_balance: num(r.COBAL),
+      status: r.ACTIVE === "N" ? "archived" : "active",
+    }];
+  });
+  if (skippedCustomers) warnings.push(skippedCustomers + " customer rows without a code or name were skipped");
 
   const listIds = new Set(lists.map((l) => l.ora)), genIds = new Set(brands.map((b) => b.ora));
   const products: MappedProduct[] = [];
@@ -47,6 +92,6 @@ export function buildPlan(d: Record<string, Row[]>, cfg: MapConfig = DEFAULT_CON
     return [{ ora: Number(r.COLLECTORID), name, active: r.ACTIVE !== "N", godown: g > 0 ? g : null, mobile: str(r.MOBILE) }];
   });
 
-  return { lists, companies, brands, godowns, products, collectors, warnings };
+  return { lists, companies, brands, godowns, customers, products, collectors, warnings };
 }
 export type Plan = ReturnType<typeof buildPlan>;

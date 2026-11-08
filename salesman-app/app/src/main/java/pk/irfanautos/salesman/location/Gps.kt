@@ -11,6 +11,8 @@ import com.google.android.gms.tasks.CancellationTokenSource
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
+import pk.irfanautos.salesman.App
 import pk.irfanautos.salesman.data.Fix
 
 class GpsException(message: String) : Exception(message)
@@ -21,6 +23,15 @@ object Gps {
     fun hasPermission(ctx: Context): Boolean =
         ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
             ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+    /** A fresh position if the GPS finds one within 15 seconds; otherwise the last position the phone saved in the last 6 hours (so work can start
+     *  and end offline, indoors, with a cold GPS); otherwise an error. */
+    suspend fun best(ctx: Context): Fix {
+        val fresh = withTimeoutOrNull(15_000L) { runCatching { current(ctx) }.getOrNull() }
+        if (fresh != null) return fresh
+        App.prefs.recentFix(6 * 3600_000L)?.let { return it }
+        throw GpsException(UNAVAILABLE)
+    }
 
     /** One fresh reading of the phone's position. */
     @SuppressLint("MissingPermission")

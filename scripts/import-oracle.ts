@@ -2,7 +2,9 @@
  * Imports the old Oracle system's master data (from an "INSERT INTO" dump) into this app.
  *
  *   npm run import:oracle -- path/to/dump.sql                 preview only, nothing is written
- *   npm run import:oracle -- path/to/dump.sql --apply         write products, price lists, brands, locations
+ *   npm run import:oracle -- path/to/dump.sql --customers-only --apply
+ *                                                            import customers into the existing customers table
+ *   npm run import:oracle -- path/to/dump.sql --apply         write customers first, then inventory/master data
  *   npm run import:oracle -- path/to/dump.sql --apply --users also create users from the COLLECTOR table
  *   options: --cp=SRATELOSE|SRATEPACK|RATEA|RATEB|RATEC   --name=CPNAME|PNAME   --reorder=REQTY|MAXQTY|none
  *
@@ -10,17 +12,23 @@
  * their code name (old PNAME) and then carry the old id from then on. Details of matched products are overwritten
  * with the old system's values; stock is only written for products that have none yet.
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { readOracleDump } from "../lib/oracle-dump";
 import { buildPlan, MASTER_TABLES, type Named } from "../lib/oracle-plan";
 import { DEFAULT_CONFIG, type MapConfig } from "../lib/oracle-map";
 
 const args = process.argv.slice(2);
-const file = args.find((a) => !a.startsWith("--"));
+const WORDS = ["apply", "users", "customers-only"];
+const file = args.find((a) => !a.startsWith("--") && !WORDS.includes(a));
 const flag = (n: string) => args.find((a) => a.startsWith("--" + n + "="))?.split("=")[1];
-if (!file) { console.error("Usage: npm run import:oracle -- <dump.sql> [--apply] [--users]"); process.exit(1); }
-const apply = args.includes("--apply"), withUsers = args.includes("--users");
+if (!file) { console.error("Usage: npm run import:oracle -- <dump.sql> [--apply] [--customers-only] [--users]"); process.exit(1); }
+const has = (name: string) => args.includes("--" + name) || args.includes(name);
+const apply = has("apply"), withUsers = has("users"), customersOnly = has("customers-only");
+if (customersOnly && withUsers) {
+  console.error("--customers-only cannot be combined with --users");
+  process.exit(1);
+}
 
 const cfg: MapConfig = {
   cpFrom: (flag("cp") as MapConfig["cpFrom"]) ?? DEFAULT_CONFIG.cpFrom,
@@ -32,18 +40,34 @@ const chunks = <T,>(a: T[], n = 500) => Array.from({ length: Math.ceil(a.length 
 const check = (label: string, error: { message: string } | null) => { if (error) throw new Error(label + ": " + error.message); };
 
 async function main() {
-  const data = await readOracleDump(file!, [...MASTER_TABLES]);
+  const data = await readOracleDump(file!, customersOnly ? ["CUST"] : [...MASTER_TABLES]);
   const plan = buildPlan(data, cfg);
   const lines = [
     "Source: " + file, "Mapping: CP <- " + cfg.cpFrom + ", name <- " + cfg.nameFrom + ", reorder <- " + (cfg.reorderFrom ?? "none"),
-    "Price lists (CAT): " + plan.lists.length, "Companies (DEPT): " + plan.companies.length, "Brands (GEN): " + plan.brands.length,
-    "Locations (godowns in CUST): " + plan.godowns.length, "Products (PROD): " + plan.products.length, "Users (COLLECTOR): " + plan.collectors.length,
-    "Products with stock to import: " + plan.products.filter((p) => p.stock > 0).length, "Inactive products (ACTIVE = N): " + plan.products.filter((p) => !p.active).length,
+    "Customers (CUST CODE=C): " + plan.customers.length,
+    "Customer city/route assignments and CUST2 extra phones: deferred until their mapping is verified",
+    ...(customersOnly ? [] : [
+      "Price lists (CAT): " + plan.lists.length, "Companies (DEPT): " + plan.companies.length, "Brands (GEN): " + plan.brands.length,
+      "Locations (godowns in CUST): " + plan.godowns.length, "Products (PROD): " + plan.products.length, "Users (COLLECTOR): " + plan.collectors.length,
+      "Products with stock to import: " + plan.products.filter((p) => p.stock > 0).length, "Inactive products (ACTIVE = N): " + plan.products.filter((p) => !p.active).length,
+    ]),
     ...plan.warnings.map((w) => "WARNING: " + w),
   ];
   console.log(lines.join("\n"));
-  writeFileSync("oracle-import-preview.json", JSON.stringify({ config: cfg, sampleProducts: plan.products.slice(0, 20), godowns: plan.godowns, lists: plan.lists, companies: plan.companies, brands: plan.brands }, null, 2));
-  if (!apply) { console.log("\nPreview only. Nothing was written. Details: oracle-import-preview.json\nRun again with --apply to import."); return; }
+  writeFileSync("oracle-import-preview.json", JSON.stringify({
+    config: cfg,
+    customersOnly,
+    customerCount: plan.customers.length,
+    sampleProducts: plan.products.slice(0, 20),
+    godowns: plan.godowns,
+    lists: plan.lists,
+    companies: plan.companies,
+    brands: plan.brands,
+  }, null, 2));
+  if (!apply) {
+    console.log("\nPreview only. Nothing was written. Details: oracle-import-preview.json\nRun again with --apply to import.");
+    return;
+  }
 
   const { db } = await import("../lib/supabase");
   const sb = db();
@@ -57,6 +81,90 @@ async function main() {
       if (!rows || rows.length < 1000) break;
     }
     return out;
+  }
+
+  const { error: customerSchemaError } = await sb.from("customers").select("id").limit(0);
+  check("existing customers table and ora_ccode column", customerSchemaError);
+
+  if (plan.customers.length) {
+    const { error: ledgerSchemaError } = await sb.from("customer_ledger").select("id").limit(0);
+    if (ledgerSchemaError?.code === "PGRST205" || ledgerSchemaError?.code === "42P01") {
+      throw new Error(
+        "customer_ledger is missing. Apply the Supabase migrations, including 0007_sales.sql, then rerun the import. No customer data was changed."
+      );
+    }
+    check("customer_ledger", ledgerSchemaError);
+  }
+
+  const customerRows = plan.customers.map((customer) => ({
+    ora_ccode: customer.ora_ccode,
+    name: customer.name,
+    name_ur: customer.name_ur,
+    owner: customer.owner,
+    phone: customer.phone,
+    phone2: customer.phone2,
+    address: customer.address,
+    cnic: customer.cnic,
+    ntn: customer.ntn,
+    email: customer.email,
+    gps: customer.gps,
+    credit_limit: customer.credit_limit,
+    credit_days: customer.credit_days,
+    opening_balance: customer.opening_balance,
+    status: customer.status,
+  }));
+  for (const c of chunks(customerRows)) {
+    check("customers", (await sb.from("customers").upsert(c, { onConflict: "ora_ccode" })).error);
+  }
+  console.log("Customers synced:", customerRows.length);
+
+  if (plan.customers.length) {
+    const customerIds = new Map<number, string>();
+    for (const codes of chunks(plan.customers.map((c) => c.ora_ccode))) {
+      const { data: rows, error } = await sb.from("customers").select("id,ora_ccode").in("ora_ccode", codes);
+      check("customers", error);
+      for (const row of rows ?? []) customerIds.set(row.ora_ccode, row.id);
+    }
+
+    const customerIdSet = new Set([...customerIds.values()]);
+    const existingByCustomer = new Map<string, { id: string; customer_id: string }>();
+    for (let from = 0; ; from += 1000) {
+      const { data: rows, error } = await sb.from("customer_ledger")
+        .select("id,customer_id").eq("type", "opening").range(from, from + 999);
+      check("customer_ledger", error);
+      for (const entry of rows ?? []) {
+        if (!customerIdSet.has(entry.customer_id)) continue;
+        if (existingByCustomer.has(entry.customer_id)) {
+          throw new Error(`Customer ${entry.customer_id} has multiple opening ledger entries; resolve them before importing.`);
+        }
+        existingByCustomer.set(entry.customer_id, entry);
+      }
+      if (!rows || rows.length < 1000) break;
+    }
+
+    const openingRows = plan.customers.flatMap((customer) => {
+      const customerId = customerIds.get(customer.ora_ccode);
+      if (!customerId) throw new Error(`Customer ${customer.ora_ccode} was not returned after upsert.`);
+      const existing = existingByCustomer.get(customerId);
+      if (!existing && customer.opening_balance === 0) return [];
+      return [{
+        ...(existing ? { id: existing.id } : {}),
+        customer_id: customerId,
+        type: "opening",
+        amount: customer.opening_balance,
+        ref: customerId,
+        note: "Imported from Oracle CUST.COBAL",
+      }];
+    });
+    for (const c of chunks(openingRows)) {
+      check("customer_ledger", (await sb.from("customer_ledger").upsert(c, { onConflict: "id" })).error);
+    }
+    console.log("Customer opening balances synced:", openingRows.length);
+  }
+
+  if (customersOnly) {
+    console.log("Customer-only import complete. Run the remaining Oracle import later with --apply.");
+    return;
   }
 
   /** Finds each old row in the app by old id, then by name; creates what is missing. Returns old id -> new id. */

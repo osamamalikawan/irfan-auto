@@ -1,0 +1,8504 @@
+{
+  "format": "combined-output-relational-schema",
+  "source": "combined_outputs.sql",
+  "tableCount": 77,
+  "declaredPrimaryKeyCount": 14,
+  "foreignKeyConstraintCount": 87,
+  "tables": [
+    {
+      "name": "ADDA",
+      "sourceLine": 10,
+      "columns": [
+        {
+          "name": "ADDAID",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "ADDANAME",
+          "type": "VARCHAR2(30)",
+          "nullable": true
+        },
+        {
+          "name": "ADDACONTACT",
+          "type": "VARCHAR2(60)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [
+        "ADDAID"
+      ],
+      "foreignKeys": [],
+      "referencedBy": [
+        {
+          "table": "INV0S",
+          "columns": [
+            "ADDAID"
+          ],
+          "references": "ADDA",
+          "referenceColumns": [
+            "ADDAID"
+          ],
+          "constraint": "FK_INV0S_ADDA_ADDAID",
+          "sourceLine": 470740
+        },
+        {
+          "table": "INVR0",
+          "columns": [
+            "ADDAID"
+          ],
+          "references": "ADDA",
+          "referenceColumns": [
+            "ADDAID"
+          ],
+          "constraint": "INVR0_ADDA_ADDAID",
+          "sourceLine": 1822750
+        }
+      ],
+      "group": "Customers & routes",
+      "rank": 0,
+      "order": 36,
+      "layout": {
+        "x": 60,
+        "y": 3063.0
+      }
+    },
+    {
+      "name": "AUDIT_TBL",
+      "sourceLine": 49,
+      "columns": [
+        {
+          "name": "TIMESTAMP",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "WHO",
+          "type": "VARCHAR2(30)",
+          "nullable": true
+        },
+        {
+          "name": "TNAME",
+          "type": "VARCHAR2(30)",
+          "nullable": true
+        },
+        {
+          "name": "CNAME",
+          "type": "VARCHAR2(30)",
+          "nullable": true
+        },
+        {
+          "name": "REFNO",
+          "type": "VARCHAR2(25)",
+          "nullable": true
+        },
+        {
+          "name": "OLD",
+          "type": "VARCHAR2(2000)",
+          "nullable": true
+        },
+        {
+          "name": "NEW",
+          "type": "VARCHAR2(2000)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Operations & logs",
+      "rank": 0,
+      "order": 0,
+      "layout": {
+        "x": 60,
+        "y": 111.0
+      }
+    },
+    {
+      "name": "BANK",
+      "sourceLine": 65043,
+      "columns": [
+        {
+          "name": "BANKID",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "BANKNAME",
+          "type": "VARCHAR2(50)",
+          "nullable": true
+        },
+        {
+          "name": "ACTIVE",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [],
+      "referencedBy": [
+        {
+          "table": "CASHR1",
+          "columns": [
+            "BANKID"
+          ],
+          "references": "BANK",
+          "referenceColumns": [
+            "BANKID"
+          ],
+          "constraint": "FK_CASHR1_BANK_BANKID",
+          "sourceLine": 106756
+        },
+        {
+          "table": "CASH_REC1",
+          "columns": [
+            "BANKID"
+          ],
+          "references": "BANK",
+          "referenceColumns": [
+            "BANKID"
+          ],
+          "constraint": "FK_CASHR_REC1_BANK_BANKID",
+          "sourceLine": 276019
+        }
+      ],
+      "group": "Other tables",
+      "rank": 0,
+      "order": 31,
+      "layout": {
+        "x": 60,
+        "y": 2653.0
+      }
+    },
+    {
+      "name": "CASHD1",
+      "sourceLine": 65077,
+      "columns": [
+        {
+          "name": "MYUSER",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "CASHNO",
+          "type": "NUMBER(5)",
+          "nullable": false
+        },
+        {
+          "name": "CASHDATED",
+          "type": "DATE",
+          "nullable": false
+        },
+        {
+          "name": "CCODE",
+          "type": "NUMBER(4)",
+          "nullable": false
+        },
+        {
+          "name": "AMT",
+          "type": "NUMBER(10,2)",
+          "nullable": false
+        },
+        {
+          "name": "REMARKS",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "COLLECTORID",
+          "type": "NUMBER(2)",
+          "nullable": true
+        },
+        {
+          "name": "MYDATE",
+          "type": "DATE",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "CASHD1",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHD1_CUST_CCODE",
+          "sourceLine": 71157
+        },
+        {
+          "table": "CASHD1",
+          "columns": [
+            "COLLECTORID"
+          ],
+          "references": "COLLECTOR",
+          "referenceColumns": [
+            "COLLECTORID"
+          ],
+          "constraint": "FK_COLLID_COLLECT_CASHD1",
+          "sourceLine": 71158
+        }
+      ],
+      "referencedBy": [],
+      "group": "Cash & accounts",
+      "rank": 2,
+      "order": 0,
+      "layout": {
+        "x": 540,
+        "y": 144.2
+      }
+    },
+    {
+      "name": "CASHE1",
+      "sourceLine": 71168,
+      "columns": [
+        {
+          "name": "MYUSER",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "CASHNO",
+          "type": "NUMBER(5)",
+          "nullable": false
+        },
+        {
+          "name": "CASHDATED",
+          "type": "DATE",
+          "nullable": false
+        },
+        {
+          "name": "CCODE",
+          "type": "NUMBER(4)",
+          "nullable": false
+        },
+        {
+          "name": "AMT",
+          "type": "NUMBER(9,2)",
+          "nullable": false
+        },
+        {
+          "name": "REMARKS",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "COLLECTORID",
+          "type": "NUMBER(2)",
+          "nullable": false
+        },
+        {
+          "name": "GCCODE",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "MYDATE",
+          "type": "DATE",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "CASHE1",
+          "columns": [
+            "GCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHE1_CUST_GCCODE",
+          "sourceLine": 71190
+        },
+        {
+          "table": "CASHE1",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CCODE_CASHE1_CUST",
+          "sourceLine": 71191
+        },
+        {
+          "table": "CASHE1",
+          "columns": [
+            "COLLECTORID"
+          ],
+          "references": "COLLECTOR",
+          "referenceColumns": [
+            "COLLECTORID"
+          ],
+          "constraint": "FK_COLLID_COLLECT_CASHE1",
+          "sourceLine": 71192
+        }
+      ],
+      "referencedBy": [],
+      "group": "Cash & accounts",
+      "rank": 2,
+      "order": 1,
+      "layout": {
+        "x": 540,
+        "y": 292.6
+      }
+    },
+    {
+      "name": "CASHI",
+      "sourceLine": 71202,
+      "columns": [
+        {
+          "name": "MYUSER",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "CASHNO",
+          "type": "NUMBER(5)",
+          "nullable": false
+        },
+        {
+          "name": "CASHDATED",
+          "type": "DATE",
+          "nullable": false
+        },
+        {
+          "name": "CCODE",
+          "type": "NUMBER(4)",
+          "nullable": false
+        },
+        {
+          "name": "AMT",
+          "type": "NUMBER(9,2)",
+          "nullable": false
+        },
+        {
+          "name": "REMARKS",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "GCCODE",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "MYDATE",
+          "type": "DATE",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "CASHI",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHI_CUST_CCODE",
+          "sourceLine": 71220
+        },
+        {
+          "table": "CASHI",
+          "columns": [
+            "GCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHI_CUST_GCCODE",
+          "sourceLine": 71221
+        }
+      ],
+      "referencedBy": [],
+      "group": "Cash & accounts",
+      "rank": 2,
+      "order": 2,
+      "layout": {
+        "x": 540,
+        "y": 441.0
+      }
+    },
+    {
+      "name": "CASHOB",
+      "sourceLine": 71231,
+      "columns": [
+        {
+          "name": "BAL",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Cash & accounts",
+      "rank": 0,
+      "order": 1,
+      "layout": {
+        "x": 60,
+        "y": 193.0
+      }
+    },
+    {
+      "name": "CASHP1",
+      "sourceLine": 71245,
+      "columns": [
+        {
+          "name": "MYUSER",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "CASHNO",
+          "type": "NUMBER(6)",
+          "nullable": false
+        },
+        {
+          "name": "CASHDATED",
+          "type": "DATE",
+          "nullable": false
+        },
+        {
+          "name": "CCODE",
+          "type": "NUMBER(4)",
+          "nullable": false
+        },
+        {
+          "name": "AMT",
+          "type": "NUMBER(10,2)",
+          "nullable": false
+        },
+        {
+          "name": "REMARKS",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "COLLECTORID",
+          "type": "NUMBER(2)",
+          "nullable": true
+        },
+        {
+          "name": "ISINST",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "INSTCASHNO",
+          "type": "NUMBER(6)",
+          "nullable": true
+        },
+        {
+          "name": "GCCODE",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "CASHPCASHZ",
+          "type": "NUMBER(7,2)",
+          "nullable": true
+        },
+        {
+          "name": "BANKCCODE",
+          "type": "NUMBER(4)",
+          "nullable": true
+        },
+        {
+          "name": "CHECKNO",
+          "type": "NUMBER(10)",
+          "nullable": true
+        },
+        {
+          "name": "MDATE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "CODE",
+          "type": "VARCHAR2(1)",
+          "nullable": false
+        },
+        {
+          "name": "SMSSENT",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "SMSSTOP",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "WTAXRATE",
+          "type": "NUMBER(4,2)",
+          "nullable": true
+        },
+        {
+          "name": "SMSSENT2",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "MYDATE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "FCM_SENT",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "GPS_LOCATION",
+          "type": "VARCHAR2(50)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "CASHP1",
+          "columns": [
+            "BANKCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHP1_BANKCCODE",
+          "sourceLine": 85078
+        },
+        {
+          "table": "CASHP1",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHP1_CUST_CCODE",
+          "sourceLine": 85079
+        },
+        {
+          "table": "CASHP1",
+          "columns": [
+            "GCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHP1_CUST_GCCODE",
+          "sourceLine": 85080
+        },
+        {
+          "table": "CASHP1",
+          "columns": [
+            "INSTCASHNO"
+          ],
+          "references": "CASHR1",
+          "referenceColumns": [
+            "CASHNO"
+          ],
+          "constraint": "FK_INSTCASHNO_CASHNO",
+          "sourceLine": 85081
+        }
+      ],
+      "referencedBy": [],
+      "group": "Cash & accounts",
+      "rank": 3,
+      "order": 6,
+      "layout": {
+        "x": 780,
+        "y": 1628.0
+      }
+    },
+    {
+      "name": "CASHR1",
+      "sourceLine": 85091,
+      "columns": [
+        {
+          "name": "MYUSER",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "CASHNO",
+          "type": "NUMBER(5)",
+          "nullable": false
+        },
+        {
+          "name": "CASHDATED",
+          "type": "DATE",
+          "nullable": false
+        },
+        {
+          "name": "CCODE",
+          "type": "NUMBER(4)",
+          "nullable": false
+        },
+        {
+          "name": "AMT",
+          "type": "NUMBER(9,2)",
+          "nullable": false
+        },
+        {
+          "name": "REMARKS",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "COLLECTORID",
+          "type": "NUMBER(2)",
+          "nullable": true
+        },
+        {
+          "name": "CASHNOP",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "ISINST",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "INSTID",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "BANKID",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "INSTDATE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "INSTNO",
+          "type": "VARCHAR2(20)",
+          "nullable": true
+        },
+        {
+          "name": "GCCODE",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "SMSSENT",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "SMSSTOP",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "SMSSENT2",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "MYDATE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "ADDRESS",
+          "type": "VARCHAR2(300)",
+          "nullable": true
+        },
+        {
+          "name": "FCM_SENT",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "GPS_LOCATION",
+          "type": "VARCHAR2(50)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "CASHR1",
+          "columns": [
+            "BANKID"
+          ],
+          "references": "BANK",
+          "referenceColumns": [
+            "BANKID"
+          ],
+          "constraint": "FK_CASHR1_BANK_BANKID",
+          "sourceLine": 106756
+        },
+        {
+          "table": "CASHR1",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHR1_CUST_CCODE",
+          "sourceLine": 106757
+        },
+        {
+          "table": "CASHR1",
+          "columns": [
+            "GCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHR1_CUST_GCCODE",
+          "sourceLine": 106758
+        },
+        {
+          "table": "CASHR1",
+          "columns": [
+            "INSTID"
+          ],
+          "references": "INST",
+          "referenceColumns": [
+            "INSTID"
+          ],
+          "constraint": "FK_CASHR1_INST_INSTID",
+          "sourceLine": 106759
+        }
+      ],
+      "referencedBy": [
+        {
+          "table": "CASHP1",
+          "columns": [
+            "INSTCASHNO"
+          ],
+          "references": "CASHR1",
+          "referenceColumns": [
+            "CASHNO"
+          ],
+          "constraint": "FK_INSTCASHNO_CASHNO",
+          "sourceLine": 85081
+        }
+      ],
+      "group": "Cash & accounts",
+      "rank": 2,
+      "order": 14,
+      "layout": {
+        "x": 540,
+        "y": 2221.5
+      }
+    },
+    {
+      "name": "CASHR_USER",
+      "sourceLine": 106769,
+      "columns": [
+        {
+          "name": "MYUSER",
+          "type": "VARCHAR2(10)",
+          "nullable": false
+        },
+        {
+          "name": "CASHNO",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "CASHDATED",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "DATED",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "FROMMYUSER",
+          "type": "VARCHAR2(10)",
+          "nullable": false
+        },
+        {
+          "name": "AMT",
+          "type": "NUMBER(10,2)",
+          "nullable": true
+        },
+        {
+          "name": "D1",
+          "type": "NUMBER(7)",
+          "nullable": true
+        },
+        {
+          "name": "D2",
+          "type": "NUMBER(7)",
+          "nullable": true
+        },
+        {
+          "name": "D5",
+          "type": "NUMBER(7)",
+          "nullable": true
+        },
+        {
+          "name": "D10",
+          "type": "NUMBER(7)",
+          "nullable": true
+        },
+        {
+          "name": "D50",
+          "type": "NUMBER(7)",
+          "nullable": true
+        },
+        {
+          "name": "D100",
+          "type": "NUMBER(7)",
+          "nullable": true
+        },
+        {
+          "name": "D500",
+          "type": "NUMBER(7)",
+          "nullable": true
+        },
+        {
+          "name": "D1000",
+          "type": "NUMBER(7)",
+          "nullable": true
+        },
+        {
+          "name": "D5000",
+          "type": "NUMBER(7)",
+          "nullable": true
+        },
+        {
+          "name": "DOTHERS",
+          "type": "NUMBER(7)",
+          "nullable": true
+        },
+        {
+          "name": "REMARKS",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Cash & accounts",
+      "rank": 0,
+      "order": 2,
+      "layout": {
+        "x": 60,
+        "y": 275.0
+      }
+    },
+    {
+      "name": "CASHS",
+      "sourceLine": 106802,
+      "columns": [
+        {
+          "name": "MYUSER",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "CASHNO",
+          "type": "NUMBER(5)",
+          "nullable": false
+        },
+        {
+          "name": "CASHDATED",
+          "type": "DATE",
+          "nullable": false
+        },
+        {
+          "name": "CCODE",
+          "type": "NUMBER(4)",
+          "nullable": false
+        },
+        {
+          "name": "AMT",
+          "type": "NUMBER(9,2)",
+          "nullable": false
+        },
+        {
+          "name": "REMARKS",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "GCCODE",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "MYDATE",
+          "type": "DATE",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "CASHS",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHS_CUST_CCODE",
+          "sourceLine": 106820
+        },
+        {
+          "table": "CASHS",
+          "columns": [
+            "GCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHS_CUST_GCCODE",
+          "sourceLine": 106821
+        }
+      ],
+      "referencedBy": [],
+      "group": "Cash & accounts",
+      "rank": 2,
+      "order": 3,
+      "layout": {
+        "x": 540,
+        "y": 589.3
+      }
+    },
+    {
+      "name": "CASHW1",
+      "sourceLine": 106831,
+      "columns": [
+        {
+          "name": "CASHNO",
+          "type": "NUMBER(5)",
+          "nullable": false
+        },
+        {
+          "name": "CASHDATED",
+          "type": "DATE",
+          "nullable": false
+        },
+        {
+          "name": "CCODE",
+          "type": "NUMBER(4)",
+          "nullable": false
+        },
+        {
+          "name": "AMT",
+          "type": "NUMBER(9,2)",
+          "nullable": false
+        },
+        {
+          "name": "REMARKS",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "MYUSER",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "GCCODE",
+          "type": "NUMBER(4)",
+          "nullable": true
+        },
+        {
+          "name": "MYDATE",
+          "type": "DATE",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "CASHW1",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHW1_CUST_CCODE",
+          "sourceLine": 106850
+        },
+        {
+          "table": "CASHW1",
+          "columns": [
+            "GCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHW1_CUST_GCCODE",
+          "sourceLine": 106851
+        }
+      ],
+      "referencedBy": [],
+      "group": "Cash & accounts",
+      "rank": 2,
+      "order": 4,
+      "layout": {
+        "x": 540,
+        "y": 737.7
+      }
+    },
+    {
+      "name": "CASHZ1",
+      "sourceLine": 106861,
+      "columns": [
+        {
+          "name": "MYUSER",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "CASHNO",
+          "type": "NUMBER(5)",
+          "nullable": false
+        },
+        {
+          "name": "CASHDATED",
+          "type": "DATE",
+          "nullable": false
+        },
+        {
+          "name": "CCODE",
+          "type": "NUMBER(4)",
+          "nullable": false
+        },
+        {
+          "name": "AMT",
+          "type": "NUMBER(10,2)",
+          "nullable": false
+        },
+        {
+          "name": "REMARKS",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "CASHNO2",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "MYDATE",
+          "type": "DATE",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "CASHZ1",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHZ1_CUST_CCODE",
+          "sourceLine": 106881
+        },
+        {
+          "table": "CASHZ1",
+          "columns": [
+            "CASHNO2"
+          ],
+          "references": "DISCHEAD1",
+          "referenceColumns": [
+            "CASHNO"
+          ],
+          "constraint": "FK_DISCHEAD1_CASHNO",
+          "sourceLine": 106882
+        }
+      ],
+      "referencedBy": [],
+      "group": "Cash & accounts",
+      "rank": 3,
+      "order": 8,
+      "layout": {
+        "x": 780,
+        "y": 2107.4
+      }
+    },
+    {
+      "name": "CASH_DIS0",
+      "sourceLine": 106892,
+      "columns": [
+        {
+          "name": "MYUSER",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "CASHNO",
+          "type": "NUMBER(5)",
+          "nullable": false
+        },
+        {
+          "name": "CASHDATED",
+          "type": "DATE",
+          "nullable": false
+        },
+        {
+          "name": "COLLECTORID",
+          "type": "NUMBER(2)",
+          "nullable": false
+        },
+        {
+          "name": "REMARKS",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "GCCODE",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "MYDATE",
+          "type": "DATE",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "CASH_DIS0",
+          "columns": [
+            "COLLECTORID"
+          ],
+          "references": "COLLECTOR",
+          "referenceColumns": [
+            "COLLECTORID"
+          ],
+          "constraint": "FK_COLLID_COLLECT_CASHDIS",
+          "sourceLine": 106948
+        },
+        {
+          "table": "CASH_DIS0",
+          "columns": [
+            "GCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_DIS0_CUST_GCCODE",
+          "sourceLine": 106949
+        }
+      ],
+      "referencedBy": [
+        {
+          "table": "CASH_DIS1",
+          "columns": [
+            "CASHNO"
+          ],
+          "references": "CASH_DIS0",
+          "referenceColumns": [
+            "CASHNO"
+          ],
+          "constraint": "FK_CASHNO_CASH_DIS_0_1",
+          "sourceLine": 107286
+        }
+      ],
+      "group": "Cash & accounts",
+      "rank": 2,
+      "order": 13,
+      "layout": {
+        "x": 540,
+        "y": 2073.1
+      }
+    },
+    {
+      "name": "CASH_DIS1",
+      "sourceLine": 106959,
+      "columns": [
+        {
+          "name": "CASHNO",
+          "type": "NUMBER(5)",
+          "nullable": false
+        },
+        {
+          "name": "SNO",
+          "type": "NUMBER(6)",
+          "nullable": false
+        },
+        {
+          "name": "CCODE",
+          "type": "NUMBER(4)",
+          "nullable": false
+        },
+        {
+          "name": "AMT",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "AMTREMARKS",
+          "type": "VARCHAR2(40)",
+          "nullable": true
+        },
+        {
+          "name": "CASH_DIS1CASHZ",
+          "type": "NUMBER(7,2)",
+          "nullable": true
+        },
+        {
+          "name": "CODE",
+          "type": "VARCHAR2(1)",
+          "nullable": false
+        },
+        {
+          "name": "ISINST",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "CHECKNO",
+          "type": "NUMBER(10)",
+          "nullable": true
+        },
+        {
+          "name": "MDATE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "BANKCCODE",
+          "type": "NUMBER(4)",
+          "nullable": true
+        },
+        {
+          "name": "SMSSENT",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "SMSSTOP",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "SMSSENT2",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "MYDATE1",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "FCM_SENT",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "CASH_DIS1",
+          "columns": [
+            "CASHNO"
+          ],
+          "references": "CASH_DIS0",
+          "referenceColumns": [
+            "CASHNO"
+          ],
+          "constraint": "FK_CASHNO_CASH_DIS_0_1",
+          "sourceLine": 107286
+        },
+        {
+          "table": "CASH_DIS1",
+          "columns": [
+            "BANKCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASH_DIS1_BANKCCODE",
+          "sourceLine": 107287
+        },
+        {
+          "table": "CASH_DIS1",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CCODE_CUST_CASHDIS1",
+          "sourceLine": 107288
+        }
+      ],
+      "referencedBy": [],
+      "group": "Cash & accounts",
+      "rank": 3,
+      "order": 5,
+      "layout": {
+        "x": 780,
+        "y": 1388.3
+      }
+    },
+    {
+      "name": "CASH_REC0",
+      "sourceLine": 107298,
+      "columns": [
+        {
+          "name": "MYUSER",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "CASHNO",
+          "type": "NUMBER(5)",
+          "nullable": false
+        },
+        {
+          "name": "CASHDATED",
+          "type": "DATE",
+          "nullable": false
+        },
+        {
+          "name": "COLLECTORID",
+          "type": "NUMBER(2)",
+          "nullable": false
+        },
+        {
+          "name": "EXPCODE",
+          "type": "NUMBER(4)",
+          "nullable": true
+        },
+        {
+          "name": "EXPAMOUNT",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "REMARKS",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "GCCODE",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "TO_LOAD",
+          "type": "VARCHAR2(1)",
+          "nullable": false
+        },
+        {
+          "name": "RESTRICT_COLL",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "SMSSTOP",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "MYDATE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "ISPENDING",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "SMSSENT",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "CASH_REC0",
+          "columns": [
+            "COLLECTORID"
+          ],
+          "references": "COLLECTOR",
+          "referenceColumns": [
+            "COLLECTORID"
+          ],
+          "constraint": "FK_COLLID_COLLECT_CASHREC",
+          "sourceLine": 120745
+        },
+        {
+          "table": "CASH_REC0",
+          "columns": [
+            "EXPCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_EXPCODE_CUST_CASHREC",
+          "sourceLine": 120746
+        },
+        {
+          "table": "CASH_REC0",
+          "columns": [
+            "GCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_REC0_CUST_GCCODE",
+          "sourceLine": 120747
+        }
+      ],
+      "referencedBy": [
+        {
+          "table": "CASH_REC1",
+          "columns": [
+            "CASHNO"
+          ],
+          "references": "CASH_REC0",
+          "referenceColumns": [
+            "CASHNO"
+          ],
+          "constraint": "FK_CASHNO_CASH_REC_0_1",
+          "sourceLine": 276018
+        }
+      ],
+      "group": "Cash & accounts",
+      "rank": 2,
+      "order": 16,
+      "layout": {
+        "x": 540,
+        "y": 2518.3
+      }
+    },
+    {
+      "name": "CASH_REC1",
+      "sourceLine": 120757,
+      "columns": [
+        {
+          "name": "CASHNO",
+          "type": "NUMBER(5)",
+          "nullable": false
+        },
+        {
+          "name": "SNO",
+          "type": "NUMBER(6)",
+          "nullable": false
+        },
+        {
+          "name": "CCODE",
+          "type": "NUMBER(4)",
+          "nullable": false
+        },
+        {
+          "name": "AMT",
+          "type": "NUMBER(10,2)",
+          "nullable": true
+        },
+        {
+          "name": "AMTREMARKS",
+          "type": "VARCHAR2(40)",
+          "nullable": true
+        },
+        {
+          "name": "AMT3",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "AMT3REMARKS",
+          "type": "VARCHAR2(40)",
+          "nullable": true
+        },
+        {
+          "name": "AMT4",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "AMT4REMARKS",
+          "type": "VARCHAR2(40)",
+          "nullable": true
+        },
+        {
+          "name": "AMT5",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "AMT5REMARKS",
+          "type": "VARCHAR2(40)",
+          "nullable": true
+        },
+        {
+          "name": "SMSSENT",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "SMSSTOP",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "ISINST",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "INSTID",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "BANKID",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "INSTDATE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "INSTNO",
+          "type": "VARCHAR2(20)",
+          "nullable": true
+        },
+        {
+          "name": "PRINTME",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "SMSSENT2",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "MYDATE1",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "VNO",
+          "type": "NUMBER(6)",
+          "nullable": true
+        },
+        {
+          "name": "ADDRESS",
+          "type": "VARCHAR2(300)",
+          "nullable": true
+        },
+        {
+          "name": "FCM_SENT",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "GPS_LOCATION",
+          "type": "VARCHAR2(50)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "CASH_REC1",
+          "columns": [
+            "CASHNO"
+          ],
+          "references": "CASH_REC0",
+          "referenceColumns": [
+            "CASHNO"
+          ],
+          "constraint": "FK_CASHNO_CASH_REC_0_1",
+          "sourceLine": 276018
+        },
+        {
+          "table": "CASH_REC1",
+          "columns": [
+            "BANKID"
+          ],
+          "references": "BANK",
+          "referenceColumns": [
+            "BANKID"
+          ],
+          "constraint": "FK_CASHR_REC1_BANK_BANKID",
+          "sourceLine": 276019
+        },
+        {
+          "table": "CASH_REC1",
+          "columns": [
+            "INSTID"
+          ],
+          "references": "INST",
+          "referenceColumns": [
+            "INSTID"
+          ],
+          "constraint": "FK_CASH_REC1_INST_INSTID",
+          "sourceLine": 276020
+        },
+        {
+          "table": "CASH_REC1",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CCODE_CUST_CASHREC1",
+          "sourceLine": 276021
+        }
+      ],
+      "referencedBy": [],
+      "group": "Cash & accounts",
+      "rank": 3,
+      "order": 7,
+      "layout": {
+        "x": 780,
+        "y": 1867.7
+      }
+    },
+    {
+      "name": "CAT",
+      "sourceLine": 276031,
+      "columns": [
+        {
+          "name": "CATID",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "CATNAME",
+          "type": "VARCHAR2(30)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [
+        "CATID"
+      ],
+      "foreignKeys": [],
+      "referencedBy": [
+        {
+          "table": "PROD",
+          "columns": [
+            "CATID"
+          ],
+          "references": "CAT",
+          "referenceColumns": [
+            "CATID"
+          ],
+          "constraint": "FK_PROD_CAT_CATID",
+          "sourceLine": 1929055
+        },
+        {
+          "table": "TAR1",
+          "columns": [
+            "CATID"
+          ],
+          "references": "CAT",
+          "referenceColumns": [
+            "CATID"
+          ],
+          "constraint": "FK_CAT_TAR1_CATID",
+          "sourceLine": 1932630
+        }
+      ],
+      "group": "Products & inventory",
+      "rank": 0,
+      "order": 30,
+      "layout": {
+        "x": 60,
+        "y": 2571.0
+      }
+    },
+    {
+      "name": "CHECKS",
+      "sourceLine": 276146,
+      "columns": [
+        {
+          "name": "MYUSER",
+          "type": "VARCHAR2(10)",
+          "nullable": false
+        },
+        {
+          "name": "SNO",
+          "type": "NUMBER(4)",
+          "nullable": false
+        },
+        {
+          "name": "DATED",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "CCODE",
+          "type": "NUMBER(4)",
+          "nullable": false
+        },
+        {
+          "name": "STARTNO",
+          "type": "NUMBER(10)",
+          "nullable": false
+        },
+        {
+          "name": "ENDNO",
+          "type": "NUMBER(10)",
+          "nullable": false
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "CHECKS",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CUST_CHECKS_CCODE",
+          "sourceLine": 276163
+        }
+      ],
+      "referencedBy": [],
+      "group": "Cash & accounts",
+      "rank": 2,
+      "order": 5,
+      "layout": {
+        "x": 540,
+        "y": 886.1
+      }
+    },
+    {
+      "name": "CITY",
+      "sourceLine": 276173,
+      "columns": [
+        {
+          "name": "CITYNO",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "CITYNAME",
+          "type": "VARCHAR2(50)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [],
+      "referencedBy": [
+        {
+          "table": "CUST",
+          "columns": [
+            "CITYNO"
+          ],
+          "references": "CITY",
+          "referenceColumns": [
+            "CITYNO"
+          ],
+          "constraint": "FK_CUST_CITYNO",
+          "sourceLine": 284282
+        }
+      ],
+      "group": "Customers & routes",
+      "rank": 0,
+      "order": 34,
+      "layout": {
+        "x": 60,
+        "y": 2899.0
+      }
+    },
+    {
+      "name": "CODES",
+      "sourceLine": 276573,
+      "columns": [
+        {
+          "name": "CODE",
+          "type": "VARCHAR2(1)",
+          "nullable": false
+        },
+        {
+          "name": "CODEDESC",
+          "type": "VARCHAR2(17)",
+          "nullable": false
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Operations & logs",
+      "rank": 0,
+      "order": 3,
+      "layout": {
+        "x": 60,
+        "y": 357.0
+      }
+    },
+    {
+      "name": "COLLECTOR",
+      "sourceLine": 276591,
+      "columns": [
+        {
+          "name": "COLLECTORID",
+          "type": "NUMBER(2)",
+          "nullable": true
+        },
+        {
+          "name": "COLLECTORNAME",
+          "type": "VARCHAR2(30)",
+          "nullable": true
+        },
+        {
+          "name": "COMM",
+          "type": "NUMBER(11,4)",
+          "nullable": true
+        },
+        {
+          "name": "COMM2",
+          "type": "NUMBER(11,4)",
+          "nullable": true
+        },
+        {
+          "name": "ACTIVE",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "MOBILE",
+          "type": "VARCHAR2(11)",
+          "nullable": true
+        },
+        {
+          "name": "CONTRA_CCODE",
+          "type": "NUMBER(4)",
+          "nullable": false
+        },
+        {
+          "name": "MUSER",
+          "type": "VARCHAR2(50)",
+          "nullable": true
+        },
+        {
+          "name": "PW",
+          "type": "VARCHAR2(50)",
+          "nullable": true
+        },
+        {
+          "name": "ROUTES_ALLOWED",
+          "type": "VARCHAR2(500)",
+          "nullable": true
+        },
+        {
+          "name": "GCCODE_ALLOWED",
+          "type": "NUMBER(4)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [
+        "COLLECTORID"
+      ],
+      "foreignKeys": [],
+      "referencedBy": [
+        {
+          "table": "CASHD1",
+          "columns": [
+            "COLLECTORID"
+          ],
+          "references": "COLLECTOR",
+          "referenceColumns": [
+            "COLLECTORID"
+          ],
+          "constraint": "FK_COLLID_COLLECT_CASHD1",
+          "sourceLine": 71158
+        },
+        {
+          "table": "CASHE1",
+          "columns": [
+            "COLLECTORID"
+          ],
+          "references": "COLLECTOR",
+          "referenceColumns": [
+            "COLLECTORID"
+          ],
+          "constraint": "FK_COLLID_COLLECT_CASHE1",
+          "sourceLine": 71192
+        },
+        {
+          "table": "CASH_DIS0",
+          "columns": [
+            "COLLECTORID"
+          ],
+          "references": "COLLECTOR",
+          "referenceColumns": [
+            "COLLECTORID"
+          ],
+          "constraint": "FK_COLLID_COLLECT_CASHDIS",
+          "sourceLine": 106948
+        },
+        {
+          "table": "CASH_REC0",
+          "columns": [
+            "COLLECTORID"
+          ],
+          "references": "COLLECTOR",
+          "referenceColumns": [
+            "COLLECTORID"
+          ],
+          "constraint": "FK_COLLID_COLLECT_CASHREC",
+          "sourceLine": 120745
+        },
+        {
+          "table": "INV0S",
+          "columns": [
+            "COLLECTORID"
+          ],
+          "references": "COLLECTOR",
+          "referenceColumns": [
+            "COLLECTORID"
+          ],
+          "constraint": "FK_COLLID_COLLECT_INV0S",
+          "sourceLine": 470739
+        },
+        {
+          "table": "INVR0",
+          "columns": [
+            "COLLECTORID"
+          ],
+          "references": "COLLECTOR",
+          "referenceColumns": [
+            "COLLECTORID"
+          ],
+          "constraint": "FK_COLLID_COLLECT_INVR0",
+          "sourceLine": 1822747
+        },
+        {
+          "table": "ROUTE",
+          "columns": [
+            "COLLECTORID"
+          ],
+          "references": "COLLECTOR",
+          "referenceColumns": [
+            "COLLECTORID"
+          ],
+          "constraint": "FK_COLLID_ROUTE_",
+          "sourceLine": 1931804
+        },
+        {
+          "table": "VOUCHERS",
+          "columns": [
+            "COLLECTORID"
+          ],
+          "references": "COLLECTOR",
+          "referenceColumns": [
+            "COLLECTORID"
+          ],
+          "constraint": "FK_COLLECTOR_VOUCHERS",
+          "sourceLine": 1932718
+        }
+      ],
+      "group": "Customers & routes",
+      "rank": 0,
+      "order": 29,
+      "layout": {
+        "x": 60,
+        "y": 2489.0
+      }
+    },
+    {
+      "name": "CUST",
+      "sourceLine": 276651,
+      "columns": [
+        {
+          "name": "CCODE",
+          "type": "NUMBER(4)",
+          "nullable": false
+        },
+        {
+          "name": "CNAME",
+          "type": "VARCHAR2(30)",
+          "nullable": false
+        },
+        {
+          "name": "CODE",
+          "type": "VARCHAR2(1)",
+          "nullable": false
+        },
+        {
+          "name": "COBAL",
+          "type": "NUMBER(11,2)",
+          "nullable": true
+        },
+        {
+          "name": "ACTIVE",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "FLAG",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "ISORG",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "ROUTE",
+          "type": "VARCHAR2(3)",
+          "nullable": true
+        },
+        {
+          "name": "PREF",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "CONTACT",
+          "type": "VARCHAR2(15)",
+          "nullable": true
+        },
+        {
+          "name": "CITYNO",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "GODOWN",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "ETYPE",
+          "type": "VARCHAR2(1)",
+          "nullable": false
+        },
+        {
+          "name": "LIMIT",
+          "type": "NUMBER(9)",
+          "nullable": true
+        },
+        {
+          "name": "DEALERID",
+          "type": "NUMBER(2)",
+          "nullable": false
+        },
+        {
+          "name": "ADDRESS",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "PERSON",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "PHONENO",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "FAXNO",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "GSTNO",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "NTNNO",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "EMAIL",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "DEAL",
+          "type": "VARCHAR2(300)",
+          "nullable": true
+        },
+        {
+          "name": "INVCASHD",
+          "type": "NUMBER(4,2)",
+          "nullable": true
+        },
+        {
+          "name": "INVCASHD1",
+          "type": "NUMBER(4,2)",
+          "nullable": true
+        },
+        {
+          "name": "CNIC",
+          "type": "VARCHAR2(13)",
+          "nullable": true
+        },
+        {
+          "name": "G1NAME",
+          "type": "VARCHAR2(30)",
+          "nullable": true
+        },
+        {
+          "name": "G1MOBILE",
+          "type": "VARCHAR2(11)",
+          "nullable": true
+        },
+        {
+          "name": "G2NAME",
+          "type": "VARCHAR2(30)",
+          "nullable": true
+        },
+        {
+          "name": "G2MOBILE",
+          "type": "VARCHAR2(11)",
+          "nullable": true
+        },
+        {
+          "name": "FCCODE",
+          "type": "NUMBER(4)",
+          "nullable": true
+        },
+        {
+          "name": "INVCASHD2",
+          "type": "NUMBER(4,2)",
+          "nullable": true
+        },
+        {
+          "name": "INVCASHD3",
+          "type": "NUMBER(4,2)",
+          "nullable": true
+        },
+        {
+          "name": "RUNSSTOP",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "WHTAX_PCENT",
+          "type": "NUMBER(6,4)",
+          "nullable": true
+        },
+        {
+          "name": "CUSTWTAXRATE",
+          "type": "NUMBER(4,2)",
+          "nullable": true
+        },
+        {
+          "name": "CNAMEURDU",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "CDAYS",
+          "type": "NUMBER(4)",
+          "nullable": true
+        },
+        {
+          "name": "MYORDERNO",
+          "type": "NUMBER(7,2)",
+          "nullable": true
+        },
+        {
+          "name": "COBAL_DATED",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "MYDATE1",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "DEFA_SRATE",
+          "type": "NUMBER(6,4)",
+          "nullable": true
+        },
+        {
+          "name": "PW_REQUESTED",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "FCM_TOKEN",
+          "type": "VARCHAR2(200)",
+          "nullable": true
+        },
+        {
+          "name": "LAST_MESSAGE_DATE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "GPS_LOCATION",
+          "type": "VARCHAR2(50)",
+          "nullable": true
+        },
+        {
+          "name": "MUSER",
+          "type": "VARCHAR2(50)",
+          "nullable": true
+        },
+        {
+          "name": "PW",
+          "type": "VARCHAR2(50)",
+          "nullable": true
+        },
+        {
+          "name": "FCM_STATUS",
+          "type": "VARCHAR2(20)",
+          "nullable": true
+        },
+        {
+          "name": "FCM_ERROR",
+          "type": "VARCHAR2(200)",
+          "nullable": true
+        },
+        {
+          "name": "FCM_SENT_DT",
+          "type": "DATE",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "CUST",
+          "columns": [
+            "FCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "CUST_CCODE_FCCODE",
+          "sourceLine": 284281
+        },
+        {
+          "table": "CUST",
+          "columns": [
+            "CITYNO"
+          ],
+          "references": "CITY",
+          "referenceColumns": [
+            "CITYNO"
+          ],
+          "constraint": "FK_CUST_CITYNO",
+          "sourceLine": 284282
+        },
+        {
+          "table": "CUST",
+          "columns": [
+            "DEALERID"
+          ],
+          "references": "DEALER",
+          "referenceColumns": [
+            "DEALERID"
+          ],
+          "constraint": "FK_CUST_DEALERID",
+          "sourceLine": 284283
+        }
+      ],
+      "referencedBy": [
+        {
+          "table": "CASHD1",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHD1_CUST_CCODE",
+          "sourceLine": 71157
+        },
+        {
+          "table": "CASHE1",
+          "columns": [
+            "GCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHE1_CUST_GCCODE",
+          "sourceLine": 71190
+        },
+        {
+          "table": "CASHE1",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CCODE_CASHE1_CUST",
+          "sourceLine": 71191
+        },
+        {
+          "table": "CASHI",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHI_CUST_CCODE",
+          "sourceLine": 71220
+        },
+        {
+          "table": "CASHI",
+          "columns": [
+            "GCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHI_CUST_GCCODE",
+          "sourceLine": 71221
+        },
+        {
+          "table": "CASHP1",
+          "columns": [
+            "BANKCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHP1_BANKCCODE",
+          "sourceLine": 85078
+        },
+        {
+          "table": "CASHP1",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHP1_CUST_CCODE",
+          "sourceLine": 85079
+        },
+        {
+          "table": "CASHP1",
+          "columns": [
+            "GCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHP1_CUST_GCCODE",
+          "sourceLine": 85080
+        },
+        {
+          "table": "CASHR1",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHR1_CUST_CCODE",
+          "sourceLine": 106757
+        },
+        {
+          "table": "CASHR1",
+          "columns": [
+            "GCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHR1_CUST_GCCODE",
+          "sourceLine": 106758
+        },
+        {
+          "table": "CASHS",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHS_CUST_CCODE",
+          "sourceLine": 106820
+        },
+        {
+          "table": "CASHS",
+          "columns": [
+            "GCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHS_CUST_GCCODE",
+          "sourceLine": 106821
+        },
+        {
+          "table": "CASHW1",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHW1_CUST_CCODE",
+          "sourceLine": 106850
+        },
+        {
+          "table": "CASHW1",
+          "columns": [
+            "GCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHW1_CUST_GCCODE",
+          "sourceLine": 106851
+        },
+        {
+          "table": "CASHZ1",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASHZ1_CUST_CCODE",
+          "sourceLine": 106881
+        },
+        {
+          "table": "CASH_DIS0",
+          "columns": [
+            "GCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_DIS0_CUST_GCCODE",
+          "sourceLine": 106949
+        },
+        {
+          "table": "CASH_DIS1",
+          "columns": [
+            "BANKCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CASH_DIS1_BANKCCODE",
+          "sourceLine": 107287
+        },
+        {
+          "table": "CASH_DIS1",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CCODE_CUST_CASHDIS1",
+          "sourceLine": 107288
+        },
+        {
+          "table": "CASH_REC0",
+          "columns": [
+            "EXPCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_EXPCODE_CUST_CASHREC",
+          "sourceLine": 120746
+        },
+        {
+          "table": "CASH_REC0",
+          "columns": [
+            "GCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_REC0_CUST_GCCODE",
+          "sourceLine": 120747
+        },
+        {
+          "table": "CASH_REC1",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CCODE_CUST_CASHREC1",
+          "sourceLine": 276021
+        },
+        {
+          "table": "CHECKS",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CUST_CHECKS_CCODE",
+          "sourceLine": 276163
+        },
+        {
+          "table": "CUST",
+          "columns": [
+            "FCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "CUST_CCODE_FCCODE",
+          "sourceLine": 284281
+        },
+        {
+          "table": "CUST2",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CUST2_CCODE",
+          "sourceLine": 289536
+        },
+        {
+          "table": "DISCHEAD1",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_DISCHEAD0_CCODE",
+          "sourceLine": 294039
+        },
+        {
+          "table": "INSTALL",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_INSTALL_CCODE",
+          "sourceLine": 294253
+        },
+        {
+          "table": "INV0P",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_INV0P_CUST_CCODE",
+          "sourceLine": 317616
+        },
+        {
+          "table": "INV0P",
+          "columns": [
+            "GCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_INV0P_CUST_GCCODE",
+          "sourceLine": 317617
+        },
+        {
+          "table": "INV0S",
+          "columns": [
+            "BANKCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_BANKCCODE_CUST_CCODE",
+          "sourceLine": 470738
+        },
+        {
+          "table": "INV0S",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_INV0S_CUST_CCODE",
+          "sourceLine": 470741
+        },
+        {
+          "table": "INV0S",
+          "columns": [
+            "GCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_INV0S_CUST_GCCODE",
+          "sourceLine": 470742
+        },
+        {
+          "table": "INV1S",
+          "columns": [
+            "GCCODE1"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_INV1S_CUST_GCCODE1",
+          "sourceLine": 1822675
+        },
+        {
+          "table": "INVR0",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_INVR0_CUST_CCODE",
+          "sourceLine": 1822748
+        },
+        {
+          "table": "INVR0",
+          "columns": [
+            "GCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_INVR0_CUST_GCCODE",
+          "sourceLine": 1822749
+        },
+        {
+          "table": "MAN0",
+          "columns": [
+            "CCODE1"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_MAN0_CCODE1",
+          "sourceLine": 1823752
+        },
+        {
+          "table": "MAN0",
+          "columns": [
+            "CCODE2"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_MAN0_CCODE2",
+          "sourceLine": 1823753
+        },
+        {
+          "table": "MAN01",
+          "columns": [
+            "CCODE1"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_MAN01_CCODE1",
+          "sourceLine": 1823782
+        },
+        {
+          "table": "MAN01",
+          "columns": [
+            "CCODE2"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_MAN01_CCODE2",
+          "sourceLine": 1823783
+        },
+        {
+          "table": "PROD",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_PROD_CCODE1",
+          "sourceLine": 1929056
+        },
+        {
+          "table": "PROMISE",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_PROM_CUST_CCODE",
+          "sourceLine": 1931484
+        },
+        {
+          "table": "TALLY",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_TALLY_CCODE",
+          "sourceLine": 1932587
+        },
+        {
+          "table": "TAR0",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_COLLECTOR_COLLECTORID",
+          "sourceLine": 1932612
+        }
+      ],
+      "group": "Customers & routes",
+      "rank": 1,
+      "order": 3,
+      "layout": {
+        "x": 300,
+        "y": 2251.2
+      }
+    },
+    {
+      "name": "CUST2",
+      "sourceLine": 284293,
+      "columns": [
+        {
+          "name": "SNO",
+          "type": "NUMBER(8)",
+          "nullable": true
+        },
+        {
+          "name": "CCODE",
+          "type": "NUMBER(4)",
+          "nullable": false
+        },
+        {
+          "name": "MOBILE",
+          "type": "VARCHAR2(11)",
+          "nullable": false
+        },
+        {
+          "name": "GREETING",
+          "type": "VARCHAR2(100)",
+          "nullable": false
+        },
+        {
+          "name": "BLOCKSMS",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "BLOCKWA",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "GIVE_RUNS",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "GROUPWA",
+          "type": "VARCHAR2(40)",
+          "nullable": true
+        },
+        {
+          "name": "BLOCKGROUPWA",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "CUST2",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_CUST2_CCODE",
+          "sourceLine": 289536
+        }
+      ],
+      "referencedBy": [],
+      "group": "Customers & routes",
+      "rank": 2,
+      "order": 6,
+      "layout": {
+        "x": 540,
+        "y": 1034.5
+      }
+    },
+    {
+      "name": "DATED",
+      "sourceLine": 289546,
+      "columns": [
+        {
+          "name": "DATED",
+          "type": "DATE",
+          "nullable": false
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Operations & logs",
+      "rank": 0,
+      "order": 4,
+      "layout": {
+        "x": 60,
+        "y": 439.0
+      }
+    },
+    {
+      "name": "DEALER",
+      "sourceLine": 293887,
+      "columns": [
+        {
+          "name": "DEALERID",
+          "type": "NUMBER(2)",
+          "nullable": true
+        },
+        {
+          "name": "DEALERNAME",
+          "type": "VARCHAR2(50)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [],
+      "referencedBy": [
+        {
+          "table": "CUST",
+          "columns": [
+            "DEALERID"
+          ],
+          "references": "DEALER",
+          "referenceColumns": [
+            "DEALERID"
+          ],
+          "constraint": "FK_CUST_DEALERID",
+          "sourceLine": 284283
+        },
+        {
+          "table": "DISC",
+          "columns": [
+            "DEALERID"
+          ],
+          "references": "DEALER",
+          "referenceColumns": [
+            "DEALERID"
+          ],
+          "constraint": "FK_DISC_DELAER_DEALERID",
+          "sourceLine": 293993
+        },
+        {
+          "table": "INV0P",
+          "columns": [
+            "DEALERID"
+          ],
+          "references": "DEALER",
+          "referenceColumns": [
+            "DEALERID"
+          ],
+          "constraint": "FK_INV0P_DEALERID",
+          "sourceLine": 317618
+        },
+        {
+          "table": "INV0S",
+          "columns": [
+            "DEALERID"
+          ],
+          "references": "DEALER",
+          "referenceColumns": [
+            "DEALERID"
+          ],
+          "constraint": "FK_INV0S_DEALERID",
+          "sourceLine": 470743
+        }
+      ],
+      "group": "Customers & routes",
+      "rank": 0,
+      "order": 33,
+      "layout": {
+        "x": 60,
+        "y": 2817.0
+      }
+    },
+    {
+      "name": "DEPT",
+      "sourceLine": 293911,
+      "columns": [
+        {
+          "name": "DEPTID",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "DEPTNAME",
+          "type": "VARCHAR2(50)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [],
+      "referencedBy": [
+        {
+          "table": "GEN",
+          "columns": [
+            "DEPTID"
+          ],
+          "references": "DEPT",
+          "referenceColumns": [
+            "DEPTID"
+          ],
+          "constraint": "FK_GEN_DEPT_DEPTID",
+          "sourceLine": 294197
+        }
+      ],
+      "group": "Products & inventory",
+      "rank": 0,
+      "order": 37,
+      "layout": {
+        "x": 60,
+        "y": 3145.0
+      }
+    },
+    {
+      "name": "DISC",
+      "sourceLine": 293930,
+      "columns": [
+        {
+          "name": "DATED",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "DEALERID",
+          "type": "NUMBER(2)",
+          "nullable": false
+        },
+        {
+          "name": "CRLF",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "TARIFF",
+          "type": "NUMBER(11,4)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "DISC",
+          "columns": [
+            "DEALERID"
+          ],
+          "references": "DEALER",
+          "referenceColumns": [
+            "DEALERID"
+          ],
+          "constraint": "FK_DISC_DELAER_DEALERID",
+          "sourceLine": 293993
+        }
+      ],
+      "referencedBy": [],
+      "group": "Cash & accounts",
+      "rank": 1,
+      "order": 0,
+      "layout": {
+        "x": 300,
+        "y": 381.6
+      }
+    },
+    {
+      "name": "DISCHEAD0",
+      "sourceLine": 294003,
+      "columns": [
+        {
+          "name": "DISCNO",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "DISCNAME",
+          "type": "VARCHAR2(50)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [],
+      "referencedBy": [
+        {
+          "table": "DISCHEAD1",
+          "columns": [
+            "DISCNO"
+          ],
+          "references": "DISCHEAD0",
+          "referenceColumns": [
+            "DISCNO"
+          ],
+          "constraint": "FK_DISCHEAD0_DISCNO",
+          "sourceLine": 294040
+        }
+      ],
+      "group": "Cash & accounts",
+      "rank": 0,
+      "order": 35,
+      "layout": {
+        "x": 60,
+        "y": 2981.0
+      }
+    },
+    {
+      "name": "DISCHEAD1",
+      "sourceLine": 294021,
+      "columns": [
+        {
+          "name": "MYUSER",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "CASHNO",
+          "type": "NUMBER(5)",
+          "nullable": false
+        },
+        {
+          "name": "CASHDATED",
+          "type": "DATE",
+          "nullable": false
+        },
+        {
+          "name": "CCODE",
+          "type": "NUMBER(4)",
+          "nullable": false
+        },
+        {
+          "name": "DISCNO",
+          "type": "NUMBER(3)",
+          "nullable": false
+        },
+        {
+          "name": "AMT",
+          "type": "NUMBER(9,2)",
+          "nullable": false
+        },
+        {
+          "name": "REMARKS",
+          "type": "VARCHAR2(300)",
+          "nullable": true
+        },
+        {
+          "name": "SETTLED",
+          "type": "VARCHAR2(1)",
+          "nullable": false
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "DISCHEAD1",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_DISCHEAD0_CCODE",
+          "sourceLine": 294039
+        },
+        {
+          "table": "DISCHEAD1",
+          "columns": [
+            "DISCNO"
+          ],
+          "references": "DISCHEAD0",
+          "referenceColumns": [
+            "DISCNO"
+          ],
+          "constraint": "FK_DISCHEAD0_DISCNO",
+          "sourceLine": 294040
+        }
+      ],
+      "referencedBy": [
+        {
+          "table": "CASHZ1",
+          "columns": [
+            "CASHNO2"
+          ],
+          "references": "DISCHEAD1",
+          "referenceColumns": [
+            "CASHNO"
+          ],
+          "constraint": "FK_DISCHEAD1_CASHNO",
+          "sourceLine": 106882
+        }
+      ],
+      "group": "Cash & accounts",
+      "rank": 2,
+      "order": 17,
+      "layout": {
+        "x": 540,
+        "y": 2666.7
+      }
+    },
+    {
+      "name": "FCM_LOG",
+      "sourceLine": 294050,
+      "columns": [
+        {
+          "name": "ID",
+          "type": "NUMBER(10)",
+          "nullable": false
+        },
+        {
+          "name": "CCODE",
+          "type": "VARCHAR2(20)",
+          "nullable": true
+        },
+        {
+          "name": "CNAME",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "FCM_TOKEN",
+          "type": "VARCHAR2(200)",
+          "nullable": true
+        },
+        {
+          "name": "MSG_TITLE",
+          "type": "VARCHAR2(200)",
+          "nullable": true
+        },
+        {
+          "name": "MSG_BODY",
+          "type": "VARCHAR2(500)",
+          "nullable": true
+        },
+        {
+          "name": "SENT_AT",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "STATUS",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "ERROR_MSG",
+          "type": "VARCHAR2(300)",
+          "nullable": true
+        },
+        {
+          "name": "SENT_BY",
+          "type": "VARCHAR2(50)",
+          "nullable": true
+        },
+        {
+          "name": "MSG_TYPE",
+          "type": "VARCHAR2(30)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Messaging & access",
+      "rank": 0,
+      "order": 5,
+      "layout": {
+        "x": 60,
+        "y": 521.0
+      }
+    },
+    {
+      "name": "FCM_QUEUE",
+      "sourceLine": 294079,
+      "columns": [
+        {
+          "name": "ID",
+          "type": "NUMBER",
+          "nullable": true
+        },
+        {
+          "name": "CCODE",
+          "type": "VARCHAR2(20)",
+          "nullable": false
+        },
+        {
+          "name": "MSG_TITLE",
+          "type": "VARCHAR2(200)",
+          "nullable": true
+        },
+        {
+          "name": "MSG_BODY",
+          "type": "VARCHAR2(1000)",
+          "nullable": false
+        },
+        {
+          "name": "SOURCE_TBL",
+          "type": "VARCHAR2(30)",
+          "nullable": true
+        },
+        {
+          "name": "SOURCE_SNO",
+          "type": "NUMBER",
+          "nullable": true
+        },
+        {
+          "name": "ACTION",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "QUEUED_AT",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "PROCESSED",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "PROCESSED_AT",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "ERROR_MSG",
+          "type": "VARCHAR2(500)",
+          "nullable": true
+        },
+        {
+          "name": "RETRY_COUNT",
+          "type": "NUMBER(3)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [
+        "ID"
+      ],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Messaging & access",
+      "rank": 0,
+      "order": 6,
+      "layout": {
+        "x": 60,
+        "y": 603.0
+      }
+    },
+    {
+      "name": "GEN",
+      "sourceLine": 294107,
+      "columns": [
+        {
+          "name": "GENID",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "GENNAME",
+          "type": "VARCHAR2(50)",
+          "nullable": true
+        },
+        {
+          "name": "DEPTID",
+          "type": "NUMBER(3)",
+          "nullable": false
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "GEN",
+          "columns": [
+            "DEPTID"
+          ],
+          "references": "DEPT",
+          "referenceColumns": [
+            "DEPTID"
+          ],
+          "constraint": "FK_GEN_DEPT_DEPTID",
+          "sourceLine": 294197
+        }
+      ],
+      "referencedBy": [
+        {
+          "table": "PROD",
+          "columns": [
+            "GENID"
+          ],
+          "references": "GEN",
+          "referenceColumns": [
+            "GENID"
+          ],
+          "constraint": "FK_PROD_GEN_GENID",
+          "sourceLine": 1929057
+        }
+      ],
+      "group": "Products & inventory",
+      "rank": 1,
+      "order": 4,
+      "layout": {
+        "x": 300,
+        "y": 2874.4
+      }
+    },
+    {
+      "name": "INST",
+      "sourceLine": 294207,
+      "columns": [
+        {
+          "name": "INSTID",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "INSTNAME",
+          "type": "VARCHAR2(50)",
+          "nullable": true
+        },
+        {
+          "name": "ACTIVE",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [],
+      "referencedBy": [
+        {
+          "table": "CASHR1",
+          "columns": [
+            "INSTID"
+          ],
+          "references": "INST",
+          "referenceColumns": [
+            "INSTID"
+          ],
+          "constraint": "FK_CASHR1_INST_INSTID",
+          "sourceLine": 106759
+        },
+        {
+          "table": "CASH_REC1",
+          "columns": [
+            "INSTID"
+          ],
+          "references": "INST",
+          "referenceColumns": [
+            "INSTID"
+          ],
+          "constraint": "FK_CASH_REC1_INST_INSTID",
+          "sourceLine": 276020
+        }
+      ],
+      "group": "Other tables",
+      "rank": 0,
+      "order": 32,
+      "layout": {
+        "x": 60,
+        "y": 2735.0
+      }
+    },
+    {
+      "name": "INSTALL",
+      "sourceLine": 294233,
+      "columns": [
+        {
+          "name": "INSTALLNO",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "CASHDATED",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "CCODE",
+          "type": "NUMBER(4)",
+          "nullable": false
+        },
+        {
+          "name": "ISINST",
+          "type": "VARCHAR2(1)",
+          "nullable": false
+        },
+        {
+          "name": "INSTAMT",
+          "type": "NUMBER(8,2)",
+          "nullable": true
+        },
+        {
+          "name": "INSTFREQ",
+          "type": "NUMBER(3)",
+          "nullable": false
+        },
+        {
+          "name": "INSTBASIS",
+          "type": "VARCHAR2(1)",
+          "nullable": false
+        },
+        {
+          "name": "TOTALLOAN",
+          "type": "NUMBER(12,2)",
+          "nullable": true
+        },
+        {
+          "name": "INSTSDATE",
+          "type": "DATE",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "INSTALL",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_INSTALL_CCODE",
+          "sourceLine": 294253
+        }
+      ],
+      "referencedBy": [],
+      "group": "Cash & accounts",
+      "rank": 2,
+      "order": 7,
+      "layout": {
+        "x": 540,
+        "y": 1182.9
+      }
+    },
+    {
+      "name": "INV0P",
+      "sourceLine": 294263,
+      "columns": [
+        {
+          "name": "MYUSER",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "INVNO",
+          "type": "NUMBER(6)",
+          "nullable": false
+        },
+        {
+          "name": "CCODE",
+          "type": "NUMBER(4)",
+          "nullable": false
+        },
+        {
+          "name": "INVDATE",
+          "type": "DATE",
+          "nullable": false
+        },
+        {
+          "name": "CORD",
+          "type": "VARCHAR2(1)",
+          "nullable": false
+        },
+        {
+          "name": "REMARKS",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "RETURN2",
+          "type": "VARCHAR2(1)",
+          "nullable": false
+        },
+        {
+          "name": "INVCASHZ",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "INVCASHP",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "FLAG",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "GCCODE",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "DEALERID",
+          "type": "NUMBER(2)",
+          "nullable": false
+        },
+        {
+          "name": "ISPENDING",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "INVCASHZ1",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "BILTIEXP",
+          "type": "NUMBER(8,2)",
+          "nullable": true
+        },
+        {
+          "name": "MOBILE",
+          "type": "VARCHAR2(11)",
+          "nullable": true
+        },
+        {
+          "name": "SMSSENT",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "SMSSTOP",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "ORDERNO",
+          "type": "NUMBER(8)",
+          "nullable": true
+        },
+        {
+          "name": "AUTOMINUS",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "FOBD",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "SUPPINVNO",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "SUPPINVDATE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "RUNSPAID",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "ADVTAX_PCENT",
+          "type": "NUMBER(6,4)",
+          "nullable": true
+        },
+        {
+          "name": "WHTAX",
+          "type": "NUMBER(8,2)",
+          "nullable": true
+        },
+        {
+          "name": "COLLECTORID",
+          "type": "NUMBER(4)",
+          "nullable": true
+        },
+        {
+          "name": "SMSSENT2",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "PDF_MADE",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "PROMISED_DISC",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "DISC_PCENT",
+          "type": "NUMBER(6,4)",
+          "nullable": true
+        },
+        {
+          "name": "MYDATE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "PREF",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "ISCLAIM",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "PRE_WTAXRATE",
+          "type": "NUMBER(4,2)",
+          "nullable": true
+        },
+        {
+          "name": "FCM_SENT",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "INV0P",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_INV0P_CUST_CCODE",
+          "sourceLine": 317616
+        },
+        {
+          "table": "INV0P",
+          "columns": [
+            "GCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_INV0P_CUST_GCCODE",
+          "sourceLine": 317617
+        },
+        {
+          "table": "INV0P",
+          "columns": [
+            "DEALERID"
+          ],
+          "references": "DEALER",
+          "referenceColumns": [
+            "DEALERID"
+          ],
+          "constraint": "FK_INV0P_DEALERID",
+          "sourceLine": 317618
+        }
+      ],
+      "referencedBy": [
+        {
+          "table": "INV1P",
+          "columns": [
+            "INVNO"
+          ],
+          "references": "INV0P",
+          "referenceColumns": [
+            "INVNO"
+          ],
+          "constraint": "FK_INV1P_INV0P_INVNO",
+          "sourceLine": 580916
+        }
+      ],
+      "group": "Invoices & production",
+      "rank": 2,
+      "order": 18,
+      "layout": {
+        "x": 540,
+        "y": 2815.0
+      }
+    },
+    {
+      "name": "INV0S",
+      "sourceLine": 317628,
+      "columns": [
+        {
+          "name": "MYUSER",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "INVNO",
+          "type": "NUMBER(6)",
+          "nullable": false
+        },
+        {
+          "name": "ADDAID",
+          "type": "NUMBER(3)",
+          "nullable": false
+        },
+        {
+          "name": "CCODE",
+          "type": "NUMBER(4)",
+          "nullable": false
+        },
+        {
+          "name": "INVDATE",
+          "type": "DATE",
+          "nullable": false
+        },
+        {
+          "name": "CORD",
+          "type": "VARCHAR2(1)",
+          "nullable": false
+        },
+        {
+          "name": "REMARKS",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "RETURN2",
+          "type": "VARCHAR2(1)",
+          "nullable": false
+        },
+        {
+          "name": "INVCASHD",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "INVCASHR",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "PREF",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "COLLECTORID",
+          "type": "NUMBER(2)",
+          "nullable": true
+        },
+        {
+          "name": "PDATE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "FLAG",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "FLAG2",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "GCCODE",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "DEALERID",
+          "type": "NUMBER(2)",
+          "nullable": false
+        },
+        {
+          "name": "BNO",
+          "type": "VARCHAR2(25)",
+          "nullable": false
+        },
+        {
+          "name": "BAMT",
+          "type": "NUMBER(7,2)",
+          "nullable": false
+        },
+        {
+          "name": "ISPENDING",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "PACKERID",
+          "type": "NUMBER(2)",
+          "nullable": true
+        },
+        {
+          "name": "CHECKERID",
+          "type": "NUMBER(2)",
+          "nullable": true
+        },
+        {
+          "name": "BNO2",
+          "type": "VARCHAR2(15)",
+          "nullable": true
+        },
+        {
+          "name": "EOD_DUE",
+          "type": "NUMBER(11,2)",
+          "nullable": true
+        },
+        {
+          "name": "NICK",
+          "type": "VARCHAR2(20)",
+          "nullable": true
+        },
+        {
+          "name": "DISC_PCENT",
+          "type": "NUMBER(6,4)",
+          "nullable": true
+        },
+        {
+          "name": "MOBILE",
+          "type": "VARCHAR2(11)",
+          "nullable": true
+        },
+        {
+          "name": "SMSSENT",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "SMSSTOP",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "INVCASHD1",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "INVCASHD2",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "BANKCCODE",
+          "type": "NUMBER",
+          "nullable": false
+        },
+        {
+          "name": "BORC",
+          "type": "VARCHAR2(1)",
+          "nullable": false
+        },
+        {
+          "name": "DISC_PCENT1",
+          "type": "NUMBER(6,4)",
+          "nullable": true
+        },
+        {
+          "name": "MYINVNO",
+          "type": "NUMBER(6)",
+          "nullable": true
+        },
+        {
+          "name": "MYDATE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "ISDONE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "AUTOMINUS",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "RUNSSTOP",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "HIDEME",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "BILTICHG",
+          "type": "NUMBER(8,2)",
+          "nullable": true
+        },
+        {
+          "name": "INVCASHD3",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "RUNSPAID",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "ISHOLD",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "WHTAX_PCENT",
+          "type": "NUMBER(6,4)",
+          "nullable": true
+        },
+        {
+          "name": "FEE",
+          "type": "NUMBER(5,2)",
+          "nullable": true
+        },
+        {
+          "name": "SRATE",
+          "type": "NUMBER(4,2)",
+          "nullable": true
+        },
+        {
+          "name": "DISC_PCENT2",
+          "type": "NUMBER(6,4)",
+          "nullable": true
+        },
+        {
+          "name": "DISC_PCENT3",
+          "type": "NUMBER(6,4)",
+          "nullable": true
+        },
+        {
+          "name": "SMSSENT2",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "SMSMGR",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "PDF_MADE",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "NET_SCHEME",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "BYPASS_DELAY",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "INVCASHD4",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "INVCASHBANK",
+          "type": "NUMBER(10,2)",
+          "nullable": true
+        },
+        {
+          "name": "FCM_SENT",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "INV0S",
+          "columns": [
+            "BANKCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_BANKCCODE_CUST_CCODE",
+          "sourceLine": 470738
+        },
+        {
+          "table": "INV0S",
+          "columns": [
+            "COLLECTORID"
+          ],
+          "references": "COLLECTOR",
+          "referenceColumns": [
+            "COLLECTORID"
+          ],
+          "constraint": "FK_COLLID_COLLECT_INV0S",
+          "sourceLine": 470739
+        },
+        {
+          "table": "INV0S",
+          "columns": [
+            "ADDAID"
+          ],
+          "references": "ADDA",
+          "referenceColumns": [
+            "ADDAID"
+          ],
+          "constraint": "FK_INV0S_ADDA_ADDAID",
+          "sourceLine": 470740
+        },
+        {
+          "table": "INV0S",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_INV0S_CUST_CCODE",
+          "sourceLine": 470741
+        },
+        {
+          "table": "INV0S",
+          "columns": [
+            "GCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_INV0S_CUST_GCCODE",
+          "sourceLine": 470742
+        },
+        {
+          "table": "INV0S",
+          "columns": [
+            "DEALERID"
+          ],
+          "references": "DEALER",
+          "referenceColumns": [
+            "DEALERID"
+          ],
+          "constraint": "FK_INV0S_DEALERID",
+          "sourceLine": 470743
+        }
+      ],
+      "referencedBy": [
+        {
+          "table": "INV1S",
+          "columns": [
+            "INVNO"
+          ],
+          "references": "INV0S",
+          "referenceColumns": [
+            "INVNO"
+          ],
+          "constraint": "FK_INV1S_INV0S_INVNO",
+          "sourceLine": 1822676
+        }
+      ],
+      "group": "Invoices & production",
+      "rank": 2,
+      "order": 20,
+      "layout": {
+        "x": 540,
+        "y": 3111.8
+      }
+    },
+    {
+      "name": "INV1P",
+      "sourceLine": 470753,
+      "columns": [
+        {
+          "name": "INVNO",
+          "type": "NUMBER(6)",
+          "nullable": false
+        },
+        {
+          "name": "PCODE",
+          "type": "NUMBER(5)",
+          "nullable": false
+        },
+        {
+          "name": "QTY",
+          "type": "NUMBER(5)",
+          "nullable": false
+        },
+        {
+          "name": "QTYTYPE",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "UPRICE",
+          "type": "NUMBER(14,6)",
+          "nullable": false
+        },
+        {
+          "name": "DISC_PCENT",
+          "type": "NUMBER(6,4)",
+          "nullable": true
+        },
+        {
+          "name": "BPRICE",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "SNO",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "LOTNO",
+          "type": "VARCHAR2(15)",
+          "nullable": true
+        },
+        {
+          "name": "CRLF",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "BQTY",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "GQTY",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "BUPRICE",
+          "type": "NUMBER(11,4)",
+          "nullable": true
+        },
+        {
+          "name": "REMAINING",
+          "type": "NUMBER",
+          "nullable": true
+        },
+        {
+          "name": "DISC",
+          "type": "NUMBER(7,2)",
+          "nullable": true
+        },
+        {
+          "name": "ISTAXABLE",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "MYDATE1",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "ORDERNO2",
+          "type": "NUMBER(8)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "INV1P",
+          "columns": [
+            "INVNO"
+          ],
+          "references": "INV0P",
+          "referenceColumns": [
+            "INVNO"
+          ],
+          "constraint": "FK_INV1P_INV0P_INVNO",
+          "sourceLine": 580916
+        },
+        {
+          "table": "INV1P",
+          "columns": [
+            "PCODE"
+          ],
+          "references": "PROD",
+          "referenceColumns": [
+            "PCODE"
+          ],
+          "constraint": "FK_INV1P_PROD_PCODE",
+          "sourceLine": 580917
+        }
+      ],
+      "referencedBy": [],
+      "group": "Invoices & production",
+      "rank": 3,
+      "order": 9,
+      "layout": {
+        "x": 780,
+        "y": 2347.1
+      }
+    },
+    {
+      "name": "INV1S",
+      "sourceLine": 580927,
+      "columns": [
+        {
+          "name": "INVNO",
+          "type": "NUMBER(6)",
+          "nullable": false
+        },
+        {
+          "name": "PCODE",
+          "type": "NUMBER(5)",
+          "nullable": false
+        },
+        {
+          "name": "QTY",
+          "type": "NUMBER(8,2)",
+          "nullable": false
+        },
+        {
+          "name": "QTYTYPE",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "UPRICE",
+          "type": "NUMBER(13,6)",
+          "nullable": false
+        },
+        {
+          "name": "SNO",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "LOTNO",
+          "type": "VARCHAR2(15)",
+          "nullable": true
+        },
+        {
+          "name": "CRLF",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "BQTY",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "GQTY",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "BUPRICE",
+          "type": "NUMBER(13,6)",
+          "nullable": true
+        },
+        {
+          "name": "TOTAL_VALUE",
+          "type": "NUMBER",
+          "nullable": true
+        },
+        {
+          "name": "DISC_PCENT",
+          "type": "NUMBER(6,4)",
+          "nullable": true
+        },
+        {
+          "name": "DISC",
+          "type": "NUMBER(11,6)",
+          "nullable": true
+        },
+        {
+          "name": "TARIFF",
+          "type": "NUMBER(11,4)",
+          "nullable": true
+        },
+        {
+          "name": "RATEA",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "SRT_INVDATE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "TOCLAIM",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "ISTAXABLE",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "RATEB",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "RATEC",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "LAST_PURCHASE_RATE_DATED",
+          "type": "NUMBER(10,2)",
+          "nullable": true
+        },
+        {
+          "name": "D_PRICE_HISTORY",
+          "type": "VARCHAR2(150)",
+          "nullable": true
+        },
+        {
+          "name": "MYDATE1",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "GCCODE1",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "PNAMEREMARKS",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "INV1S",
+          "columns": [
+            "GCCODE1"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_INV1S_CUST_GCCODE1",
+          "sourceLine": 1822675
+        },
+        {
+          "table": "INV1S",
+          "columns": [
+            "INVNO"
+          ],
+          "references": "INV0S",
+          "referenceColumns": [
+            "INVNO"
+          ],
+          "constraint": "FK_INV1S_INV0S_INVNO",
+          "sourceLine": 1822676
+        },
+        {
+          "table": "INV1S",
+          "columns": [
+            "PCODE"
+          ],
+          "references": "PROD",
+          "referenceColumns": [
+            "PCODE"
+          ],
+          "constraint": "FK_INV1S_PROD_PCODE",
+          "sourceLine": 1822677
+        }
+      ],
+      "referencedBy": [],
+      "group": "Invoices & production",
+      "rank": 3,
+      "order": 11,
+      "layout": {
+        "x": 780,
+        "y": 2826.5
+      }
+    },
+    {
+      "name": "INVR0",
+      "sourceLine": 1822687,
+      "columns": [
+        {
+          "name": "MYUSER",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "INVNO",
+          "type": "NUMBER(6)",
+          "nullable": false
+        },
+        {
+          "name": "ADDAID",
+          "type": "NUMBER(3)",
+          "nullable": false
+        },
+        {
+          "name": "CCODE",
+          "type": "NUMBER(4)",
+          "nullable": false
+        },
+        {
+          "name": "INVDATE",
+          "type": "DATE",
+          "nullable": false
+        },
+        {
+          "name": "CORD",
+          "type": "VARCHAR2(1)",
+          "nullable": false
+        },
+        {
+          "name": "REMARKS",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "RETURN2",
+          "type": "VARCHAR2(1)",
+          "nullable": false
+        },
+        {
+          "name": "INVCASHD",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "INVCASHR",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "PREF",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "BNO",
+          "type": "NUMBER(5)",
+          "nullable": false
+        },
+        {
+          "name": "BAMT",
+          "type": "NUMBER(5)",
+          "nullable": false
+        },
+        {
+          "name": "TYRED",
+          "type": "NUMBER(7,2)",
+          "nullable": true
+        },
+        {
+          "name": "TUBED",
+          "type": "NUMBER(7,2)",
+          "nullable": true
+        },
+        {
+          "name": "FLAG",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "COLLECTORID",
+          "type": "NUMBER(2)",
+          "nullable": true
+        },
+        {
+          "name": "P1",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "P2",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "P3",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "P4",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "FLAG2",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "PDATE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "SCHDISC",
+          "type": "NUMBER(14,4)",
+          "nullable": true
+        },
+        {
+          "name": "INVTYPE",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "ORDERNO",
+          "type": "NUMBER(6)",
+          "nullable": true
+        },
+        {
+          "name": "SMSSENT2",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "SMSSTOP",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "MOBILE",
+          "type": "VARCHAR2(11)",
+          "nullable": true
+        },
+        {
+          "name": "GCCODE",
+          "type": "NUMBER(4)",
+          "nullable": true
+        },
+        {
+          "name": "MYDATE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "ISPENDING",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "BNO2",
+          "type": "VARCHAR2(25)",
+          "nullable": false
+        },
+        {
+          "name": "DEALERID",
+          "type": "NUMBER(2)",
+          "nullable": true
+        },
+        {
+          "name": "ISLOADED",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "FCM_SENT",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "INVR0",
+          "columns": [
+            "COLLECTORID"
+          ],
+          "references": "COLLECTOR",
+          "referenceColumns": [
+            "COLLECTORID"
+          ],
+          "constraint": "FK_COLLID_COLLECT_INVR0",
+          "sourceLine": 1822747
+        },
+        {
+          "table": "INVR0",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_INVR0_CUST_CCODE",
+          "sourceLine": 1822748
+        },
+        {
+          "table": "INVR0",
+          "columns": [
+            "GCCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_INVR0_CUST_GCCODE",
+          "sourceLine": 1822749
+        },
+        {
+          "table": "INVR0",
+          "columns": [
+            "ADDAID"
+          ],
+          "references": "ADDA",
+          "referenceColumns": [
+            "ADDAID"
+          ],
+          "constraint": "INVR0_ADDA_ADDAID",
+          "sourceLine": 1822750
+        }
+      ],
+      "referencedBy": [
+        {
+          "table": "INVR1",
+          "columns": [
+            "INVNO"
+          ],
+          "references": "INVR0",
+          "referenceColumns": [
+            "INVNO"
+          ],
+          "constraint": "FK_INVR1_INVR0_INVNO",
+          "sourceLine": 1822809
+        }
+      ],
+      "group": "Invoices & production",
+      "rank": 2,
+      "order": 19,
+      "layout": {
+        "x": 540,
+        "y": 2963.4
+      }
+    },
+    {
+      "name": "INVR1",
+      "sourceLine": 1822760,
+      "columns": [
+        {
+          "name": "INVNO",
+          "type": "NUMBER(6)",
+          "nullable": false
+        },
+        {
+          "name": "PCODE",
+          "type": "NUMBER(5)",
+          "nullable": false
+        },
+        {
+          "name": "QTY",
+          "type": "NUMBER(7,2)",
+          "nullable": false
+        },
+        {
+          "name": "QTYTYPE",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "UPRICE",
+          "type": "NUMBER(11,4)",
+          "nullable": false
+        },
+        {
+          "name": "SNO",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "SCHDISC",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "DISC_PCENT",
+          "type": "NUMBER(6,4)",
+          "nullable": true
+        },
+        {
+          "name": "DISC",
+          "type": "NUMBER(11,6)",
+          "nullable": true
+        },
+        {
+          "name": "MYDATE1",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "BQTY",
+          "type": "NUMBER(4)",
+          "nullable": true
+        },
+        {
+          "name": "GQTY",
+          "type": "NUMBER(4)",
+          "nullable": true
+        },
+        {
+          "name": "BUPRICE",
+          "type": "NUMBER(11,4)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "INVR1",
+          "columns": [
+            "INVNO"
+          ],
+          "references": "INVR0",
+          "referenceColumns": [
+            "INVNO"
+          ],
+          "constraint": "FK_INVR1_INVR0_INVNO",
+          "sourceLine": 1822809
+        },
+        {
+          "table": "INVR1",
+          "columns": [
+            "PCODE"
+          ],
+          "references": "PROD",
+          "referenceColumns": [
+            "PCODE"
+          ],
+          "constraint": "FK_INVR1_PROD_PCODE",
+          "sourceLine": 1822810
+        }
+      ],
+      "referencedBy": [],
+      "group": "Invoices & production",
+      "rank": 3,
+      "order": 10,
+      "layout": {
+        "x": 780,
+        "y": 2586.8
+      }
+    },
+    {
+      "name": "KPOS",
+      "sourceLine": 1822820,
+      "columns": [
+        {
+          "name": "MYKPO",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "CDATE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "PRNTCNT",
+          "type": "NUMBER(1)",
+          "nullable": true
+        },
+        {
+          "name": "SPEAK",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "NICK",
+          "type": "VARCHAR2(20)",
+          "nullable": true
+        },
+        {
+          "name": "CNT",
+          "type": "NUMBER(2)",
+          "nullable": true
+        },
+        {
+          "name": "MYGODOWN",
+          "type": "NUMBER(4)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Operations & logs",
+      "rank": 0,
+      "order": 7,
+      "layout": {
+        "x": 60,
+        "y": 685.0
+      }
+    },
+    {
+      "name": "LOCAL_VCUSTHIST",
+      "sourceLine": 1822846,
+      "columns": [
+        {
+          "name": "MYUSER",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "MYDATE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "TTYPE",
+          "type": "VARCHAR2(2)",
+          "nullable": true
+        },
+        {
+          "name": "CCODE",
+          "type": "NUMBER(11)",
+          "nullable": true
+        },
+        {
+          "name": "CODE",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "CNAME",
+          "type": "VARCHAR2(60)",
+          "nullable": true
+        },
+        {
+          "name": "DATED",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "DETAIL",
+          "type": "VARCHAR2(50)",
+          "nullable": true
+        },
+        {
+          "name": "AMOUNT",
+          "type": "NUMBER(12,2)",
+          "nullable": true
+        },
+        {
+          "name": "AORS",
+          "type": "CHAR(1)",
+          "nullable": true
+        },
+        {
+          "name": "REF",
+          "type": "NUMBER(11)",
+          "nullable": true
+        },
+        {
+          "name": "REMARKS",
+          "type": "VARCHAR2(300)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Operations & logs",
+      "rank": 0,
+      "order": 8,
+      "layout": {
+        "x": 60,
+        "y": 767.0
+      }
+    },
+    {
+      "name": "MAN0",
+      "sourceLine": 1823734,
+      "columns": [
+        {
+          "name": "MYUSER",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "MANNO",
+          "type": "NUMBER(6)",
+          "nullable": true
+        },
+        {
+          "name": "MANDATED",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "REMARKS",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "MOH",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "CCODE1",
+          "type": "NUMBER(4)",
+          "nullable": true
+        },
+        {
+          "name": "CCODE2",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "ISPENDING",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "MAN0",
+          "columns": [
+            "CCODE1"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_MAN0_CCODE1",
+          "sourceLine": 1823752
+        },
+        {
+          "table": "MAN0",
+          "columns": [
+            "CCODE2"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_MAN0_CCODE2",
+          "sourceLine": 1823753
+        }
+      ],
+      "referencedBy": [
+        {
+          "table": "MAN1",
+          "columns": [
+            "MANNO"
+          ],
+          "references": "MAN0",
+          "referenceColumns": [
+            "MANNO"
+          ],
+          "constraint": "FK_MAN1_MANNO",
+          "sourceLine": 1823811
+        },
+        {
+          "table": "MAN2",
+          "columns": [
+            "MANNO"
+          ],
+          "references": "MAN0",
+          "referenceColumns": [
+            "MANNO"
+          ],
+          "constraint": "FK_MAN2_MANNO",
+          "sourceLine": 1823864
+        }
+      ],
+      "group": "Invoices & production",
+      "rank": 2,
+      "order": 10,
+      "layout": {
+        "x": 540,
+        "y": 1628.0
+      }
+    },
+    {
+      "name": "MAN01",
+      "sourceLine": 1823763,
+      "columns": [
+        {
+          "name": "MYUSER",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "MANNO",
+          "type": "NUMBER(6)",
+          "nullable": true
+        },
+        {
+          "name": "MANDATED",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "REMARKS",
+          "type": "VARCHAR2(40)",
+          "nullable": true
+        },
+        {
+          "name": "MOH",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "CCODE1",
+          "type": "NUMBER(4)",
+          "nullable": true
+        },
+        {
+          "name": "CCODE2",
+          "type": "NUMBER(4)",
+          "nullable": true
+        },
+        {
+          "name": "ISPENDING",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "MYDATE",
+          "type": "DATE",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "MAN01",
+          "columns": [
+            "CCODE1"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_MAN01_CCODE1",
+          "sourceLine": 1823782
+        },
+        {
+          "table": "MAN01",
+          "columns": [
+            "CCODE2"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_MAN01_CCODE2",
+          "sourceLine": 1823783
+        }
+      ],
+      "referencedBy": [
+        {
+          "table": "MAN11",
+          "columns": [
+            "MANNO"
+          ],
+          "references": "MAN01",
+          "referenceColumns": [
+            "MANNO"
+          ],
+          "constraint": "FK_MAN01_MANNO",
+          "sourceLine": 1823836
+        },
+        {
+          "table": "MAN21",
+          "columns": [
+            "MANNO"
+          ],
+          "references": "MAN01",
+          "referenceColumns": [
+            "MANNO"
+          ],
+          "constraint": "FK_MAN201_MANNO",
+          "sourceLine": 1823888
+        }
+      ],
+      "group": "Invoices & production",
+      "rank": 2,
+      "order": 11,
+      "layout": {
+        "x": 540,
+        "y": 1776.4
+      }
+    },
+    {
+      "name": "MAN1",
+      "sourceLine": 1823793,
+      "columns": [
+        {
+          "name": "MANNO",
+          "type": "NUMBER(6)",
+          "nullable": true
+        },
+        {
+          "name": "PCODE",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "QTY",
+          "type": "NUMBER(11,4)",
+          "nullable": true
+        },
+        {
+          "name": "QTYTYPE",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "UPRICE",
+          "type": "NUMBER(11,4)",
+          "nullable": true
+        },
+        {
+          "name": "LOTNO",
+          "type": "VARCHAR2(15)",
+          "nullable": true
+        },
+        {
+          "name": "SNO",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "REMAINING",
+          "type": "NUMBER",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "MAN1",
+          "columns": [
+            "MANNO"
+          ],
+          "references": "MAN0",
+          "referenceColumns": [
+            "MANNO"
+          ],
+          "constraint": "FK_MAN1_MANNO",
+          "sourceLine": 1823811
+        },
+        {
+          "table": "MAN1",
+          "columns": [
+            "PCODE"
+          ],
+          "references": "PROD",
+          "referenceColumns": [
+            "PCODE"
+          ],
+          "constraint": "FK_MAN1_PCODE",
+          "sourceLine": 1823812
+        }
+      ],
+      "referencedBy": [],
+      "group": "Invoices & production",
+      "rank": 3,
+      "order": 0,
+      "layout": {
+        "x": 780,
+        "y": 189.8
+      }
+    },
+    {
+      "name": "MAN11",
+      "sourceLine": 1823822,
+      "columns": [
+        {
+          "name": "MANNO",
+          "type": "NUMBER(6)",
+          "nullable": true
+        },
+        {
+          "name": "PCODE",
+          "type": "NUMBER(4)",
+          "nullable": true
+        },
+        {
+          "name": "QTY",
+          "type": "NUMBER(11,4)",
+          "nullable": true
+        },
+        {
+          "name": "QTYTYPE",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "UPRICE",
+          "type": "NUMBER(11,4)",
+          "nullable": true
+        },
+        {
+          "name": "LOTNO",
+          "type": "VARCHAR2(15)",
+          "nullable": true
+        },
+        {
+          "name": "SNO",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "REMAINING",
+          "type": "NUMBER",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "MAN11",
+          "columns": [
+            "MANNO"
+          ],
+          "references": "MAN01",
+          "referenceColumns": [
+            "MANNO"
+          ],
+          "constraint": "FK_MAN01_MANNO",
+          "sourceLine": 1823836
+        },
+        {
+          "table": "MAN11",
+          "columns": [
+            "PCODE"
+          ],
+          "references": "PROD",
+          "referenceColumns": [
+            "PCODE"
+          ],
+          "constraint": "FK_MAN01_PCODE",
+          "sourceLine": 1823837
+        }
+      ],
+      "referencedBy": [],
+      "group": "Invoices & production",
+      "rank": 3,
+      "order": 2,
+      "layout": {
+        "x": 780,
+        "y": 669.2
+      }
+    },
+    {
+      "name": "MAN2",
+      "sourceLine": 1823847,
+      "columns": [
+        {
+          "name": "MANNO",
+          "type": "NUMBER(6)",
+          "nullable": true
+        },
+        {
+          "name": "PCODE",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "QTY",
+          "type": "NUMBER(11,4)",
+          "nullable": true
+        },
+        {
+          "name": "QTYTYPE",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "UPRICE",
+          "type": "NUMBER(11,4)",
+          "nullable": true
+        },
+        {
+          "name": "LOTNO",
+          "type": "VARCHAR2(15)",
+          "nullable": true
+        },
+        {
+          "name": "SNO",
+          "type": "NUMBER(3)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "MAN2",
+          "columns": [
+            "MANNO"
+          ],
+          "references": "MAN0",
+          "referenceColumns": [
+            "MANNO"
+          ],
+          "constraint": "FK_MAN2_MANNO",
+          "sourceLine": 1823864
+        },
+        {
+          "table": "MAN2",
+          "columns": [
+            "PCODE"
+          ],
+          "references": "PROD",
+          "referenceColumns": [
+            "PCODE"
+          ],
+          "constraint": "FK_MAN2_PCODE",
+          "sourceLine": 1823865
+        }
+      ],
+      "referencedBy": [],
+      "group": "Invoices & production",
+      "rank": 3,
+      "order": 1,
+      "layout": {
+        "x": 780,
+        "y": 429.5
+      }
+    },
+    {
+      "name": "MAN21",
+      "sourceLine": 1823875,
+      "columns": [
+        {
+          "name": "MANNO",
+          "type": "NUMBER(6)",
+          "nullable": true
+        },
+        {
+          "name": "PCODE",
+          "type": "NUMBER(4)",
+          "nullable": true
+        },
+        {
+          "name": "QTY",
+          "type": "NUMBER(11,4)",
+          "nullable": true
+        },
+        {
+          "name": "QTYTYPE",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "UPRICE",
+          "type": "NUMBER(11,4)",
+          "nullable": true
+        },
+        {
+          "name": "LOTNO",
+          "type": "VARCHAR2(15)",
+          "nullable": true
+        },
+        {
+          "name": "SNO",
+          "type": "NUMBER(3)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "MAN21",
+          "columns": [
+            "MANNO"
+          ],
+          "references": "MAN01",
+          "referenceColumns": [
+            "MANNO"
+          ],
+          "constraint": "FK_MAN201_MANNO",
+          "sourceLine": 1823888
+        },
+        {
+          "table": "MAN21",
+          "columns": [
+            "PCODE"
+          ],
+          "references": "PROD",
+          "referenceColumns": [
+            "PCODE"
+          ],
+          "constraint": "FK_MAN201_PCODE",
+          "sourceLine": 1823889
+        }
+      ],
+      "referencedBy": [],
+      "group": "Invoices & production",
+      "rank": 3,
+      "order": 3,
+      "layout": {
+        "x": 780,
+        "y": 908.9
+      }
+    },
+    {
+      "name": "MENUBANK",
+      "sourceLine": 1823899,
+      "columns": [
+        {
+          "name": "MENULABEL",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "MENUCODE",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Messaging & access",
+      "rank": 0,
+      "order": 9,
+      "layout": {
+        "x": 60,
+        "y": 849.0
+      }
+    },
+    {
+      "name": "MENU_AUTH",
+      "sourceLine": 1824475,
+      "columns": [
+        {
+          "name": "ROLELEVEL",
+          "type": "NUMBER(2)",
+          "nullable": true
+        },
+        {
+          "name": "MENULABEL",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "MENUCODE",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "CANVIEW",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Messaging & access",
+      "rank": 0,
+      "order": 10,
+      "layout": {
+        "x": 60,
+        "y": 931.0
+      }
+    },
+    {
+      "name": "MESSAGEIN",
+      "sourceLine": 1825047,
+      "columns": [
+        {
+          "name": "ID",
+          "type": "NUMBER(19)",
+          "nullable": false
+        },
+        {
+          "name": "SENDTIME",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "RECEIVETIME",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "MESSAGEFROM",
+          "type": "NVARCHAR2(80)",
+          "nullable": true
+        },
+        {
+          "name": "MESSAGETO",
+          "type": "NVARCHAR2(80)",
+          "nullable": true
+        },
+        {
+          "name": "SMSC",
+          "type": "NVARCHAR2(80)",
+          "nullable": true
+        },
+        {
+          "name": "MESSAGETEXT",
+          "type": "NCLOB",
+          "nullable": true
+        },
+        {
+          "name": "MESSAGETYPE",
+          "type": "NVARCHAR2(80)",
+          "nullable": true
+        },
+        {
+          "name": "MESSAGEPARTS",
+          "type": "NUMBER",
+          "nullable": true
+        },
+        {
+          "name": "MESSAGEPDU",
+          "type": "NCLOB",
+          "nullable": true
+        },
+        {
+          "name": "GATEWAY",
+          "type": "NVARCHAR2(80)",
+          "nullable": true
+        },
+        {
+          "name": "USERID",
+          "type": "NVARCHAR2(80)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [
+        "ID"
+      ],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Messaging & access",
+      "rank": 0,
+      "order": 11,
+      "layout": {
+        "x": 60,
+        "y": 1013.0
+      }
+    },
+    {
+      "name": "MESSAGELOG",
+      "sourceLine": 1825075,
+      "columns": [
+        {
+          "name": "ID",
+          "type": "NUMBER(19)",
+          "nullable": false
+        },
+        {
+          "name": "SENDTIME",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "RECEIVETIME",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "STATUSCODE",
+          "type": "NUMBER",
+          "nullable": true
+        },
+        {
+          "name": "STATUSTEXT",
+          "type": "NVARCHAR2(80)",
+          "nullable": true
+        },
+        {
+          "name": "MESSAGETO",
+          "type": "NVARCHAR2(80)",
+          "nullable": true
+        },
+        {
+          "name": "MESSAGEFROM",
+          "type": "NVARCHAR2(80)",
+          "nullable": true
+        },
+        {
+          "name": "MESSAGETEXT",
+          "type": "NCLOB",
+          "nullable": true
+        },
+        {
+          "name": "MESSAGETYPE",
+          "type": "NVARCHAR2(80)",
+          "nullable": true
+        },
+        {
+          "name": "MESSAGEID",
+          "type": "NVARCHAR2(80)",
+          "nullable": true
+        },
+        {
+          "name": "MESSAGEGUID",
+          "type": "NCLOB",
+          "nullable": true
+        },
+        {
+          "name": "MESSAGEINFO",
+          "type": "NCLOB",
+          "nullable": true
+        },
+        {
+          "name": "ERRORCODE",
+          "type": "NVARCHAR2(80)",
+          "nullable": true
+        },
+        {
+          "name": "ERRORTEXT",
+          "type": "NCLOB",
+          "nullable": true
+        },
+        {
+          "name": "GATEWAY",
+          "type": "NVARCHAR2(80)",
+          "nullable": true
+        },
+        {
+          "name": "MESSAGEPARTS",
+          "type": "NUMBER",
+          "nullable": true
+        },
+        {
+          "name": "MESSAGEPDU",
+          "type": "NCLOB",
+          "nullable": true
+        },
+        {
+          "name": "CONNECTOR",
+          "type": "NVARCHAR2(80)",
+          "nullable": true
+        },
+        {
+          "name": "USERID",
+          "type": "NVARCHAR2(80)",
+          "nullable": true
+        },
+        {
+          "name": "USERINFO",
+          "type": "NCLOB",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [
+        "ID"
+      ],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Messaging & access",
+      "rank": 0,
+      "order": 12,
+      "layout": {
+        "x": 60,
+        "y": 1095.0
+      }
+    },
+    {
+      "name": "MESSAGEOUT",
+      "sourceLine": 1825112,
+      "columns": [
+        {
+          "name": "ID",
+          "type": "NUMBER(19)",
+          "nullable": false
+        },
+        {
+          "name": "MESSAGETYPE",
+          "type": "VARCHAR2(80)",
+          "nullable": true
+        },
+        {
+          "name": "GATEWAY",
+          "type": "NVARCHAR2(80)",
+          "nullable": true
+        },
+        {
+          "name": "USERID",
+          "type": "NVARCHAR2(80)",
+          "nullable": true
+        },
+        {
+          "name": "PRIORITY",
+          "type": "NUMBER",
+          "nullable": true
+        },
+        {
+          "name": "SCHEDULED",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "VALIDITYPERIOD",
+          "type": "NUMBER",
+          "nullable": true
+        },
+        {
+          "name": "ISSENT",
+          "type": "NUMBER(1)",
+          "nullable": true
+        },
+        {
+          "name": "ISREAD",
+          "type": "NUMBER(1)",
+          "nullable": true
+        },
+        {
+          "name": "MYUSER",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "MYDATE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "RESULT",
+          "type": "VARCHAR2(4000)",
+          "nullable": true
+        },
+        {
+          "name": "ROUTEID",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "WASENT",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "WADATED",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "RESULT2",
+          "type": "VARCHAR2(3000)",
+          "nullable": true
+        },
+        {
+          "name": "PDF_NAME",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "INVNO",
+          "type": "NUMBER(6)",
+          "nullable": true
+        },
+        {
+          "name": "CCODE",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "GROUPWA",
+          "type": "VARCHAR2(40)",
+          "nullable": true
+        },
+        {
+          "name": "SHOW",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "MBDATE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "MEDATE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "MESSAGETO",
+          "type": "VARCHAR2(80)",
+          "nullable": true
+        },
+        {
+          "name": "MESSAGETEXT",
+          "type": "VARCHAR2(4000)",
+          "nullable": true
+        },
+        {
+          "name": "MESSAGEFROM",
+          "type": "VARCHAR2(80)",
+          "nullable": true
+        },
+        {
+          "name": "TEMPLATE",
+          "type": "VARCHAR2(50)",
+          "nullable": true
+        },
+        {
+          "name": "VAR1",
+          "type": "VARCHAR2(600)",
+          "nullable": true
+        },
+        {
+          "name": "VAR2",
+          "type": "VARCHAR2(600)",
+          "nullable": true
+        },
+        {
+          "name": "VAR3",
+          "type": "VARCHAR2(600)",
+          "nullable": true
+        },
+        {
+          "name": "VAR4",
+          "type": "VARCHAR2(4000)",
+          "nullable": true
+        },
+        {
+          "name": "VAR5",
+          "type": "VARCHAR2(4000)",
+          "nullable": true
+        },
+        {
+          "name": "VAR6",
+          "type": "VARCHAR2(600)",
+          "nullable": true
+        },
+        {
+          "name": "VAR7",
+          "type": "VARCHAR2(600)",
+          "nullable": true
+        },
+        {
+          "name": "VAR8",
+          "type": "VARCHAR2(600)",
+          "nullable": true
+        },
+        {
+          "name": "RETRY_CNT",
+          "type": "NUMBER",
+          "nullable": true
+        },
+        {
+          "name": "NEED_VARS",
+          "type": "NUMBER(2)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [
+        "ID"
+      ],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Messaging & access",
+      "rank": 0,
+      "order": 13,
+      "layout": {
+        "x": 60,
+        "y": 1177.0
+      }
+    },
+    {
+      "name": "MYAUDIT",
+      "sourceLine": 1828278,
+      "columns": [
+        {
+          "name": "DATED",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "DETAIL",
+          "type": "VARCHAR2(300)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Operations & logs",
+      "rank": 0,
+      "order": 14,
+      "layout": {
+        "x": 60,
+        "y": 1259.0
+      }
+    },
+    {
+      "name": "MYAUDIT_LOG",
+      "sourceLine": 1836054,
+      "columns": [
+        {
+          "name": "SNO",
+          "type": "NUMBER(9)",
+          "nullable": true
+        },
+        {
+          "name": "DATED",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "MYUSER",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "TERMINAL",
+          "type": "VARCHAR2(60)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Operations & logs",
+      "rank": 0,
+      "order": 15,
+      "layout": {
+        "x": 60,
+        "y": 1341.0
+      }
+    },
+    {
+      "name": "MYAUDIT_OST",
+      "sourceLine": 1838432,
+      "columns": [
+        {
+          "name": "SNO",
+          "type": "NUMBER(9)",
+          "nullable": true
+        },
+        {
+          "name": "DATED",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "MYUSER",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "PCODE",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "OOST",
+          "type": "NUMBER(7,2)",
+          "nullable": true
+        },
+        {
+          "name": "NOST",
+          "type": "NUMBER(7,2)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Operations & logs",
+      "rank": 0,
+      "order": 16,
+      "layout": {
+        "x": 60,
+        "y": 1423.0
+      }
+    },
+    {
+      "name": "NEWS_BULLETIN",
+      "sourceLine": 1839187,
+      "columns": [
+        {
+          "name": "NEWS_ID",
+          "type": "NUMBER",
+          "nullable": true
+        },
+        {
+          "name": "TITLE",
+          "type": "VARCHAR2(200)",
+          "nullable": false
+        },
+        {
+          "name": "POSTED_BY",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "POST_DATE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "STATUS",
+          "type": "VARCHAR2(20)",
+          "nullable": true
+        },
+        {
+          "name": "POSTED_BY_TYPE",
+          "type": "VARCHAR2(20)",
+          "nullable": true
+        },
+        {
+          "name": "CONTENT",
+          "type": "VARCHAR2(4000)",
+          "nullable": true
+        },
+        {
+          "name": "IMAGE_URL",
+          "type": "VARCHAR2(300)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [
+        "NEWS_ID"
+      ],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Other tables",
+      "rank": 0,
+      "order": 17,
+      "layout": {
+        "x": 60,
+        "y": 1505.0
+      }
+    },
+    {
+      "name": "OWNER_2FA",
+      "sourceLine": 1839211,
+      "columns": [
+        {
+          "name": "OWNER_USER",
+          "type": "VARCHAR2(60)",
+          "nullable": true
+        },
+        {
+          "name": "SECRET",
+          "type": "VARCHAR2(64)",
+          "nullable": true
+        },
+        {
+          "name": "ENABLED",
+          "type": "CHAR(1)",
+          "nullable": true
+        },
+        {
+          "name": "SET_AT",
+          "type": "DATE",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [
+        "OWNER_USER"
+      ],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Messaging & access",
+      "rank": 0,
+      "order": 18,
+      "layout": {
+        "x": 60,
+        "y": 1587.0
+      }
+    },
+    {
+      "name": "PACKING",
+      "sourceLine": 1839231,
+      "columns": [
+        {
+          "name": "PACKID",
+          "type": "NUMBER(2)",
+          "nullable": true
+        },
+        {
+          "name": "PACKNAME",
+          "type": "VARCHAR2(30)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [
+        "PACKID"
+      ],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Products & inventory",
+      "rank": 0,
+      "order": 19,
+      "layout": {
+        "x": 60,
+        "y": 1669.0
+      }
+    },
+    {
+      "name": "PROD",
+      "sourceLine": 1839249,
+      "columns": [
+        {
+          "name": "PCODE",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "PNAME",
+          "type": "VARCHAR2(60)",
+          "nullable": true
+        },
+        {
+          "name": "CATID",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "OST",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "OP",
+          "type": "NUMBER(7,2)",
+          "nullable": true
+        },
+        {
+          "name": "LOSEINPACK",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "SRATEPACK",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "SRATELOSE",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "REQTY",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "ACTIVE",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "FLAG",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "IMAGE",
+          "type": "LONG RAW",
+          "nullable": true
+        },
+        {
+          "name": "PACKNAME",
+          "type": "VARCHAR2(5)",
+          "nullable": true
+        },
+        {
+          "name": "RATEA",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "RATEB",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "RATEC",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "IMAGEDATE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "CPNAME",
+          "type": "VARCHAR2(80)",
+          "nullable": true
+        },
+        {
+          "name": "SCODE",
+          "type": "VARCHAR2(20)",
+          "nullable": true
+        },
+        {
+          "name": "NQTY",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "PTYPE",
+          "type": "VARCHAR2(1)",
+          "nullable": false
+        },
+        {
+          "name": "CCODE",
+          "type": "NUMBER(4)",
+          "nullable": true
+        },
+        {
+          "name": "CRLF",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "GENID",
+          "type": "NUMBER(3)",
+          "nullable": false
+        },
+        {
+          "name": "BQTY",
+          "type": "NUMBER(4)",
+          "nullable": true
+        },
+        {
+          "name": "GQTY",
+          "type": "NUMBER(4)",
+          "nullable": true
+        },
+        {
+          "name": "ISCABLE",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "REMAINING",
+          "type": "NUMBER",
+          "nullable": true
+        },
+        {
+          "name": "LOCATION",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "SUMVALUE",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "RQTY",
+          "type": "NUMBER(4)",
+          "nullable": true
+        },
+        {
+          "name": "RQTYRATE",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "WQTY",
+          "type": "NUMBER(4)",
+          "nullable": true
+        },
+        {
+          "name": "WQTYRATE",
+          "type": "NUMBER(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "INHAND",
+          "type": "NUMBER(11,2)",
+          "nullable": true
+        },
+        {
+          "name": "RUNS",
+          "type": "NUMBER(6,2)",
+          "nullable": true
+        },
+        {
+          "name": "ISTAXABLE",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "PNAMEURDU",
+          "type": "VARCHAR2(200)",
+          "nullable": true
+        },
+        {
+          "name": "LOSENAME",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "PARTALLOW",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "DISCB",
+          "type": "NUMBER(4,2)",
+          "nullable": true
+        },
+        {
+          "name": "AUTOMANF",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "AUTOMANF_PURCH",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        },
+        {
+          "name": "MAXQTY",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "MYDATE1",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "DISCPCENT",
+          "type": "NUMBER(5,2)",
+          "nullable": true
+        },
+        {
+          "name": "DISCAMT",
+          "type": "NUMBER(6,2)",
+          "nullable": true
+        },
+        {
+          "name": "HIDE_STOCK",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [
+        "PCODE"
+      ],
+      "foreignKeys": [
+        {
+          "table": "PROD",
+          "columns": [
+            "CATID"
+          ],
+          "references": "CAT",
+          "referenceColumns": [
+            "CATID"
+          ],
+          "constraint": "FK_PROD_CAT_CATID",
+          "sourceLine": 1929055
+        },
+        {
+          "table": "PROD",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_PROD_CCODE1",
+          "sourceLine": 1929056
+        },
+        {
+          "table": "PROD",
+          "columns": [
+            "GENID"
+          ],
+          "references": "GEN",
+          "referenceColumns": [
+            "GENID"
+          ],
+          "constraint": "FK_PROD_GEN_GENID",
+          "sourceLine": 1929057
+        }
+      ],
+      "referencedBy": [
+        {
+          "table": "INV1P",
+          "columns": [
+            "PCODE"
+          ],
+          "references": "PROD",
+          "referenceColumns": [
+            "PCODE"
+          ],
+          "constraint": "FK_INV1P_PROD_PCODE",
+          "sourceLine": 580917
+        },
+        {
+          "table": "INV1S",
+          "columns": [
+            "PCODE"
+          ],
+          "references": "PROD",
+          "referenceColumns": [
+            "PCODE"
+          ],
+          "constraint": "FK_INV1S_PROD_PCODE",
+          "sourceLine": 1822677
+        },
+        {
+          "table": "INVR1",
+          "columns": [
+            "PCODE"
+          ],
+          "references": "PROD",
+          "referenceColumns": [
+            "PCODE"
+          ],
+          "constraint": "FK_INVR1_PROD_PCODE",
+          "sourceLine": 1822810
+        },
+        {
+          "table": "MAN1",
+          "columns": [
+            "PCODE"
+          ],
+          "references": "PROD",
+          "referenceColumns": [
+            "PCODE"
+          ],
+          "constraint": "FK_MAN1_PCODE",
+          "sourceLine": 1823812
+        },
+        {
+          "table": "MAN11",
+          "columns": [
+            "PCODE"
+          ],
+          "references": "PROD",
+          "referenceColumns": [
+            "PCODE"
+          ],
+          "constraint": "FK_MAN01_PCODE",
+          "sourceLine": 1823837
+        },
+        {
+          "table": "MAN2",
+          "columns": [
+            "PCODE"
+          ],
+          "references": "PROD",
+          "referenceColumns": [
+            "PCODE"
+          ],
+          "constraint": "FK_MAN2_PCODE",
+          "sourceLine": 1823865
+        },
+        {
+          "table": "MAN21",
+          "columns": [
+            "PCODE"
+          ],
+          "references": "PROD",
+          "referenceColumns": [
+            "PCODE"
+          ],
+          "constraint": "FK_MAN201_PCODE",
+          "sourceLine": 1823889
+        },
+        {
+          "table": "PROD12",
+          "columns": [
+            "PCODE"
+          ],
+          "references": "PROD",
+          "referenceColumns": [
+            "PCODE"
+          ],
+          "constraint": "FK_PROD_PROD12_PCODE",
+          "sourceLine": 1930509
+        },
+        {
+          "table": "PROD12",
+          "columns": [
+            "PCODEOUT"
+          ],
+          "references": "PROD",
+          "referenceColumns": [
+            "PCODE"
+          ],
+          "constraint": "FK_PROD_PROD12_PCODEOUT",
+          "sourceLine": 1930510
+        }
+      ],
+      "group": "Products & inventory",
+      "rank": 2,
+      "order": 15,
+      "layout": {
+        "x": 540,
+        "y": 2369.9
+      }
+    },
+    {
+      "name": "PROD0",
+      "sourceLine": 1929067,
+      "columns": [
+        {
+          "name": "ORIGPNAME",
+          "type": "VARCHAR2(80)",
+          "nullable": true
+        },
+        {
+          "name": "COMP_RATEA",
+          "type": "NUMBER(12,2)",
+          "nullable": true
+        },
+        {
+          "name": "COMP_RATEB",
+          "type": "NUMBER(12,2)",
+          "nullable": true
+        },
+        {
+          "name": "COMP_RATEC",
+          "type": "NUMBER(12,2)",
+          "nullable": true
+        },
+        {
+          "name": "COMP_BQTY",
+          "type": "NUMBER(12,2)",
+          "nullable": true
+        },
+        {
+          "name": "COMP_GQTY",
+          "type": "NUMBER(12,2)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Products & inventory",
+      "rank": 0,
+      "order": 20,
+      "layout": {
+        "x": 60,
+        "y": 1751.0
+      }
+    },
+    {
+      "name": "PROD1",
+      "sourceLine": 1930476,
+      "columns": [
+        {
+          "name": "PCODE",
+          "type": "NUMBER(5)",
+          "nullable": false
+        },
+        {
+          "name": "BARCODE",
+          "type": "VARCHAR2(15)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Products & inventory",
+      "rank": 0,
+      "order": 21,
+      "layout": {
+        "x": 60,
+        "y": 1833.0
+      }
+    },
+    {
+      "name": "PROD12",
+      "sourceLine": 1930495,
+      "columns": [
+        {
+          "name": "PCODE",
+          "type": "NUMBER(4)",
+          "nullable": false
+        },
+        {
+          "name": "PCODEOUT",
+          "type": "NUMBER(4)",
+          "nullable": false
+        },
+        {
+          "name": "QTY",
+          "type": "NUMBER(13,10)",
+          "nullable": false
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "PROD12",
+          "columns": [
+            "PCODE"
+          ],
+          "references": "PROD",
+          "referenceColumns": [
+            "PCODE"
+          ],
+          "constraint": "FK_PROD_PROD12_PCODE",
+          "sourceLine": 1930509
+        },
+        {
+          "table": "PROD12",
+          "columns": [
+            "PCODEOUT"
+          ],
+          "references": "PROD",
+          "referenceColumns": [
+            "PCODE"
+          ],
+          "constraint": "FK_PROD_PROD12_PCODEOUT",
+          "sourceLine": 1930510
+        }
+      ],
+      "referencedBy": [],
+      "group": "Products & inventory",
+      "rank": 3,
+      "order": 12,
+      "layout": {
+        "x": 780,
+        "y": 3066.2
+      }
+    },
+    {
+      "name": "PROD2",
+      "sourceLine": 1930520,
+      "columns": [
+        {
+          "name": "PCODE",
+          "type": "NUMBER(4)",
+          "nullable": true
+        },
+        {
+          "name": "PNAME",
+          "type": "VARCHAR2(65)",
+          "nullable": true
+        },
+        {
+          "name": "OPCODE",
+          "type": "NUMBER(4)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Products & inventory",
+      "rank": 0,
+      "order": 22,
+      "layout": {
+        "x": 60,
+        "y": 1915.0
+      }
+    },
+    {
+      "name": "PROD3",
+      "sourceLine": 1931310,
+      "columns": [
+        {
+          "name": "PNAME",
+          "type": "VARCHAR2(60)",
+          "nullable": true
+        },
+        {
+          "name": "OPCODE",
+          "type": "NUMBER(4)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Products & inventory",
+      "rank": 0,
+      "order": 23,
+      "layout": {
+        "x": 60,
+        "y": 1997.0
+      }
+    },
+    {
+      "name": "PROMISE",
+      "sourceLine": 1931462,
+      "columns": [
+        {
+          "name": "SNO",
+          "type": "NUMBER(6)",
+          "nullable": true
+        },
+        {
+          "name": "CDATE",
+          "type": "DATE",
+          "nullable": false
+        },
+        {
+          "name": "CCODE",
+          "type": "NUMBER(4)",
+          "nullable": false
+        },
+        {
+          "name": "PDATE",
+          "type": "DATE",
+          "nullable": false
+        },
+        {
+          "name": "REMARKS",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "PROMISE",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_PROM_CUST_CCODE",
+          "sourceLine": 1931484
+        }
+      ],
+      "referencedBy": [],
+      "group": "Other tables",
+      "rank": 2,
+      "order": 8,
+      "layout": {
+        "x": 540,
+        "y": 1331.2
+      }
+    },
+    {
+      "name": "RANGE",
+      "sourceLine": 1931494,
+      "columns": [
+        {
+          "name": "PARA",
+          "type": "VARCHAR2(25)",
+          "nullable": true
+        },
+        {
+          "name": "VDATE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "VNUMBER",
+          "type": "NUMBER(10)",
+          "nullable": true
+        },
+        {
+          "name": "VCHAR",
+          "type": "VARCHAR2(500)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Operations & logs",
+      "rank": 0,
+      "order": 24,
+      "layout": {
+        "x": 60,
+        "y": 2079.0
+      }
+    },
+    {
+      "name": "ROLES",
+      "sourceLine": 1931652,
+      "columns": [
+        {
+          "name": "MYROLE",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "PUBLICNAME",
+          "type": "VARCHAR2(30)",
+          "nullable": true
+        },
+        {
+          "name": "ROLELEVEL",
+          "type": "NUMBER(2)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Messaging & access",
+      "rank": 0,
+      "order": 25,
+      "layout": {
+        "x": 60,
+        "y": 2161.0
+      }
+    },
+    {
+      "name": "ROUTE",
+      "sourceLine": 1931671,
+      "columns": [
+        {
+          "name": "ROUTEID",
+          "type": "NUMBER(3)",
+          "nullable": true
+        },
+        {
+          "name": "ROUTENAME",
+          "type": "VARCHAR2(30)",
+          "nullable": true
+        },
+        {
+          "name": "COLLECTORID",
+          "type": "NUMBER(2)",
+          "nullable": true
+        },
+        {
+          "name": "CATID",
+          "type": "NUMBER(3)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [
+        "ROUTEID"
+      ],
+      "foreignKeys": [
+        {
+          "table": "ROUTE",
+          "columns": [
+            "COLLECTORID"
+          ],
+          "references": "COLLECTOR",
+          "referenceColumns": [
+            "COLLECTORID"
+          ],
+          "constraint": "FK_COLLID_ROUTE_",
+          "sourceLine": 1931804
+        }
+      ],
+      "referencedBy": [],
+      "group": "Customers & routes",
+      "rank": 1,
+      "order": 1,
+      "layout": {
+        "x": 300,
+        "y": 1004.8
+      }
+    },
+    {
+      "name": "SERIAL",
+      "sourceLine": 1931814,
+      "columns": [
+        {
+          "name": "MYTABLE",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "SERIALNO",
+          "type": "NUMBER(9)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Operations & logs",
+      "rank": 0,
+      "order": 26,
+      "layout": {
+        "x": 60,
+        "y": 2243.0
+      }
+    },
+    {
+      "name": "TALLY",
+      "sourceLine": 1931828,
+      "columns": [
+        {
+          "name": "MYUSER",
+          "type": "VARCHAR2(10)",
+          "nullable": true
+        },
+        {
+          "name": "CCODE",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "TYPE",
+          "type": "NUMBER(2)",
+          "nullable": true
+        },
+        {
+          "name": "TALLYDATED",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "TRANSDATED",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "REF",
+          "type": "NUMBER(12)",
+          "nullable": true
+        },
+        {
+          "name": "TTYPE",
+          "type": "NUMBER(2)",
+          "nullable": true
+        },
+        {
+          "name": "ISTALLY",
+          "type": "VARCHAR2(1)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "TALLY",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_TALLY_CCODE",
+          "sourceLine": 1932587
+        }
+      ],
+      "referencedBy": [],
+      "group": "Cash & accounts",
+      "rank": 2,
+      "order": 9,
+      "layout": {
+        "x": 540,
+        "y": 1479.6
+      }
+    },
+    {
+      "name": "TAR0",
+      "sourceLine": 1932597,
+      "columns": [
+        {
+          "name": "TARGETNO",
+          "type": "NUMBER(5)",
+          "nullable": true
+        },
+        {
+          "name": "CCODE",
+          "type": "NUMBER(4)",
+          "nullable": false
+        },
+        {
+          "name": "BDATE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "EDATE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "TARGET_TOTAL",
+          "type": "NUMBER(11,2)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "TAR0",
+          "columns": [
+            "CCODE"
+          ],
+          "references": "CUST",
+          "referenceColumns": [
+            "CCODE"
+          ],
+          "constraint": "FK_COLLECTOR_COLLECTORID",
+          "sourceLine": 1932612
+        }
+      ],
+      "referencedBy": [
+        {
+          "table": "TAR1",
+          "columns": [
+            "TARGETNO"
+          ],
+          "references": "TAR0",
+          "referenceColumns": [
+            "TARGETNO"
+          ],
+          "constraint": "FK_TAR0_TAR1_TARGETNO",
+          "sourceLine": 1932631
+        }
+      ],
+      "group": "Cash & accounts",
+      "rank": 2,
+      "order": 12,
+      "layout": {
+        "x": 540,
+        "y": 1924.8
+      }
+    },
+    {
+      "name": "TAR1",
+      "sourceLine": 1932622,
+      "columns": [
+        {
+          "name": "TARGETNO",
+          "type": "NUMBER(5)",
+          "nullable": false
+        },
+        {
+          "name": "CATID",
+          "type": "NUMBER(3)",
+          "nullable": false
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "TAR1",
+          "columns": [
+            "CATID"
+          ],
+          "references": "CAT",
+          "referenceColumns": [
+            "CATID"
+          ],
+          "constraint": "FK_CAT_TAR1_CATID",
+          "sourceLine": 1932630
+        },
+        {
+          "table": "TAR1",
+          "columns": [
+            "TARGETNO"
+          ],
+          "references": "TAR0",
+          "referenceColumns": [
+            "TARGETNO"
+          ],
+          "constraint": "FK_TAR0_TAR1_TARGETNO",
+          "sourceLine": 1932631
+        }
+      ],
+      "referencedBy": [],
+      "group": "Cash & accounts",
+      "rank": 3,
+      "order": 4,
+      "layout": {
+        "x": 780,
+        "y": 1148.6
+      }
+    },
+    {
+      "name": "USR_GPS_HEARTBEAT",
+      "sourceLine": 1932641,
+      "columns": [
+        {
+          "name": "ID",
+          "type": "NUMBER",
+          "nullable": true
+        },
+        {
+          "name": "SESSION_ID",
+          "type": "NUMBER",
+          "nullable": false
+        },
+        {
+          "name": "COLLECTOR_ID",
+          "type": "NUMBER",
+          "nullable": true
+        },
+        {
+          "name": "USER_TYPE",
+          "type": "VARCHAR2(20)",
+          "nullable": true
+        },
+        {
+          "name": "LATITUDE",
+          "type": "NUMBER(10,7)",
+          "nullable": true
+        },
+        {
+          "name": "LONGITUDE",
+          "type": "NUMBER(10,7)",
+          "nullable": true
+        },
+        {
+          "name": "ACCURACY",
+          "type": "NUMBER(8,2)",
+          "nullable": true
+        },
+        {
+          "name": "ADDRESS",
+          "type": "VARCHAR2(500)",
+          "nullable": true
+        },
+        {
+          "name": "LOGGED_AT",
+          "type": "DATE",
+          "nullable": false
+        },
+        {
+          "name": "CCODE_NEAR",
+          "type": "VARCHAR2(20)",
+          "nullable": true
+        },
+        {
+          "name": "DIST_NEAR",
+          "type": "NUMBER(10,2)",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [
+        "ID"
+      ],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Messaging & access",
+      "rank": 0,
+      "order": 27,
+      "layout": {
+        "x": 60,
+        "y": 2325.0
+      }
+    },
+    {
+      "name": "USR_LOGIN_SESSIONS",
+      "sourceLine": 1932671,
+      "columns": [
+        {
+          "name": "ID",
+          "type": "NUMBER(10)",
+          "nullable": true
+        },
+        {
+          "name": "USERNAME",
+          "type": "VARCHAR2(255)",
+          "nullable": true
+        },
+        {
+          "name": "LOGIN_TIME",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "LOGOUT_TIME",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "IP_ADDRESS",
+          "type": "VARCHAR2(45)",
+          "nullable": true
+        },
+        {
+          "name": "GPS_LOCATION",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "ADDRESS",
+          "type": "VARCHAR2(300)",
+          "nullable": true
+        },
+        {
+          "name": "DEVICE_INFO",
+          "type": "VARCHAR2(255)",
+          "nullable": true
+        },
+        {
+          "name": "USER_TYPE",
+          "type": "VARCHAR2(20)",
+          "nullable": true
+        },
+        {
+          "name": "LOCATION",
+          "type": "VARCHAR2(100)",
+          "nullable": true
+        },
+        {
+          "name": "SESSION_TOKEN",
+          "type": "VARCHAR2(255)",
+          "nullable": true
+        },
+        {
+          "name": "LOGIN_METHOD",
+          "type": "VARCHAR2(30)",
+          "nullable": true
+        },
+        {
+          "name": "IS_ACTIVE",
+          "type": "NUMBER(1)",
+          "nullable": true
+        },
+        {
+          "name": "STATUS",
+          "type": "VARCHAR2(20)",
+          "nullable": true
+        },
+        {
+          "name": "CREATED_AT",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "UPDATED_AT",
+          "type": "DATE",
+          "nullable": true
+        }
+      ],
+      "primaryKey": [
+        "ID"
+      ],
+      "foreignKeys": [],
+      "referencedBy": [],
+      "group": "Messaging & access",
+      "rank": 0,
+      "order": 28,
+      "layout": {
+        "x": 60,
+        "y": 2407.0
+      }
+    },
+    {
+      "name": "VOUCHERS",
+      "sourceLine": 1932706,
+      "columns": [
+        {
+          "name": "MYUSER",
+          "type": "VARCHAR2(10)",
+          "nullable": false
+        },
+        {
+          "name": "SNO",
+          "type": "NUMBER(4)",
+          "nullable": false
+        },
+        {
+          "name": "DATED",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "COLLECTORID",
+          "type": "NUMBER(4)",
+          "nullable": false
+        },
+        {
+          "name": "STARTNO",
+          "type": "NUMBER(10)",
+          "nullable": false
+        },
+        {
+          "name": "ENDNO",
+          "type": "NUMBER(10)",
+          "nullable": false
+        }
+      ],
+      "primaryKey": [],
+      "foreignKeys": [
+        {
+          "table": "VOUCHERS",
+          "columns": [
+            "COLLECTORID"
+          ],
+          "references": "COLLECTOR",
+          "referenceColumns": [
+            "COLLECTORID"
+          ],
+          "constraint": "FK_COLLECTOR_VOUCHERS",
+          "sourceLine": 1932718
+        }
+      ],
+      "referencedBy": [],
+      "group": "Cash & accounts",
+      "rank": 1,
+      "order": 2,
+      "layout": {
+        "x": 300,
+        "y": 1628.0
+      }
+    }
+  ],
+  "foreignKeys": [
+    {
+      "table": "CASHD1",
+      "columns": [
+        "CCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_CASHD1_CUST_CCODE",
+      "sourceLine": 71157
+    },
+    {
+      "table": "CASHD1",
+      "columns": [
+        "COLLECTORID"
+      ],
+      "references": "COLLECTOR",
+      "referenceColumns": [
+        "COLLECTORID"
+      ],
+      "constraint": "FK_COLLID_COLLECT_CASHD1",
+      "sourceLine": 71158
+    },
+    {
+      "table": "CASHE1",
+      "columns": [
+        "GCCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_CASHE1_CUST_GCCODE",
+      "sourceLine": 71190
+    },
+    {
+      "table": "CASHE1",
+      "columns": [
+        "CCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_CCODE_CASHE1_CUST",
+      "sourceLine": 71191
+    },
+    {
+      "table": "CASHE1",
+      "columns": [
+        "COLLECTORID"
+      ],
+      "references": "COLLECTOR",
+      "referenceColumns": [
+        "COLLECTORID"
+      ],
+      "constraint": "FK_COLLID_COLLECT_CASHE1",
+      "sourceLine": 71192
+    },
+    {
+      "table": "CASHI",
+      "columns": [
+        "CCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_CASHI_CUST_CCODE",
+      "sourceLine": 71220
+    },
+    {
+      "table": "CASHI",
+      "columns": [
+        "GCCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_CASHI_CUST_GCCODE",
+      "sourceLine": 71221
+    },
+    {
+      "table": "CASHP1",
+      "columns": [
+        "BANKCCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_CASHP1_BANKCCODE",
+      "sourceLine": 85078
+    },
+    {
+      "table": "CASHP1",
+      "columns": [
+        "CCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_CASHP1_CUST_CCODE",
+      "sourceLine": 85079
+    },
+    {
+      "table": "CASHP1",
+      "columns": [
+        "GCCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_CASHP1_CUST_GCCODE",
+      "sourceLine": 85080
+    },
+    {
+      "table": "CASHP1",
+      "columns": [
+        "INSTCASHNO"
+      ],
+      "references": "CASHR1",
+      "referenceColumns": [
+        "CASHNO"
+      ],
+      "constraint": "FK_INSTCASHNO_CASHNO",
+      "sourceLine": 85081
+    },
+    {
+      "table": "CASHR1",
+      "columns": [
+        "BANKID"
+      ],
+      "references": "BANK",
+      "referenceColumns": [
+        "BANKID"
+      ],
+      "constraint": "FK_CASHR1_BANK_BANKID",
+      "sourceLine": 106756
+    },
+    {
+      "table": "CASHR1",
+      "columns": [
+        "CCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_CASHR1_CUST_CCODE",
+      "sourceLine": 106757
+    },
+    {
+      "table": "CASHR1",
+      "columns": [
+        "GCCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_CASHR1_CUST_GCCODE",
+      "sourceLine": 106758
+    },
+    {
+      "table": "CASHR1",
+      "columns": [
+        "INSTID"
+      ],
+      "references": "INST",
+      "referenceColumns": [
+        "INSTID"
+      ],
+      "constraint": "FK_CASHR1_INST_INSTID",
+      "sourceLine": 106759
+    },
+    {
+      "table": "CASHS",
+      "columns": [
+        "CCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_CASHS_CUST_CCODE",
+      "sourceLine": 106820
+    },
+    {
+      "table": "CASHS",
+      "columns": [
+        "GCCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_CASHS_CUST_GCCODE",
+      "sourceLine": 106821
+    },
+    {
+      "table": "CASHW1",
+      "columns": [
+        "CCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_CASHW1_CUST_CCODE",
+      "sourceLine": 106850
+    },
+    {
+      "table": "CASHW1",
+      "columns": [
+        "GCCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_CASHW1_CUST_GCCODE",
+      "sourceLine": 106851
+    },
+    {
+      "table": "CASHZ1",
+      "columns": [
+        "CCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_CASHZ1_CUST_CCODE",
+      "sourceLine": 106881
+    },
+    {
+      "table": "CASHZ1",
+      "columns": [
+        "CASHNO2"
+      ],
+      "references": "DISCHEAD1",
+      "referenceColumns": [
+        "CASHNO"
+      ],
+      "constraint": "FK_DISCHEAD1_CASHNO",
+      "sourceLine": 106882
+    },
+    {
+      "table": "CASH_DIS0",
+      "columns": [
+        "COLLECTORID"
+      ],
+      "references": "COLLECTOR",
+      "referenceColumns": [
+        "COLLECTORID"
+      ],
+      "constraint": "FK_COLLID_COLLECT_CASHDIS",
+      "sourceLine": 106948
+    },
+    {
+      "table": "CASH_DIS0",
+      "columns": [
+        "GCCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_DIS0_CUST_GCCODE",
+      "sourceLine": 106949
+    },
+    {
+      "table": "CASH_DIS1",
+      "columns": [
+        "CASHNO"
+      ],
+      "references": "CASH_DIS0",
+      "referenceColumns": [
+        "CASHNO"
+      ],
+      "constraint": "FK_CASHNO_CASH_DIS_0_1",
+      "sourceLine": 107286
+    },
+    {
+      "table": "CASH_DIS1",
+      "columns": [
+        "BANKCCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_CASH_DIS1_BANKCCODE",
+      "sourceLine": 107287
+    },
+    {
+      "table": "CASH_DIS1",
+      "columns": [
+        "CCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_CCODE_CUST_CASHDIS1",
+      "sourceLine": 107288
+    },
+    {
+      "table": "CASH_REC0",
+      "columns": [
+        "COLLECTORID"
+      ],
+      "references": "COLLECTOR",
+      "referenceColumns": [
+        "COLLECTORID"
+      ],
+      "constraint": "FK_COLLID_COLLECT_CASHREC",
+      "sourceLine": 120745
+    },
+    {
+      "table": "CASH_REC0",
+      "columns": [
+        "EXPCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_EXPCODE_CUST_CASHREC",
+      "sourceLine": 120746
+    },
+    {
+      "table": "CASH_REC0",
+      "columns": [
+        "GCCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_REC0_CUST_GCCODE",
+      "sourceLine": 120747
+    },
+    {
+      "table": "CASH_REC1",
+      "columns": [
+        "CASHNO"
+      ],
+      "references": "CASH_REC0",
+      "referenceColumns": [
+        "CASHNO"
+      ],
+      "constraint": "FK_CASHNO_CASH_REC_0_1",
+      "sourceLine": 276018
+    },
+    {
+      "table": "CASH_REC1",
+      "columns": [
+        "BANKID"
+      ],
+      "references": "BANK",
+      "referenceColumns": [
+        "BANKID"
+      ],
+      "constraint": "FK_CASHR_REC1_BANK_BANKID",
+      "sourceLine": 276019
+    },
+    {
+      "table": "CASH_REC1",
+      "columns": [
+        "INSTID"
+      ],
+      "references": "INST",
+      "referenceColumns": [
+        "INSTID"
+      ],
+      "constraint": "FK_CASH_REC1_INST_INSTID",
+      "sourceLine": 276020
+    },
+    {
+      "table": "CASH_REC1",
+      "columns": [
+        "CCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_CCODE_CUST_CASHREC1",
+      "sourceLine": 276021
+    },
+    {
+      "table": "CHECKS",
+      "columns": [
+        "CCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_CUST_CHECKS_CCODE",
+      "sourceLine": 276163
+    },
+    {
+      "table": "CUST",
+      "columns": [
+        "FCCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "CUST_CCODE_FCCODE",
+      "sourceLine": 284281
+    },
+    {
+      "table": "CUST",
+      "columns": [
+        "CITYNO"
+      ],
+      "references": "CITY",
+      "referenceColumns": [
+        "CITYNO"
+      ],
+      "constraint": "FK_CUST_CITYNO",
+      "sourceLine": 284282
+    },
+    {
+      "table": "CUST",
+      "columns": [
+        "DEALERID"
+      ],
+      "references": "DEALER",
+      "referenceColumns": [
+        "DEALERID"
+      ],
+      "constraint": "FK_CUST_DEALERID",
+      "sourceLine": 284283
+    },
+    {
+      "table": "CUST2",
+      "columns": [
+        "CCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_CUST2_CCODE",
+      "sourceLine": 289536
+    },
+    {
+      "table": "DISC",
+      "columns": [
+        "DEALERID"
+      ],
+      "references": "DEALER",
+      "referenceColumns": [
+        "DEALERID"
+      ],
+      "constraint": "FK_DISC_DELAER_DEALERID",
+      "sourceLine": 293993
+    },
+    {
+      "table": "DISCHEAD1",
+      "columns": [
+        "CCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_DISCHEAD0_CCODE",
+      "sourceLine": 294039
+    },
+    {
+      "table": "DISCHEAD1",
+      "columns": [
+        "DISCNO"
+      ],
+      "references": "DISCHEAD0",
+      "referenceColumns": [
+        "DISCNO"
+      ],
+      "constraint": "FK_DISCHEAD0_DISCNO",
+      "sourceLine": 294040
+    },
+    {
+      "table": "GEN",
+      "columns": [
+        "DEPTID"
+      ],
+      "references": "DEPT",
+      "referenceColumns": [
+        "DEPTID"
+      ],
+      "constraint": "FK_GEN_DEPT_DEPTID",
+      "sourceLine": 294197
+    },
+    {
+      "table": "INSTALL",
+      "columns": [
+        "CCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_INSTALL_CCODE",
+      "sourceLine": 294253
+    },
+    {
+      "table": "INV0P",
+      "columns": [
+        "CCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_INV0P_CUST_CCODE",
+      "sourceLine": 317616
+    },
+    {
+      "table": "INV0P",
+      "columns": [
+        "GCCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_INV0P_CUST_GCCODE",
+      "sourceLine": 317617
+    },
+    {
+      "table": "INV0P",
+      "columns": [
+        "DEALERID"
+      ],
+      "references": "DEALER",
+      "referenceColumns": [
+        "DEALERID"
+      ],
+      "constraint": "FK_INV0P_DEALERID",
+      "sourceLine": 317618
+    },
+    {
+      "table": "INV0S",
+      "columns": [
+        "BANKCCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_BANKCCODE_CUST_CCODE",
+      "sourceLine": 470738
+    },
+    {
+      "table": "INV0S",
+      "columns": [
+        "COLLECTORID"
+      ],
+      "references": "COLLECTOR",
+      "referenceColumns": [
+        "COLLECTORID"
+      ],
+      "constraint": "FK_COLLID_COLLECT_INV0S",
+      "sourceLine": 470739
+    },
+    {
+      "table": "INV0S",
+      "columns": [
+        "ADDAID"
+      ],
+      "references": "ADDA",
+      "referenceColumns": [
+        "ADDAID"
+      ],
+      "constraint": "FK_INV0S_ADDA_ADDAID",
+      "sourceLine": 470740
+    },
+    {
+      "table": "INV0S",
+      "columns": [
+        "CCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_INV0S_CUST_CCODE",
+      "sourceLine": 470741
+    },
+    {
+      "table": "INV0S",
+      "columns": [
+        "GCCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_INV0S_CUST_GCCODE",
+      "sourceLine": 470742
+    },
+    {
+      "table": "INV0S",
+      "columns": [
+        "DEALERID"
+      ],
+      "references": "DEALER",
+      "referenceColumns": [
+        "DEALERID"
+      ],
+      "constraint": "FK_INV0S_DEALERID",
+      "sourceLine": 470743
+    },
+    {
+      "table": "INV1P",
+      "columns": [
+        "INVNO"
+      ],
+      "references": "INV0P",
+      "referenceColumns": [
+        "INVNO"
+      ],
+      "constraint": "FK_INV1P_INV0P_INVNO",
+      "sourceLine": 580916
+    },
+    {
+      "table": "INV1P",
+      "columns": [
+        "PCODE"
+      ],
+      "references": "PROD",
+      "referenceColumns": [
+        "PCODE"
+      ],
+      "constraint": "FK_INV1P_PROD_PCODE",
+      "sourceLine": 580917
+    },
+    {
+      "table": "INV1S",
+      "columns": [
+        "GCCODE1"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_INV1S_CUST_GCCODE1",
+      "sourceLine": 1822675
+    },
+    {
+      "table": "INV1S",
+      "columns": [
+        "INVNO"
+      ],
+      "references": "INV0S",
+      "referenceColumns": [
+        "INVNO"
+      ],
+      "constraint": "FK_INV1S_INV0S_INVNO",
+      "sourceLine": 1822676
+    },
+    {
+      "table": "INV1S",
+      "columns": [
+        "PCODE"
+      ],
+      "references": "PROD",
+      "referenceColumns": [
+        "PCODE"
+      ],
+      "constraint": "FK_INV1S_PROD_PCODE",
+      "sourceLine": 1822677
+    },
+    {
+      "table": "INVR0",
+      "columns": [
+        "COLLECTORID"
+      ],
+      "references": "COLLECTOR",
+      "referenceColumns": [
+        "COLLECTORID"
+      ],
+      "constraint": "FK_COLLID_COLLECT_INVR0",
+      "sourceLine": 1822747
+    },
+    {
+      "table": "INVR0",
+      "columns": [
+        "CCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_INVR0_CUST_CCODE",
+      "sourceLine": 1822748
+    },
+    {
+      "table": "INVR0",
+      "columns": [
+        "GCCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_INVR0_CUST_GCCODE",
+      "sourceLine": 1822749
+    },
+    {
+      "table": "INVR0",
+      "columns": [
+        "ADDAID"
+      ],
+      "references": "ADDA",
+      "referenceColumns": [
+        "ADDAID"
+      ],
+      "constraint": "INVR0_ADDA_ADDAID",
+      "sourceLine": 1822750
+    },
+    {
+      "table": "INVR1",
+      "columns": [
+        "INVNO"
+      ],
+      "references": "INVR0",
+      "referenceColumns": [
+        "INVNO"
+      ],
+      "constraint": "FK_INVR1_INVR0_INVNO",
+      "sourceLine": 1822809
+    },
+    {
+      "table": "INVR1",
+      "columns": [
+        "PCODE"
+      ],
+      "references": "PROD",
+      "referenceColumns": [
+        "PCODE"
+      ],
+      "constraint": "FK_INVR1_PROD_PCODE",
+      "sourceLine": 1822810
+    },
+    {
+      "table": "MAN0",
+      "columns": [
+        "CCODE1"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_MAN0_CCODE1",
+      "sourceLine": 1823752
+    },
+    {
+      "table": "MAN0",
+      "columns": [
+        "CCODE2"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_MAN0_CCODE2",
+      "sourceLine": 1823753
+    },
+    {
+      "table": "MAN01",
+      "columns": [
+        "CCODE1"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_MAN01_CCODE1",
+      "sourceLine": 1823782
+    },
+    {
+      "table": "MAN01",
+      "columns": [
+        "CCODE2"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_MAN01_CCODE2",
+      "sourceLine": 1823783
+    },
+    {
+      "table": "MAN1",
+      "columns": [
+        "MANNO"
+      ],
+      "references": "MAN0",
+      "referenceColumns": [
+        "MANNO"
+      ],
+      "constraint": "FK_MAN1_MANNO",
+      "sourceLine": 1823811
+    },
+    {
+      "table": "MAN1",
+      "columns": [
+        "PCODE"
+      ],
+      "references": "PROD",
+      "referenceColumns": [
+        "PCODE"
+      ],
+      "constraint": "FK_MAN1_PCODE",
+      "sourceLine": 1823812
+    },
+    {
+      "table": "MAN11",
+      "columns": [
+        "MANNO"
+      ],
+      "references": "MAN01",
+      "referenceColumns": [
+        "MANNO"
+      ],
+      "constraint": "FK_MAN01_MANNO",
+      "sourceLine": 1823836
+    },
+    {
+      "table": "MAN11",
+      "columns": [
+        "PCODE"
+      ],
+      "references": "PROD",
+      "referenceColumns": [
+        "PCODE"
+      ],
+      "constraint": "FK_MAN01_PCODE",
+      "sourceLine": 1823837
+    },
+    {
+      "table": "MAN2",
+      "columns": [
+        "MANNO"
+      ],
+      "references": "MAN0",
+      "referenceColumns": [
+        "MANNO"
+      ],
+      "constraint": "FK_MAN2_MANNO",
+      "sourceLine": 1823864
+    },
+    {
+      "table": "MAN2",
+      "columns": [
+        "PCODE"
+      ],
+      "references": "PROD",
+      "referenceColumns": [
+        "PCODE"
+      ],
+      "constraint": "FK_MAN2_PCODE",
+      "sourceLine": 1823865
+    },
+    {
+      "table": "MAN21",
+      "columns": [
+        "MANNO"
+      ],
+      "references": "MAN01",
+      "referenceColumns": [
+        "MANNO"
+      ],
+      "constraint": "FK_MAN201_MANNO",
+      "sourceLine": 1823888
+    },
+    {
+      "table": "MAN21",
+      "columns": [
+        "PCODE"
+      ],
+      "references": "PROD",
+      "referenceColumns": [
+        "PCODE"
+      ],
+      "constraint": "FK_MAN201_PCODE",
+      "sourceLine": 1823889
+    },
+    {
+      "table": "PROD",
+      "columns": [
+        "CATID"
+      ],
+      "references": "CAT",
+      "referenceColumns": [
+        "CATID"
+      ],
+      "constraint": "FK_PROD_CAT_CATID",
+      "sourceLine": 1929055
+    },
+    {
+      "table": "PROD",
+      "columns": [
+        "CCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_PROD_CCODE1",
+      "sourceLine": 1929056
+    },
+    {
+      "table": "PROD",
+      "columns": [
+        "GENID"
+      ],
+      "references": "GEN",
+      "referenceColumns": [
+        "GENID"
+      ],
+      "constraint": "FK_PROD_GEN_GENID",
+      "sourceLine": 1929057
+    },
+    {
+      "table": "PROD12",
+      "columns": [
+        "PCODE"
+      ],
+      "references": "PROD",
+      "referenceColumns": [
+        "PCODE"
+      ],
+      "constraint": "FK_PROD_PROD12_PCODE",
+      "sourceLine": 1930509
+    },
+    {
+      "table": "PROD12",
+      "columns": [
+        "PCODEOUT"
+      ],
+      "references": "PROD",
+      "referenceColumns": [
+        "PCODE"
+      ],
+      "constraint": "FK_PROD_PROD12_PCODEOUT",
+      "sourceLine": 1930510
+    },
+    {
+      "table": "PROMISE",
+      "columns": [
+        "CCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_PROM_CUST_CCODE",
+      "sourceLine": 1931484
+    },
+    {
+      "table": "ROUTE",
+      "columns": [
+        "COLLECTORID"
+      ],
+      "references": "COLLECTOR",
+      "referenceColumns": [
+        "COLLECTORID"
+      ],
+      "constraint": "FK_COLLID_ROUTE_",
+      "sourceLine": 1931804
+    },
+    {
+      "table": "TALLY",
+      "columns": [
+        "CCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_TALLY_CCODE",
+      "sourceLine": 1932587
+    },
+    {
+      "table": "TAR0",
+      "columns": [
+        "CCODE"
+      ],
+      "references": "CUST",
+      "referenceColumns": [
+        "CCODE"
+      ],
+      "constraint": "FK_COLLECTOR_COLLECTORID",
+      "sourceLine": 1932612
+    },
+    {
+      "table": "TAR1",
+      "columns": [
+        "CATID"
+      ],
+      "references": "CAT",
+      "referenceColumns": [
+        "CATID"
+      ],
+      "constraint": "FK_CAT_TAR1_CATID",
+      "sourceLine": 1932630
+    },
+    {
+      "table": "TAR1",
+      "columns": [
+        "TARGETNO"
+      ],
+      "references": "TAR0",
+      "referenceColumns": [
+        "TARGETNO"
+      ],
+      "constraint": "FK_TAR0_TAR1_TARGETNO",
+      "sourceLine": 1932631
+    },
+    {
+      "table": "VOUCHERS",
+      "columns": [
+        "COLLECTORID"
+      ],
+      "references": "COLLECTOR",
+      "referenceColumns": [
+        "COLLECTORID"
+      ],
+      "constraint": "FK_COLLECTOR_VOUCHERS",
+      "sourceLine": 1932718
+    }
+  ]
+}

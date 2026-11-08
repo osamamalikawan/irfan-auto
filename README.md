@@ -4,7 +4,9 @@ Mobile-first stock screens. No users or login yet (that is a later module).
 
 ## 1. Database
 1. Create a Supabase project.
-2. SQL Editor: run, in order, `0001_inventory.sql`, `0002_settings.sql` (list visibility, CP rename), `0003_search.sql` (word-by-word search) and `0004_users_roles.sql` (users, roles, PIN login) `0006_customers_routes.sql` (customers, cities, areas, routes) `0007_sales.sql` (invoices, payments, customer balances) `0008_returns_money.sql` (returns, expenses, vouchers, dispatch) `0009_purchases_suppliers.sql` (suppliers, purchases, supplier payments, accounts) `0010_planner.sql` (route types, visits) `0011_route_plans.sql` (completed routes, promises to pay) and `0012_team_dashboard.sql` (team figures, dashboard numbers). `0005_legacy_ids.sql` is only needed for the old-system import. Then run `0022_groups_phones_rules_products_po.sql` (customer groups, several phone numbers, invoice rules, product suppliers, purchase orders) `0023_retail_price.sql` (retail price RP) and `0024_search_code_first.sql` (product search lists a matching code first).
+2. The Oracle importer writes only to tables and columns that already exist; it does not create tables or apply migrations. Confirm the target Supabase schema contains the tables and legacy-ID columns used by the selected import.
+
+Some migration filenames have duplicate version prefixes (`0016` and `0017`). Check the target Supabase migration history before using `supabase db push` or renaming any migration; a migration already applied remotely must keep its recorded version.
 
 ## 2. Run locally
 ```bash
@@ -63,11 +65,12 @@ what a person may not use. A user can also be limited to certain locations.
 7. Synchronization and the remaining Settings
 
 ## Importing from the old Oracle system
-See `docs/LEGACY_MAPPING.md`. Run `0005_legacy_ids.sql` first, then:
+See `docs/LEGACY_MAPPING.md`. To preview or import customers into the existing `customers` table:
 ```bash
-npm run import:oracle -- path/to/dump.sql            # preview only
-npm run import:oracle -- path/to/dump.sql --apply    # write to the database
+npm run import:oracle -- path/to/dump.sql --customers-only
+npm run import:oracle -- path/to/dump.sql --customers-only --apply
 ```
+The first command is a preview. The importer never creates tables. Customer opening balances are stored in the existing `customers.opening_balance` column; if an existing `customer_ledger` table is available, the importer also syncs its opening entries. A full `--apply` syncs customers first, then maps the other supported Oracle master data to existing tables.
 
 ## Customers and routes
 `/customers` (search, route and area filters, remarks, archive, move to another route) and `/routes` (routes with salesman,

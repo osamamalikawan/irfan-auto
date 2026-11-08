@@ -31,6 +31,14 @@ If `mustChangePin` is true: `POST /api/auth/pin` `{ current, next }` first, othe
 
 `GET /api/me/customers?q=&owing=1&sort=balance` -> `{ items: [{ id, code, name, phone, credit_limit, area, route, balance }], count, total_owing }` his customers with balances; open one with `GET /api/customers/:id/ledger` for the full statement.
 
+## Offline pack (the phone downloads this whenever it has internet, and works from it without internet)
+`GET /api/me/offline/base` -> `{ customers, methods, plan, last_visits }`: his customers with balances, payment methods, his visit plan for today and the next 6 days (`plan.days[].routes[].customer_ids`, `plan.done_today`), and what was said at each customer's last visit.
+`GET /api/me/offline/products?offset=0&limit=2000` -> the full parts list `{ items, total, next_offset }` for offline search.
+`GET /api/me/offline/customers?offset=0&limit=10` -> per customer: balance, unpaid bills, the last 40 statement lines and the latest delivered invoices with what can still be returned `{ items, total, next_offset }`.
+
+Things done offline are saved on the phone and sent later, in order, with the time they really happened:
+`POST /api/attendance` and `POST /api/attendance/check-out` accept `at` (epoch ms, up to 48 hours old); `POST /api/visits` `{ customer_id, outcome, notes, date, promise_date?, promise_amount?, idem_key }` records a visit with remarks (the same `idem_key` twice is saved once).
+
 ## Requests (salesman files, office approves)
 Nothing changes stock or the ledger until the office approves. Send an `idem_key` (a new UUID per request, reused on retry) so an offline retry never creates a second request; a repeat answers `{ ..., duplicate: true }`.
 
@@ -66,6 +74,6 @@ Nothing changes stock or the ledger until the office approves. Send an `idem_key
 Approving twice returns the same result and changes nothing. If stock or the customer balance no longer allows it, the approve call answers 409 with the reason and the request stays pending.
 
 ## Go-live checklist
-1. Run `0016_field_work.sql` and `0018_salesman_account.sql` (add tables, functions and the new permissions; nothing existing changes). The salesman cash account counts from the day you run 0018 (`app_users.cash_start`).
+1. Run `0016_field_work.sql`, `0018_salesman_account.sql` and `0025_offline_field.sql` (run 0025 before deploying the website that uses it) (add tables, functions and the new permissions; nothing existing changes). The salesman cash account counts from the day you run 0018 (`app_users.cash_start`).
 2. Test with the Android app and the approval screens.
 3. Run `0021_salesman_approval_switch.sql` to stop salesmen creating invoices/payments directly.

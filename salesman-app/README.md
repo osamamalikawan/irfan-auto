@@ -3,17 +3,20 @@
 Kotlin + Jetpack Compose. Talks to the same website/API as the office (`/api/...`), so there is nothing else to host.
 
 ## What it does
-- **Start / End work**: saves the salesman's place and time (office sees it under *Field Team > Attendance*).
-- **Live location**: while on duty a foreground service sends his position every 2 minutes (office: *Field Team > Live map*).
-  Points taken without internet are kept on the phone and uploaded later.
-- **Location warnings**: if location (GPS) is switched off or the permission is removed while on duty, the home screen shows a red warning with a button
-  to fix it, the notification turns red ("Location is OFF"), and the moment is sent to the office, which sees it on *Live map* and *Attendance*.
-- **Customers**: his own customers with balances, full account statement, unpaid bills.
-- **New order** (temporary invoice), **Collect payment**, **Return / claim**: sent to the office for approval
-  (*Field Team > Approvals*). Nothing reaches stock or the customer account until the office approves.
-  Without internet the request is saved on the phone and sent automatically; it can never be sent twice.
-- **My requests**: status of everything sent (waiting / approved / rejected with the office's reason); withdraw a waiting one.
-- **My account**: sales, collections, visits against target; money still to hand over to the office; what customers owe.
+- **Works without internet.** Everything the salesman needs is on the phone: his customers with balances and account statements, the full parts list,
+  payment methods, delivered invoices for returns, and his visit plan for the next 7 days. It is downloaded automatically whenever there is internet and
+  is updated again the moment the internet comes back.
+- **Start / End work**: saved on the phone at once with the real time (place and time are shown to the office under *Field Team > Attendance*).
+- **Live location**: while on duty a foreground service saves his position every 2 minutes (using both Google's location and the phone's own GPS) and sends it to the office
+  (*Live map*). Without internet the positions are kept on the phone; the moment internet returns they are sent and his current position is reported straight away.
+- **Visit plan**: today's routes and customers, a progress bar, the outcome of each visit, his **remarks** and a promise-to-pay (date and amount); the last visit's remarks
+  are shown at each customer. Next days can be previewed.
+- **Customers**: balances, unpaid bills, account statement, call button.
+- **New order**, **Collect payment**, **Return / claim**: saved on the phone and sent to the office for approval (*Field Team > Approvals*). Nothing can be sent twice.
+- **Requests**: everything waiting to be sent, and the status of everything sent (waiting / approved / rejected with the office's reason).
+- **My account**: sales, collections and visits against target; money still to hand over to the office; what customers owe.
+- **Location warnings**: if location is switched off or the permission is removed while on duty, a red warning appears, the notification turns red, and the office is told.
+- **Keypad sign-in** (and keypad PIN change). Signing in needs internet once; after that the app opens and works offline.
 
 ## Set the website address (once)
 Open `app/src/main/java/pk/irfanautos/salesman/Config.kt` and replace `PUT-YOUR-WEBSITE-ADDRESS-HERE` with your website address,
@@ -42,5 +45,5 @@ Or with Android Studio: open the `salesman-app` folder, let it sync, press Run.
 ## Notes
 - Needs Android 8.0 or newer and Google Play services (for location).
 - Debug-signed APK: fine for your own staff. For the Play Store you would make a release build with your own keystore.
-- Starting and ending work needs internet (it is recorded on the server at that moment). Everything else can be queued offline.
+- Signing in (the first time, or after signing out) needs internet. Everything else works offline.
 - Where things are: `data/` (server calls, offline queue, sync), `location/` (GPS + background service), `ui/` (screens).

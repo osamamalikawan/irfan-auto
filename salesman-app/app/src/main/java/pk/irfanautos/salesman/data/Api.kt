@@ -72,6 +72,9 @@ object Api {
         }
     }
 
+    /** Sends a POST and returns the answer text (used by the offline queue). */
+    suspend fun send(path: String, body: String): String = raw("POST", path, body)
+
     private suspend inline fun <reified T> get(path: String): T = json.decodeFromString(raw("GET", path))
     private suspend inline fun <reified T> post(path: String, body: String? = null, auth: Boolean = true): T = json.decodeFromString(raw("POST", path, body, auth))
     private fun enc(s: String) = java.net.URLEncoder.encode(s, "UTF-8")
@@ -101,6 +104,11 @@ object Api {
     suspend fun sales(customerId: String): List<SaleSummary> = get<SalesResp>("/api/sales?limit=30&status=returnable&customer=$customerId").items
     suspend fun returnable(saleId: String): List<RetItem> = get<ReturnableResp>("/api/sales/$saleId/returnable").items
     suspend fun account(range: String): JsonObject = json.parseToJsonElement(raw("GET", "/api/me/account?range=$range")).jsonObject
+
+    // ---- the offline pack
+    suspend fun offlineBase(): BasePack = get("/api/me/offline/base")
+    suspend fun offlineProducts(offset: Int): ProductsPage = get("/api/me/offline/products?limit=2000&offset=$offset")
+    suspend fun offlineCustomers(offset: Int): SnapPage = get("/api/me/offline/customers?limit=10&offset=$offset")
 
     // ---- requests (the office approves them)
     suspend fun createRequest(type: String, body: String): Created = post("/api/requests/$type", body)

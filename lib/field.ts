@@ -20,3 +20,11 @@ export const cleanIdem = (x: unknown): string | null => String(x ?? "").trim().s
 /** A number the caller may leave out: blank or invalid gives null. */
 export const optNum = (x: unknown): number | null => (x === undefined || x === null || x === "" || !Number.isFinite(Number(x)) ? null : Number(x));
 export const one = <T,>(x: T | T[] | null | undefined): T | null => (Array.isArray(x) ? x[0] ?? null : x ?? null);
+
+/** The moment (epoch ms) a phone says something really happened, if it is believable (not older than 2 days, not in the future); otherwise null = "now". */
+export function cleanAt(x: unknown): string | null {
+  const n = Number(x);
+  if (x === undefined || x === null || x === "" || !Number.isFinite(n)) return null;
+  const now = Date.now();
+  return n > now + 5 * 60_000 || n < now - 48 * 3600_000 ? null : new Date(n).toISOString();
+}

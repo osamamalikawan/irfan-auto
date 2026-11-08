@@ -12,6 +12,12 @@ export async function POST(req: NextRequest) {
   const a = await authorize("visits.record");
   if (a.error) return a.error;
   const b = await req.json().catch(() => null);
+  // an offline phone may send the same visit twice (the answer got lost): the second one changes nothing
+  const idem = String(b?.idem_key ?? "").trim().slice(0, 80) || null;
+  if (idem) {
+    const dup = await db().from("visits").select("id").eq("idem_key", idem).maybeSingle();
+    if (dup.data) return NextResponse.json({ ok: true, duplicate: true });
+  }
   if (!(VISIT_OUTCOMES as readonly string[]).includes(b?.outcome)) return NextResponse.json({ error: "Choose a visit outcome." }, { status: 400 });
   const today = todayPk();
   const date = cleanDate(b?.date) ?? today;
@@ -29,7 +35,7 @@ export async function POST(req: NextRequest) {
   if (mine && !(c.data.route_id && mine.includes(c.data.route_id))) return NextResponse.json({ error: "That customer is not on your routes." }, { status: 403 });
   const { error } = await sb.from("visits").insert({
     customer_id: c.data.id, route_id: c.data.route_id, area_id: c.data.area_id, user_id: a.user.id, outcome: b.outcome, visit_date: date,
-    notes: String(b?.notes ?? "").trim().slice(0, 300) || null, promise_date: promiseDate, promise_amount: promiseAmount > 0 ? promiseAmount : null,
+    notes: String(b?.notes ?? "").trim().slice(0, 300) || null, promise_date: promiseDate, promise_amount: promiseAmount > 0 ? promiseAmount : null, idem_key: idem,
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true }, { status: 201 });

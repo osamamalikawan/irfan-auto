@@ -1,16 +1,50 @@
 package pk.irfanautos.salesman.ui
 
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import kotlinx.coroutines.delay
+import pk.irfanautos.salesman.data.Outbox
 import pk.irfanautos.salesman.data.Session
 
 private val customerArg = listOf(
     navArgument("customerId") { type = NavType.StringType; nullable = true; defaultValue = null },
+)
+
+private class TabItem(val route: String, val label: String, val icon: ImageVector)
+
+private val TABS = listOf(
+    TabItem("home", "Home", Icons.Filled.Home),
+    TabItem("plan", "Plan", Icons.Filled.DateRange),
+    TabItem("customers", "Customers", Icons.Filled.Person),
+    TabItem("requests", "Requests", Icons.Filled.List),
+    TabItem("account", "Account", Icons.Filled.AccountCircle),
 )
 
 @Composable
@@ -25,36 +59,77 @@ fun AppNav() {
         }
     }
 
-    NavHost(navController = nav, startDestination = start) {
-        composable("login") {
-            LoginScreen(onDone = { mustChangePin ->
-                nav.navigate(if (mustChangePin) "pin" else "home") { popUpTo("login") { inclusive = true } }
-            })
+    val entry by nav.currentBackStackEntryAsState()
+    val route = entry?.destination?.route
+    var waiting by remember { mutableStateOf(0) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            waiting = Outbox.waiting()
+            delay(2000)
         }
-        composable("pin") {
-            val leave = {
-                // from the home menu: go back to it; right after signing in: go to home
-                if (!nav.popBackStack("home", false)) nav.navigate("home") { popUpTo("pin") { inclusive = true } }
-                Unit
+    }
+
+    Scaffold(
+        containerColor = Bg,
+        bottomBar = {
+            if (TABS.any { it.route == route }) {
+                NavigationBar(containerColor = Color.White) {
+                    TABS.forEach { t ->
+                        NavigationBarItem(
+                            selected = route == t.route,
+                            onClick = {
+                                nav.navigate(t.route) {
+                                    popUpTo("home") { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            icon = {
+                                if (t.route == "requests" && waiting > 0) {
+                                    BadgedBox(badge = { Badge { Text(waiting.toString()) } }) { Icon(t.icon, contentDescription = t.label) }
+                                } else {
+                                    Icon(t.icon, contentDescription = t.label)
+                                }
+                            },
+                            label = { Text(t.label) },
+                        )
+                    }
+                }
             }
-            PinScreen(onDone = leave, onSkip = leave)
+        },
+    ) { pad ->
+        NavHost(navController = nav, startDestination = start, modifier = Modifier.padding(pad)) {
+            composable("login") {
+                LoginScreen(onDone = { mustChangePin ->
+                    nav.navigate(if (mustChangePin) "pin" else "home") { popUpTo("login") { inclusive = true } }
+                })
+            }
+            composable("pin") {
+                val leave = {
+                    // from the Account screen: go back to it; right after signing in: go to home
+                    if (!nav.popBackStack("account", false)) nav.navigate("home") { popUpTo("pin") { inclusive = true } }
+                    Unit
+                }
+                PinScreen(onDone = leave, onSkip = leave)
+            }
+            composable("home") { HomeScreen(onNav = { nav.navigate(it) }) }
+            composable("plan") { PlanScreen(onOpenCustomer = { nav.navigate("customer/$it") }) }
+            composable("customers") { CustomersScreen(onOpen = { nav.navigate("customer/$it") }) }
+            composable("customer/{id}") { e ->
+                val id = e.arguments?.getString("id").orEmpty()
+                CustomerScreen(id, onBack = { nav.popBackStack() }, onAction = { r -> nav.navigate("$r?customerId=$id") })
+            }
+            composable("order?customerId={customerId}", arguments = customerArg) { e ->
+                OrderScreen(e.arguments?.getString("customerId"), onBack = { nav.popBackStack() })
+            }
+            composable("payment?customerId={customerId}", arguments = customerArg) { e ->
+                PaymentScreen(e.arguments?.getString("customerId"), onBack = { nav.popBackStack() })
+            }
+            composable("return?customerId={customerId}", arguments = customerArg) { e ->
+                ReturnScreen(e.arguments?.getString("customerId"), onBack = { nav.popBackStack() })
+            }
+            composable("requests") { RequestsScreen() }
+            composable("account") { AccountScreen(onChangePin = { nav.navigate("pin") }) }
         }
-        composable("home") { HomeScreen(onNav = { nav.navigate(it) }) }
-        composable("customers") { CustomersScreen(onBack = { nav.popBackStack() }, onOpen = { nav.navigate("customer/$it") }) }
-        composable("customer/{id}") { entry ->
-            val id = entry.arguments?.getString("id").orEmpty()
-            CustomerScreen(id, onBack = { nav.popBackStack() }, onAction = { route -> nav.navigate("$route?customerId=$id") })
-        }
-        composable("order?customerId={customerId}", arguments = customerArg) { entry ->
-            OrderScreen(entry.arguments?.getString("customerId"), onBack = { nav.popBackStack() })
-        }
-        composable("payment?customerId={customerId}", arguments = customerArg) { entry ->
-            PaymentScreen(entry.arguments?.getString("customerId"), onBack = { nav.popBackStack() })
-        }
-        composable("return?customerId={customerId}", arguments = customerArg) { entry ->
-            ReturnScreen(entry.arguments?.getString("customerId"), onBack = { nav.popBackStack() })
-        }
-        composable("requests") { RequestsScreen(onBack = { nav.popBackStack() }) }
-        composable("account") { AccountScreen(onBack = { nav.popBackStack() }) }
     }
 }

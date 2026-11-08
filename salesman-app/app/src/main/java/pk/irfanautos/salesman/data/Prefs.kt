@@ -31,6 +31,26 @@ class Prefs(ctx: Context) {
         get() = sp.getBoolean("on_duty", false)
         set(v) { sp.edit().putBoolean("on_duty", v).apply() }
 
+    /** When the current shift started (epoch ms, from the phone's clock): works without internet. */
+    var dutyStartAt: Long
+        get() = sp.getLong("duty_start_at", 0L)
+        set(v) { sp.edit().putLong("duty_start_at", v).apply() }
+
+    var packAt: Long
+        get() = sp.getLong("pack_at", 0L)
+        set(v) { sp.edit().putLong("pack_at", v).apply() }
+
+    var productsAt: Long
+        get() = sp.getLong("products_at", 0L)
+        set(v) { sp.edit().putLong("products_at", v).apply() }
+
+    var snapsAt: Long
+        get() = sp.getLong("snaps_at", 0L)
+        set(v) { sp.edit().putLong("snaps_at", v).apply() }
+
+    /** When the phone last saved a GPS position (epoch ms). */
+    fun lastFixAt(): Long = sp.getLong("fix_at", 0L)
+
     var batteryAsked: Boolean
         get() = sp.getBoolean("battery_asked", false)
         set(v) { sp.edit().putBoolean("battery_asked", v).apply() }

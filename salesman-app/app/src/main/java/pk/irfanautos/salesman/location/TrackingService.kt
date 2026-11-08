@@ -11,9 +11,12 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
+import android.location.Location
+import android.location.LocationListener
 import android.location.LocationManager
 import android.net.Uri
 import android.os.BatteryManager
+import android.os.Bundle
 import android.os.IBinder
 import android.os.Looper
 import android.provider.Settings
@@ -31,6 +34,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import pk.irfanautos.salesman.App
 import pk.irfanautos.salesman.MainActivity
 import pk.irfanautos.salesman.R
@@ -51,32 +55,37 @@ object Tracking {
     }
 }
 
-/** While he is on duty this keeps running (with a notification) and every 2 minutes saves his position and sends it to the office.
- *  Positions taken without internet are kept on the phone and sent when it is back.
+/** While he is on duty this keeps running (with a notification) and every 2 minutes saves his position on the phone and sends it to the office.
+ *  Positions are saved first, so nothing is lost without internet: they are sent the moment it is back.
+ *  Two sources are used (Google's fused location and the phone's own GPS chip) so a position is found even when one of them is silent offline.
  *  If location is switched off or the permission is taken away, the notification turns red and says so. */
 class TrackingService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var client: FusedLocationProviderClient? = null
     private var running = false
     private var keepAlert = false
+    private var lastAccepted = 0L
 
     private val callback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
-            val battery = batteryPercent()
-            for (l in result.locations) {
-                Pings.add(Ping(l.latitude, l.longitude, if (l.hasAccuracy()) l.accuracy.toDouble() else null, l.time, battery))
-                App.prefs.saveFix(Fix(l.latitude, l.longitude, if (l.hasAccuracy()) l.accuracy.toDouble() else 0.0), l.time)
-            }
-            scope.launch {
-                val onDuty = Sync.uploadPings()
-                if (Outbox.waiting() > 0) Outbox.flush()
-                // the office closed his day (or he ended work on another phone): stop tracking
-                if (onDuty == false) {
-                    App.prefs.onDuty = false
-                    stopSelf()
-                }
-            }
+            for (l in result.locations) accept(l.latitude, l.longitude, if (l.hasAccuracy()) l.accuracy.toDouble() else null, if (l.time > 0) l.time else System.currentTimeMillis(), false)
+            afterFix()
         }
+    }
+
+    /** The phone's own GPS chip: works with no internet at all. */
+    private val gpsListener = object : LocationListener {
+        override fun onLocationChanged(location: Location) {
+            accept(location.latitude, location.longitude, if (location.hasAccuracy()) location.accuracy.toDouble() else null,
+                if (location.time > 0) location.time else System.currentTimeMillis(), false)
+            afterFix()
+        }
+
+        override fun onProviderEnabled(provider: String) {}
+        override fun onProviderDisabled(provider: String) {}
+
+        @Deprecated("Needed on older Android versions")
+        override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
     }
 
     /** Android tells us when location is switched on or off in the phone settings. */
@@ -87,8 +96,36 @@ class TrackingService : Service() {
         }
     }
 
+    /** Saves a position on the phone (the two sources report the same place: positions closer than 45 seconds apart are kept once). */
+    private fun accept(lat: Double, lng: Double, accuracy: Double?, time: Long, force: Boolean): Boolean {
+        if (!force && time - lastAccepted < MIN_GAP_MS) return false
+        lastAccepted = maxOf(lastAccepted, time)
+        Pings.add(Ping(lat, lng, accuracy, time, batteryPercent()))
+        App.prefs.saveFix(Fix(lat, lng, accuracy ?: 0.0), time)
+        return true
+    }
+
+    /** Sends what is waiting (start of work first, then the positions). If the office says he is not on duty, tracking stops. */
+    private fun afterFix() {
+        scope.launch {
+            val onDuty = Sync.runAll()
+            // not on duty on the server, nothing about his start / end of work still waiting on the phone: his day was closed
+            if (onDuty == false && !Outbox.hasAttendance()) {
+                App.prefs.onDuty = false
+                stopSelf()
+            }
+        }
+    }
+
+    /** Internet just came back: take a fresh position now, so the office sees where he is at this moment (not 2 minutes later). */
+    suspend fun captureNow() {
+        val f = withTimeoutOrNull(15_000L) { runCatching { Gps.current(applicationContext) }.getOrNull() } ?: return
+        accept(f.lat, f.lng, f.accuracy, System.currentTimeMillis(), true)
+    }
+
     override fun onCreate() {
         super.onCreate()
+        instance = this
         val filter = IntentFilter(LocationManager.PROVIDERS_CHANGED_ACTION).apply { addAction(LocationManager.MODE_CHANGED_ACTION) }
         ContextCompat.registerReceiver(this, locationSwitch, filter, ContextCompat.RECEIVER_EXPORTED)
     }
@@ -133,6 +170,16 @@ class TrackingService : Service() {
             c.requestLocationUpdates(request, callback, Looper.getMainLooper())
         } catch (e: SecurityException) {
             stopSelf()
+            return
+        }
+        // the phone's own GPS as well
+        try {
+            val lm = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+            if (lm.allProviders.contains(LocationManager.GPS_PROVIDER)) {
+                lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, INTERVAL_MS, 0f, gpsListener, Looper.getMainLooper())
+            }
+        } catch (e: Exception) {
+            // the fused source alone is still enough
         }
     }
 
@@ -150,7 +197,7 @@ class TrackingService : Service() {
         LocationWatch.Problem.PERMISSION_OFF ->
             Triple("Location permission removed", "The office cannot see you. Tap to allow location.", Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
         null ->
-            Triple("Irfan Autos: you are on duty", "Your location is shared with the office until you end work.", Intent(this, MainActivity::class.java))
+            Triple("Irfan Autos: you are on duty", "Your location is saved and shared with the office until you end work.", Intent(this, MainActivity::class.java))
     }
 
     private fun pending(intent: Intent, code: Int): PendingIntent =
@@ -202,8 +249,10 @@ class TrackingService : Service() {
     }
 
     override fun onDestroy() {
+        instance = null
         runCatching { unregisterReceiver(locationSwitch) }
         client?.removeLocationUpdates(callback)
+        runCatching { (getSystemService(Context.LOCATION_SERVICE) as LocationManager).removeUpdates(gpsListener) }
         scope.cancel()
         if (!keepAlert) getSystemService(NotificationManager::class.java).cancel(ALERT_ID)
         super.onDestroy()
@@ -212,11 +261,13 @@ class TrackingService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     companion object {
+        @Volatile var instance: TrackingService? = null
         private const val CHANNEL_ID = "on_duty"
         private const val ALERT_CHANNEL_ID = "location_alert"
         private const val NOTIFICATION_ID = 1
         const val ALERT_ID = 2
         private const val INTERVAL_MS = 120_000L
+        private const val MIN_GAP_MS = 45_000L
         private const val RED = 0xFFB3261E.toInt()
         private const val BLUE = 0xFF1F4E8C.toInt()
     }

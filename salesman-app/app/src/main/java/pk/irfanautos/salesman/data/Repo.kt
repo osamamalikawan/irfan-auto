@@ -1,42 +1,26 @@
 package pk.irfanautos.salesman.data
 
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import pk.irfanautos.salesman.App
 
-/** Lists the screens need. The last answer is kept on the phone so customers and payment methods still show without internet. */
-data class Cached<T>(val value: T, val fromCache: Boolean = false)
-
-object Repo {
-    suspend fun customers(): Cached<List<MyCustomer>> = try {
-        val list = Api.myCustomers()
-        App.prefs.customersCache = Api.json.encodeToString(list)
-        Cached(list)
-    } catch (e: ApiException) {
-        val cached = if (e.offline) runCatching { Api.json.decodeFromString<List<MyCustomer>>(App.prefs.customersCache ?: "") }.getOrNull() else null
-        if (cached != null) Cached(cached, fromCache = true) else throw e
-    }
-
-    suspend fun methods(): Cached<List<Method>> = try {
-        val list = Api.methods()
-        App.prefs.methodsCache = Api.json.encodeToString(list)
-        Cached(list)
-    } catch (e: ApiException) {
-        val cached = if (e.offline) runCatching { Api.json.decodeFromString<List<Method>>(App.prefs.methodsCache ?: "") }.getOrNull() else null
-        if (cached != null) Cached(cached, fromCache = true) else throw e
-    }
-}
-
-/** Requests that could not be sent (no internet). */
+/** Everything the salesman does is saved here first, on the phone, in the order he did it, and sent as soon as there is internet.
+ *  Types: orders, payments, returns (to the office for approval), visit, att_start, att_end (start / end of work). */
 object Outbox {
     private val mutex = Mutex()
+
+    /** The office number (ORQ-0007...) of requests sent just now, so the screen can show it. */
+    val sentNo = ConcurrentHashMap<String, String>()
 
     fun all(): List<OutboxItem> = runCatching { Api.json.decodeFromString<List<OutboxItem>>(App.prefs.outbox) }.getOrDefault(emptyList())
     private fun save(list: List<OutboxItem>) { App.prefs.outbox = Api.json.encodeToString(list) }
@@ -46,19 +30,40 @@ object Outbox {
     @Synchronized private fun markError(id: String, message: String) = save(all().map { if (it.id == id) it.copy(error = message) else it })
 
     fun waiting(): Int = all().count { it.error == null }
+    fun hasAttendance(): Boolean = all().any { it.type == "att_start" || it.type == "att_end" }
 
-    /** Sends everything waiting. Returns true when nothing is left that a retry could still send. */
+    fun title(type: String): String = when (type) {
+        "orders" -> "Order"
+        "payments" -> "Payment"
+        "returns" -> "Return / claim"
+        "visit" -> "Visit"
+        "att_start" -> "Start work"
+        "att_end" -> "End work"
+        else -> type
+    }
+
+    private fun path(type: String): String = when (type) {
+        "visit" -> "/api/visits"
+        "att_start" -> "/api/attendance"
+        "att_end" -> "/api/attendance/check-out"
+        else -> "/api/requests/$type"
+    }
+
+    /** Sends everything waiting, oldest first. Returns true when nothing is left that a retry could still send. */
     suspend fun flush(): Boolean = mutex.withLock {
         for (item in all()) {
             if (item.error != null) continue
             try {
-                Api.createRequest(item.type, item.body)
+                val answer = Api.send(path(item.type), item.body)
+                if (item.type == "orders" || item.type == "payments" || item.type == "returns") {
+                    runCatching { sentNo[item.id] = Api.json.decodeFromString<Created>(answer).no }
+                }
                 remove(item.id)
             } catch (e: ApiException) {
                 // no connection, signed out, busy or a server fault: keep it and try again later
                 if (e.offline || e.code == 401 || e.code == 429 || e.code >= 500) return@withLock false
-                // the office system said no (for example the customer is no longer yours): keep it visible so it can be deleted
-                markError(item.id, e.message ?: "Rejected")
+                // refused by the office system: a repeated start / end of work needs no action, anything else stays visible so it can be deleted
+                if (item.type == "att_start" || item.type == "att_end") remove(item.id) else markError(item.id, e.message ?: "Rejected")
             }
         }
         true
@@ -70,7 +75,7 @@ object Pings {
     @Synchronized private fun read(): List<Ping> = runCatching { Api.json.decodeFromString<List<Ping>>(App.prefs.pings) }.getOrDefault(emptyList())
 
     @Synchronized fun add(p: Ping) {
-        App.prefs.pings = Api.json.encodeToString(read().takeLast(1999) + p)
+        App.prefs.pings = Api.json.encodeToString(read().takeLast(2999) + p)
     }
 
     @Synchronized fun peek(n: Int): List<Ping> = read().take(n)
@@ -106,28 +111,39 @@ sealed class SubmitResult {
 object Submit {
     fun newKey(): String = UUID.randomUUID().toString()
 
-    /** Sends a request now; if there is no internet it is saved on the phone and sent later (the same key makes a double impossible). */
+    /** Saves a request on the phone and sends it right away when there is internet. If there is none it simply waits (Queued) and goes out by itself. */
     suspend fun send(type: String, body: JsonObject, customerName: String): SubmitResult {
         val key = body["idem_key"]?.jsonPrimitive?.content ?: newKey()
-        return try {
-            SubmitResult.Sent(Api.createRequest(type, body.toString()).no)
-        } catch (e: ApiException) {
-            if (e.offline) {
-                Outbox.add(OutboxItem(key, type, body.toString(), customerName, System.currentTimeMillis()))
+        Outbox.add(OutboxItem(key, type, body.toString(), customerName, System.currentTimeMillis()))
+        Outbox.flush()
+        val left = Outbox.all().firstOrNull { it.id == key }
+        return when {
+            left == null -> SubmitResult.Sent(Outbox.sentNo.remove(key) ?: "")
+            left.error != null -> {
+                Outbox.remove(key)
+                SubmitResult.Failed(left.error)
+            }
+            else -> {
                 Sync.schedule()
                 SubmitResult.Queued
-            } else {
-                SubmitResult.Failed(e.message ?: "Could not send.")
             }
         }
     }
 
-    /** The fields every request carries: where the phone was, and the key that makes a retry safe. */
-    fun common(b: kotlinx.serialization.json.JsonObjectBuilder) {
+    /** Saves something on the phone (visit, start / end of work) and sends it in the background: the screen never waits for the internet. */
+    fun queue(type: String, body: JsonObject, label: String) {
+        val key = body["idem_key"]?.jsonPrimitive?.content ?: newKey()
+        Outbox.add(OutboxItem(key, type, body.toString(), label, System.currentTimeMillis()))
+        App.scope.launch { Sync.runAll() }
+        Sync.schedule()
+    }
+
+    /** The fields every request carries: where the phone was. */
+    fun common(b: JsonObjectBuilder) {
         App.prefs.recentFix()?.let { b.put("lat", it.lat); b.put("lng", it.lng) }
     }
 
-    fun withKey(build: kotlinx.serialization.json.JsonObjectBuilder.() -> Unit): JsonObject = buildJsonObject {
+    fun withKey(build: JsonObjectBuilder.() -> Unit): JsonObject = buildJsonObject {
         build()
         common(this)
         put("idem_key", newKey())
