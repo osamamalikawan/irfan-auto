@@ -11,12 +11,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -35,12 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonObject
 import pk.irfanautos.salesman.App
 import pk.irfanautos.salesman.data.Api
@@ -54,18 +47,13 @@ import pk.irfanautos.salesman.data.load
 import pk.irfanautos.salesman.data.money
 import pk.irfanautos.salesman.location.Tracking
 
-// The account answer is read field by field, so a small change on the server never stops this screen from opening.
-private fun JsonElement?.obj(k: String): JsonObject? = (this as? JsonObject)?.get(k) as? JsonObject
-private fun JsonElement?.num(k: String): Double = ((this as? JsonObject)?.get(k) as? JsonPrimitive)?.doubleOrNull ?: 0.0
-private fun JsonElement?.text(k: String): String? = ((this as? JsonObject)?.get(k) as? JsonPrimitive)?.contentOrNull
-private fun JsonElement?.list(k: String): List<JsonObject> = ((this as? JsonObject)?.get(k) as? JsonArray)?.mapNotNull { it as? JsonObject } ?: emptyList()
 
 private val RANGES = listOf("today" to "Today", "week" to "This week", "month" to "This month")
 
 /** His own account: money still to hand over to the office, what his customers owe, sales and collections against target, and the settings.
  *  The last answer is kept on the phone, so this opens without internet. */
 @Composable
-fun AccountScreen(onChangePin: () -> Unit) {
+fun AccountScreen(onChangePin: () -> Unit, onLedger: () -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var range by remember { mutableStateOf("month") }
@@ -139,25 +127,15 @@ fun AccountScreen(onChangePin: () -> Unit) {
                         }
                     }
                 }
-                val entries = cash.list("entries").asReversed().take(60)
-                item { SectionTitle("Cash statement") }
-                if (entries.isEmpty()) item { Text("Nothing in this period.", color = Muted) }
-                items(entries.size) { i ->
-                    val e = entries[i]
-                    val amount = e.num("amount")
-                    Column(Modifier.fillMaxWidth()) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(
-                                if (e.text("type") == "handover") "Handed over to office" else "Collected from " + (e.text("customer_name") ?: "customer"),
-                                style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f),
-                            )
-                            Text((if (amount < 0) "-" else "+") + money(Math.abs(amount)), style = MaterialTheme.typography.titleSmall, color = if (amount < 0) Good else Ink)
+                item {
+                    AppCard(Modifier.fillMaxWidth(), onClick = onLedger) {
+                        Row(Modifier.padding(18.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("My ledger", style = MaterialTheme.typography.titleMedium)
+                                Text("Every payment collected and every handover to the office", style = MaterialTheme.typography.bodySmall, color = Muted)
+                            }
+                            Text("Open", color = Brand, style = MaterialTheme.typography.labelLarge)
                         }
-                        Text(
-                            (e.text("entry_date") ?: "") + (e.text("method")?.let { " · $it" } ?: "") + "  ·  balance " + money(e.num("balance")),
-                            style = MaterialTheme.typography.bodySmall, color = Muted,
-                        )
-                        HorizontalDivider(Modifier.padding(top = 8.dp), color = Line)
                     }
                 }
             }

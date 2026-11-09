@@ -36,6 +36,10 @@ If `mustChangePin` is true: `POST /api/auth/pin` `{ current, next }` first, othe
 `GET /api/me/offline/products?offset=0&limit=2000` -> the full parts list `{ items, total, next_offset }` for offline search.
 `GET /api/me/offline/customers?offset=0&limit=10` -> per customer: balance, unpaid bills, the last 40 statement lines and the latest delivered invoices with what can still be returned `{ items, total, next_offset }`.
 
+`GET /api/me/offline/tasks?from=&to=` -> `{ items: [{ id, kind: "order"|"promise"|"task", date, title, sub, done, ... }], can: { sale_status } }`: scheduled actions on his orders, customers' promises to pay, and his own tasks.
+`GET /api/me/invoice/:idOrNumber` -> `{ doc }` one invoice (lines, totals, payments, what was returned) of a customer on his routes. The customer's offline pack also carries his 15 latest invoices in full (`docs`).
+Tasks are added with `POST /api/tasks` (`{ title, due_date, note?, customer_id?, idem_key }`) and ticked off with `PATCH /api/tasks/:id` `{ done }`; an office-scheduled order action with `PATCH /api/sale-tasks/:id` (needs the "sales.status" permission).
+
 Things done offline are saved on the phone and sent later, in order, with the time they really happened:
 `POST /api/attendance` and `POST /api/attendance/check-out` accept `at` (epoch ms, up to 48 hours old); `POST /api/visits` `{ customer_id, outcome, notes, date, promise_date?, promise_amount?, idem_key }` records a visit with remarks (the same `idem_key` twice is saved once).
 
@@ -74,6 +78,6 @@ Nothing changes stock or the ledger until the office approves. Send an `idem_key
 Approving twice returns the same result and changes nothing. If stock or the customer balance no longer allows it, the approve call answers 409 with the reason and the request stays pending.
 
 ## Go-live checklist
-1. Run `0016_field_work.sql`, `0018_salesman_account.sql` and `0025_offline_field.sql` (run 0025 before deploying the website that uses it) (add tables, functions and the new permissions; nothing existing changes). The salesman cash account counts from the day you run 0018 (`app_users.cash_start`).
+1. Run `0016_field_work.sql`, `0018_salesman_account.sql` and `0025_offline_field.sql` and `0026_tasks_idem.sql` (run them before deploying the website that uses them) (add tables, functions and the new permissions; nothing existing changes). The salesman cash account counts from the day you run 0018 (`app_users.cash_start`).
 2. Test with the Android app and the approval screens.
 3. Run `0021_salesman_approval_switch.sql` to stop salesmen creating invoices/payments directly.

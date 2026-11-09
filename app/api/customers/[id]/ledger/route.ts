@@ -19,7 +19,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   if (mine && !(c.data.route_id && mine.includes(c.data.route_id))) return NextResponse.json({ error: "Customer not found." }, { status: 404 });
 
   const [led, sales, pays] = await Promise.all([
-    sb.from("customer_ledger").select("id,ts,entry_date,type,amount,ref").eq("customer_id", id).order("ts").limit(5000),
+    sb.from("customer_ledger").select("id,ts,entry_date,type,amount,ref,note").eq("customer_id", id).order("ts").limit(5000),
     sb.from("sales").select("id,no,created_at,total,status").eq("customer_id", id),
     sb.from("payments").select("id,sale_id,kind,amount,reversed").eq("customer_id", id),
   ]);
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   const saleById = new Map((sales.data ?? []).map((s: any) => [s.id, s]));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const payById = new Map((pays.data ?? []).map((p: any) => [p.id, p]));
-  const label = (e: { type: string; ref: string | null }) => {
+  const label = (e: { type: string; ref: string | null; note: string | null }) => {
     if (e.type === "opening") return "Opening balance";
     if (e.type === "invoice") return (saleById.get(e.ref ?? "") as { no?: string } | undefined)?.no ?? "Invoice";
     if (e.type === "payment") {
@@ -38,7 +38,14 @@ export async function GET(req: NextRequest, { params }: Ctx) {
       const sl = p?.sale_id ? (saleById.get(p.sale_id) as { no?: string } | undefined) : undefined;
       return "Payment" + (sl ? " with " + sl.no : p?.kind === "collection" ? " (collection)" : "");
     }
-    return e.type === "reversal" ? "Reversal" : e.type === "refund" ? "Cash refund" : "Return";
+    if (e.type === "reversal") return "Reversal";
+    if (e.type === "refund") return "Cash refund";
+    if (e.type === "return") {
+      if (/^Imported Oracle CASHD1 Sale Discount voucher \d+/.test(e.note ?? "")) return "Sale Discount";
+      const source = /Imported from Oracle (?:INVR0 return|INV0P RETURN2 invoice) (\d+)/.exec(e.note ?? "");
+      return source ? `Return (Oracle #${source[1]})` : "Return";
+    }
+    return e.type;
   };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const entries: LedgerEntry[] = (led.data ?? []).map((e: any) => ({ ts: e.ts, entry_date: e.entry_date, type: e.type, amount: Number(e.amount), label: label(e) }));

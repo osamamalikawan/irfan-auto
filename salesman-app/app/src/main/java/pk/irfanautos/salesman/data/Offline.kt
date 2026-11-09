@@ -30,6 +30,14 @@ object Offline {
     fun customer(id: String): MyCustomer? = customers().firstOrNull { it.id == id }
     fun methods(): List<Method> = read<List<Method>>("methods") ?: emptyList()
     fun plan(): PlanData? = read<PlanData>("plan")
+    fun tasks(): TasksPack? = read<TasksPack>("tasks")
+    /** May this salesman tick off the office's scheduled order actions (pack / deliver)? Decided by his permissions on the website. */
+    fun canSaleStatus(): Boolean = read<PackCan>("can")?.sale_status == true
+    /** An invoice from the phone: first from the customer's saved account, then from one opened earlier. */
+    fun invoiceDoc(customerId: String?, key: String): InvoiceDoc? {
+        if (customerId != null) snap(customerId)?.docs?.firstOrNull { it.id == key || it.no == key }?.let { return it }
+        return read<InvoiceDoc>("inv:$key")
+    }
     fun lastVisits(): Map<String, LastVisit> = read<Map<String, LastVisit>>("last_visits") ?: emptyMap()
     fun snap(customerId: String): CustomerSnap? = read<CustomerSnap>("snap:$customerId")
     fun searchProducts(q: String): List<Product> = db.searchProducts(q)
@@ -42,6 +50,30 @@ object Offline {
     fun recordDone(customerId: String, outcome: String, notes: String?) {
         val p = plan() ?: return
         write("plan", p.copy(done_today = p.done_today + (customerId to DoneVisit(outcome, notes))))
+        version++
+    }
+
+    /** Opens an older invoice from the website (when there is internet) and keeps it on the phone. */
+    suspend fun fetchInvoice(key: String): InvoiceDoc? = try {
+        Api.invoice(key)?.also { d ->
+            write("inv:" + d.id, d)
+            write("inv:" + d.no, d)
+            version++
+        }
+    } catch (e: Exception) {
+        null
+    }
+
+    // ---- tasks changed on the phone (shown at once, sent later)
+    fun addLocalTask(t: TaskRow) {
+        val p = tasks() ?: TasksPack(todayPk())
+        write("tasks", p.copy(items = p.items + t))
+        version++
+    }
+
+    fun setTaskDone(id: String, done: Boolean) {
+        val p = tasks() ?: return
+        write("tasks", p.copy(items = p.items.map { if (it.id == id) it.copy(done = done) else it }))
         version++
     }
 
@@ -60,7 +92,7 @@ object Offline {
             "snap:$customerId",
             CustomerSnap(
                 customer_id = customerId, balance = l.balance, credit_limit = l.customer?.credit_limit ?: old?.credit_limit ?: 0.0, opening = l.opening, closing = l.closing,
-                rows = l.rows.takeLast(40), unpaid = l.unpaid, invoices = old?.invoices ?: emptyList(),
+                rows = l.rows.takeLast(40), unpaid = l.unpaid, invoices = old?.invoices ?: emptyList(), docs = old?.docs ?: emptyList(),
             ),
         )
         updateBalance(customerId, l.balance)
@@ -85,8 +117,15 @@ object Offline {
             write("methods", base.methods)
             write("plan", base.plan)
             write("last_visits", base.last_visits)
+            write("can", base.can)
             prefs.packAt = now
             version++
+            try {
+                write("tasks", Api.offlineTasks()) // a problem with tasks must not stop the rest from downloading
+                version++
+            } catch (e: ApiException) {
+                if (e.offline) throw e
+            }
 
             if (force || db.productCount() == 0 || now - prefs.productsAt > 6 * 3600_000L) {
                 syncText = "Updating parts list..."

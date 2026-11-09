@@ -54,7 +54,10 @@ import kotlinx.serialization.Serializable
 @Serializable data class RequestsResp(val items: List<RequestRow> = emptyList(), val total: Int = 0)
 
 /** A request that could not be sent because the phone was offline; it is sent later with the same idem_key, so it can never be doubled. */
-@Serializable data class OutboxItem(val id: String, val type: String, val body: String, val customer: String, val at: Long, val error: String? = null)
+@Serializable data class OutboxItem(
+    val id: String, val type: String, val body: String, val customer: String, val at: Long, val error: String? = null,
+    val path: String? = null, val method: String? = null,
+)
 
 @Serializable data class Ping(val lat: Double, val lng: Double, val accuracy: Double? = null, val ts: Long, val battery: Int? = null)
 @Serializable data class PingsBody(val pings: List<Ping>)
@@ -71,12 +74,37 @@ import kotlinx.serialization.Serializable
 @Serializable data class LastVisit(val date: String = "", val outcome: String = "", val notes: String? = null)
 @Serializable data class BasePack(
     val server_time: String = "", val customers: List<MyCustomer> = emptyList(), val methods: List<Method> = emptyList(),
-    val plan: PlanData = PlanData(), val last_visits: Map<String, LastVisit> = emptyMap(),
+    val plan: PlanData = PlanData(), val last_visits: Map<String, LastVisit> = emptyMap(), val can: PackCan = PackCan(),
 )
 @Serializable data class InvoiceSnap(val id: String = "", val no: String = "", val sale_date: String? = null, val total: Double = 0.0, val items: List<RetItem> = emptyList())
 @Serializable data class CustomerSnap(
     val customer_id: String = "", val balance: Double = 0.0, val credit_limit: Double = 0.0, val opening: Double = 0.0, val closing: Double = 0.0,
     val rows: List<LedgerRow> = emptyList(), val unpaid: List<Unpaid> = emptyList(), val invoices: List<InvoiceSnap> = emptyList(),
+    val docs: List<InvoiceDoc> = emptyList(),
 )
 @Serializable data class SnapPage(val items: List<CustomerSnap> = emptyList(), val total: Int = 0, val next_offset: Int? = null)
 @Serializable data class ProductsPage(val items: List<Product> = emptyList(), val total: Int = 0, val next_offset: Int? = null)
+
+// ---- invoices and tasks
+@Serializable data class DocItem(
+    val id: String = "", val name: String = "", val qty: Double = 0.0, val free: Double = 0.0, val price: Double = 0.0,
+    val disc_pct: Double = 0.0, val line_disc: Double = 0.0, val returned: Double = 0.0,
+)
+@Serializable data class DocPay(val method: String = "", val amount: Double = 0.0, val date: String? = null)
+@Serializable data class InvoiceDoc(
+    val id: String = "", val no: String = "", val sale_date: String? = null, val customer_id: String = "", val customer_name: String = "",
+    val status: String = "", val fulfil_status: String = "", val kind: String = "ledger", val term: String = "credit",
+    val subtotal: Double = 0.0, val line_discount: Double = 0.0, val discount: Double = 0.0, val bilti: Double = 0.0, val local_charges: Double = 0.0,
+    val total: Double = 0.0, val paid: Double = 0.0, val remarks: String? = null,
+    val items: List<DocItem> = emptyList(), val payments: List<DocPay> = emptyList(),
+)
+@Serializable data class DocResp(val doc: InvoiceDoc? = null)
+
+/** One line of the task list: kind is "order" (a scheduled pack / deliver / complete), "promise" (a customer promised to pay) or "task" (his own). */
+@Serializable data class TaskRow(
+    val id: String = "", val kind: String = "task", val date: String = "", val title: String = "", val sub: String = "", val done: Boolean = false,
+    val action: String? = null, val sale_id: String? = null, val sale_no: String? = null, val sale_status: String? = null,
+    val customer_id: String? = null, val amount: Double? = null, val status: String? = null, val note: String? = null,
+)
+@Serializable data class PackCan(val sale_status: Boolean = false)
+@Serializable data class TasksPack(val today: String = "", val items: List<TaskRow> = emptyList(), val can: PackCan = PackCan())

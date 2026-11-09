@@ -4,10 +4,12 @@ package pk.irfanautos.salesman.ui
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -99,10 +101,17 @@ fun CustomersScreen(onOpen: (String) -> Unit) {
     }
 }
 
-/** One customer: what he owes, the last visit, unpaid bills and the account statement, with the things a salesman does for him.
- *  Shown from the phone straight away; the numbers are refreshed when there is internet. */
 @Composable
-fun CustomerScreen(id: String, onBack: () -> Unit, onAction: (String) -> Unit) {
+private fun RowScope.ActionButton(text: String, primary: Boolean, onClick: () -> Unit) {
+    val pad = PaddingValues(horizontal = 6.dp)
+    if (primary) Button(onClick = onClick, modifier = Modifier.weight(1f), contentPadding = pad) { Text(text, maxLines = 1, softWrap = false) }
+    else OutlinedButton(onClick = onClick, modifier = Modifier.weight(1f), contentPadding = pad) { Text(text, maxLines = 1, softWrap = false) }
+}
+
+/** One customer: what he owes, the last visit, unpaid bills and the account statement, with the things a salesman does for him.
+ *  Shown from the phone straight away; the numbers are refreshed when there is internet. Tapping an invoice opens it. */
+@Composable
+fun CustomerScreen(id: String, onBack: () -> Unit, onAction: (String) -> Unit, onInvoice: (String) -> Unit, onLedger: () -> Unit) {
     val ctx = LocalContext.current
     val version = Offline.version
     val c = remember(version) { Offline.customer(id) }
@@ -126,18 +135,19 @@ fun CustomerScreen(id: String, onBack: () -> Unit, onAction: (String) -> Unit) {
                             val sub = listOfNotNull(c.area, c.route).joinToString(" · ")
                             if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodySmall, color = Muted, modifier = Modifier.padding(top = 6.dp))
                             if (!c.phone.isNullOrBlank()) {
-                                OutlinedButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + c.phone))) } }, modifier = Modifier.padding(top = 10.dp)) { Text("Call " + c.phone) }
+                                OutlinedButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + c.phone))) } }, modifier = Modifier.padding(top = 10.dp)) { Text("Call " + c.phone, maxLines = 1, softWrap = false) }
                             }
                         }
                     }
                 }
                 item {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { onAction("order") }, modifier = Modifier.weight(1f)) { Text("Order") }
-                        Button(onClick = { onAction("payment") }, modifier = Modifier.weight(1f)) { Text("Payment") }
-                        OutlinedButton(onClick = { onAction("return") }, modifier = Modifier.weight(1f)) { Text("Return") }
+                        ActionButton("Order", true) { onAction("order") }
+                        ActionButton("Payment", true) { onAction("payment") }
+                        ActionButton("Return", false) { onAction("return") }
                     }
                 }
+                item { OutlinedButton(onClick = onLedger, modifier = Modifier.fillMaxWidth()) { Text("Open full ledger") } }
                 if (snap == null) item { InfoBanner("The account details are downloaded when you have internet. The balance above is from the last update.") }
                 if (last != null) {
                     item {
@@ -151,13 +161,17 @@ fun CustomerScreen(id: String, onBack: () -> Unit, onAction: (String) -> Unit) {
                 }
                 val unpaid = snap?.unpaid ?: emptyList()
                 if (unpaid.isNotEmpty()) {
-                    item { SectionTitle("Unpaid bills") }
+                    item { SectionTitle("Unpaid bills (tap to open)") }
                     item {
                         AppCard(Modifier.fillMaxWidth()) {
-                            Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                            Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
                                 unpaid.forEachIndexed { i, b ->
-                                    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text(b.no, style = MaterialTheme.typography.bodyMedium)
+                                    val isInvoice = b.no.startsWith("INV-")
+                                    Row(
+                                        Modifier.fillMaxWidth().then(if (isInvoice) Modifier.clickable { onInvoice(b.no) } else Modifier).padding(vertical = 12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                    ) {
+                                        Text(b.no, style = MaterialTheme.typography.titleSmall, color = if (isInvoice) Brand else Ink)
                                         Text(money(b.due) + " of " + money(b.total), style = MaterialTheme.typography.bodyMedium, color = Bad)
                                     }
                                     if (i < unpaid.size - 1) HorizontalDivider(color = Line)
@@ -168,12 +182,13 @@ fun CustomerScreen(id: String, onBack: () -> Unit, onAction: (String) -> Unit) {
                 }
                 val rows = (snap?.rows ?: emptyList()).asReversed()
                 if (rows.isNotEmpty()) {
-                    item { SectionTitle("Statement") }
+                    item { SectionTitle("Latest statement (tap an invoice to open it)") }
                     items(rows.size) { i ->
                         val r = rows[i]
-                        Column(Modifier.fillMaxWidth()) {
+                        val inv = invoiceNoIn(r.label)
+                        Column(Modifier.fillMaxWidth().then(if (inv != null) Modifier.clickable { onInvoice(inv) } else Modifier)) {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text(r.label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                                Text(r.label, style = MaterialTheme.typography.bodyMedium, color = if (inv != null) Brand else Ink, modifier = Modifier.weight(1f))
                                 Text(if (r.debit > 0) "+" + money(r.debit) else "-" + money(r.credit), style = MaterialTheme.typography.titleSmall, color = if (r.debit > 0) Bad else Good)
                             }
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

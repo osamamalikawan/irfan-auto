@@ -75,6 +75,9 @@ object Api {
     /** Sends a POST and returns the answer text (used by the offline queue). */
     suspend fun send(path: String, body: String): String = raw("POST", path, body)
 
+    /** Any call (POST, PATCH, DELETE) with a JSON body; used by the offline queue. */
+    suspend fun sendRaw(method: String, path: String, body: String?): String = raw(method, path, body)
+
     private suspend inline fun <reified T> get(path: String): T = json.decodeFromString(raw("GET", path))
     private suspend inline fun <reified T> post(path: String, body: String? = null, auth: Boolean = true): T = json.decodeFromString(raw("POST", path, body, auth))
     private fun enc(s: String) = java.net.URLEncoder.encode(s, "UTF-8")
@@ -109,6 +112,10 @@ object Api {
     suspend fun offlineBase(): BasePack = get("/api/me/offline/base")
     suspend fun offlineProducts(offset: Int): ProductsPage = get("/api/me/offline/products?limit=2000&offset=$offset")
     suspend fun offlineCustomers(offset: Int): SnapPage = get("/api/me/offline/customers?limit=10&offset=$offset")
+    suspend fun offlineTasks(): TasksPack = get("/api/me/offline/tasks")
+    suspend fun invoice(key: String): InvoiceDoc? = get<DocResp>("/api/me/invoice/" + enc(key)).doc
+    suspend fun ledgerFrom(customerId: String, from: String?): LedgerResp = get("/api/customers/$customerId/ledger" + (if (from != null) "?from=$from" else ""))
+    suspend fun accountBetween(from: String, to: String): JsonObject = json.parseToJsonElement(raw("GET", "/api/me/account?range=custom&from=$from&to=$to")).jsonObject
 
     // ---- requests (the office approves them)
     suspend fun createRequest(type: String, body: String): Created = post("/api/requests/$type", body)

@@ -1,5 +1,6 @@
 package pk.irfanautos.salesman.ui
 
+import android.net.Uri
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
@@ -23,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -34,6 +36,14 @@ import pk.irfanautos.salesman.data.Outbox
 import pk.irfanautos.salesman.data.Session
 
 private val customerArg = listOf(
+    navArgument("customerId") { type = NavType.StringType; nullable = true; defaultValue = null },
+)
+private val returnArgs = listOf(
+    navArgument("customerId") { type = NavType.StringType; nullable = true; defaultValue = null },
+    navArgument("saleId") { type = NavType.StringType; nullable = true; defaultValue = null },
+)
+private val invoiceArgs = listOf(
+    navArgument("key") { type = NavType.StringType },
     navArgument("customerId") { type = NavType.StringType; nullable = true; defaultValue = null },
 )
 
@@ -68,6 +78,9 @@ fun AppNav() {
             delay(2000)
         }
     }
+    fun openInvoice(key: String, customerId: String?) {
+        nav.navigate("invoice/" + Uri.encode(key) + (if (customerId != null) "?customerId=$customerId" else ""))
+    }
 
     Scaffold(
         containerColor = Bg,
@@ -91,7 +104,7 @@ fun AppNav() {
                                     Icon(t.icon, contentDescription = t.label)
                                 }
                             },
-                            label = { Text(t.label) },
+                            label = { Text(t.label, maxLines = 1, softWrap = false, fontSize = 11.sp) },
                         )
                     }
                 }
@@ -117,7 +130,24 @@ fun AppNav() {
             composable("customers") { CustomersScreen(onOpen = { nav.navigate("customer/$it") }) }
             composable("customer/{id}") { e ->
                 val id = e.arguments?.getString("id").orEmpty()
-                CustomerScreen(id, onBack = { nav.popBackStack() }, onAction = { r -> nav.navigate("$r?customerId=$id") })
+                CustomerScreen(
+                    id, onBack = { nav.popBackStack() },
+                    onAction = { r -> nav.navigate("$r?customerId=$id") },
+                    onInvoice = { openInvoice(it, id) },
+                    onLedger = { nav.navigate("ledger/$id") },
+                )
+            }
+            composable("ledger/{customerId}") { e ->
+                val id = e.arguments?.getString("customerId").orEmpty()
+                LedgerScreen(id, onBack = { nav.popBackStack() }, onInvoice = { openInvoice(it, id) })
+            }
+            composable("invoice/{key}?customerId={customerId}", arguments = invoiceArgs) { e ->
+                val key = e.arguments?.getString("key").orEmpty()
+                val cid = e.arguments?.getString("customerId")
+                InvoiceScreen(
+                    key, cid, onBack = { nav.popBackStack() },
+                    onReturn = { d -> nav.navigate("return?customerId=" + d.customer_id + "&saleId=" + d.id) },
+                )
             }
             composable("order?customerId={customerId}", arguments = customerArg) { e ->
                 OrderScreen(e.arguments?.getString("customerId"), onBack = { nav.popBackStack() })
@@ -125,11 +155,19 @@ fun AppNav() {
             composable("payment?customerId={customerId}", arguments = customerArg) { e ->
                 PaymentScreen(e.arguments?.getString("customerId"), onBack = { nav.popBackStack() })
             }
-            composable("return?customerId={customerId}", arguments = customerArg) { e ->
-                ReturnScreen(e.arguments?.getString("customerId"), onBack = { nav.popBackStack() })
+            composable("return?customerId={customerId}&saleId={saleId}", arguments = returnArgs) { e ->
+                ReturnScreen(e.arguments?.getString("customerId"), e.arguments?.getString("saleId"), onBack = { nav.popBackStack() })
             }
+            composable("tasks") {
+                TasksScreen(
+                    onBack = { nav.popBackStack() },
+                    onInvoice = { key, cid -> openInvoice(key, cid) },
+                    onCustomer = { nav.navigate("customer/$it") },
+                )
+            }
+            composable("myledger") { MyLedgerScreen(onBack = { nav.popBackStack() }) }
             composable("requests") { RequestsScreen() }
-            composable("account") { AccountScreen(onChangePin = { nav.navigate("pin") }) }
+            composable("account") { AccountScreen(onChangePin = { nav.navigate("pin") }, onLedger = { nav.navigate("myledger") }) }
         }
     }
 }

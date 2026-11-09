@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "import": "tsx --env-file=.env.local scripts/import-products.ts",
-    "import:oracle": "tsx --env-file=.env.local scripts/import-oracle.ts"
+    "import:oracle": "tsx --env-file=.env.local scripts/import-oracle.ts",
+    "import:oracle:history": "tsx --env-file=.env.local scripts/import-oracle-history.ts"
   },
   "dependencies": {
     "@capacitor/core": "^7.0.0",

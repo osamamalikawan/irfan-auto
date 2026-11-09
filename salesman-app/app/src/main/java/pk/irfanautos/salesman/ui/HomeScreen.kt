@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ShoppingCart
@@ -269,21 +270,25 @@ fun HomeScreen(onNav: (String) -> Unit) {
             }
         }
 
-        // location tracking status: shows him that positions are being saved even without internet
-        AppCard {
+        // tasks: what is due today and what is late
+        val tasksPack = remember(Offline.version, clock / 60_000) { Offline.tasks() }
+        val todayKey = todayPk()
+        val openTasks = tasksPack?.items?.filter { !it.done && it.date <= todayKey } ?: emptyList()
+        AppCard(onClick = { onNav("tasks") }) {
             Column(Modifier.padding(16.dp)) {
-                Text("Location tracking", style = MaterialTheme.typography.titleMedium)
-                if (onDuty) {
-                    Text("Last position saved " + ago(lastFix), style = MaterialTheme.typography.bodyMedium, color = Muted, modifier = Modifier.padding(top = 4.dp))
-                    if (pingsWaiting > 0) {
-                        Text(
-                            if (Net.online) "$pingsWaiting positions are being sent" else "$pingsWaiting positions saved on the phone. They are sent when the internet is back.",
-                            style = MaterialTheme.typography.bodySmall, color = Warn, modifier = Modifier.padding(top = 2.dp),
-                        )
-                    }
-                } else {
-                    Text("Starts when you start work.", style = MaterialTheme.typography.bodyMedium, color = Muted, modifier = Modifier.padding(top = 4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Tasks", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                    Text("Open", color = Brand, style = MaterialTheme.typography.labelLarge)
                 }
+                val overdue = openTasks.count { it.date < todayKey }
+                Text(
+                    when {
+                        tasksPack == null -> "Not downloaded yet. Connect to the internet once."
+                        openTasks.isEmpty() -> "Nothing due today."
+                        else -> "${openTasks.count { it.date == todayKey }} due today" + (if (overdue > 0) "  ·  $overdue overdue" else "")
+                    },
+                    style = MaterialTheme.typography.bodyMedium, color = if (overdue > 0) Warn else Muted, modifier = Modifier.padding(top = 4.dp),
+                )
             }
         }
 
@@ -294,7 +299,7 @@ fun HomeScreen(onNav: (String) -> Unit) {
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
             ActionTile("Return / claim", Icons.Filled.Refresh) { onNav("return") }
-            ActionTile("Customers", Icons.Filled.Person) { onNav("customers") }
+            ActionTile("My ledger", Icons.Filled.List) { onNav("myledger") }
         }
 
         // what is saved on the phone and what is waiting
@@ -308,6 +313,10 @@ fun HomeScreen(onNav: (String) -> Unit) {
                         }
                         waiting > 0 -> {
                             Text("$waiting waiting to be sent", style = MaterialTheme.typography.titleSmall, color = Warn)
+                            Text(if (Net.online) "Sending now..." else "Saved on the phone. Sent automatically when the internet is back.", style = MaterialTheme.typography.bodySmall, color = Muted)
+                        }
+                        pingsWaiting > 0 -> {
+                            Text("$pingsWaiting location points waiting to be sent", style = MaterialTheme.typography.titleSmall, color = Warn)
                             Text(if (Net.online) "Sending now..." else "Saved on the phone. Sent automatically when the internet is back.", style = MaterialTheme.typography.bodySmall, color = Muted)
                         }
                         else -> {
@@ -344,12 +353,12 @@ fun HomeScreen(onNav: (String) -> Unit) {
 
 @Composable
 private fun RowScope.ActionTile(label: String, icon: ImageVector, onClick: () -> Unit) {
-    AppCard(Modifier.weight(1f), onClick = onClick) {
+    AppCard(Modifier.weight(1f).height(112.dp), onClick = onClick) {
         Column(Modifier.padding(16.dp)) {
             Box(Modifier.size(40.dp).clip(CircleShape).background(BrandSoft), contentAlignment = Alignment.Center) {
                 Icon(icon, contentDescription = null, tint = Brand)
             }
-            Text(label, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 10.dp))
+            Text(label, style = MaterialTheme.typography.titleSmall, maxLines = 2, modifier = Modifier.padding(top = 10.dp))
         }
     }
 }

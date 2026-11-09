@@ -6,4 +6,6 @@ import-report.txt
 next-env.d.ts
 oracle-import-report.txt
 oracle-import-preview.json
-combined_outputs.sql
+data.sql
+.archify/
+/.archify

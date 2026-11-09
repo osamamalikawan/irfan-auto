@@ -63,7 +63,13 @@ export async function POST(req: NextRequest) {
   const date = cleanDate(b?.due_date);
   if (!title) return NextResponse.json({ error: "Enter what has to be done." }, { status: 400 });
   if (!date) return NextResponse.json({ error: "Choose a date." }, { status: 400 });
-  const { data, error } = await db().from("tasks").insert({ title, due_date: date, note: String(b?.note ?? "").trim().slice(0, 300) || null, customer_id: b?.customer_id || null, created_by: a.user.id }).select("id").single();
+  // the salesman app may send the same task twice after a lost answer: the second one changes nothing
+  const idem = String(b?.idem_key ?? "").trim().slice(0, 80) || null;
+  if (idem) {
+    const dup = await db().from("tasks").select("id").eq("idem_key", idem).maybeSingle();
+    if (dup.data) return NextResponse.json({ id: dup.data.id, duplicate: true });
+  }
+  const { data, error } = await db().from("tasks").insert({ title, due_date: date, note: String(b?.note ?? "").trim().slice(0, 300) || null, customer_id: b?.customer_id || null, created_by: a.user.id, idem_key: idem }).select("id").single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ id: data.id }, { status: 201 });
 }

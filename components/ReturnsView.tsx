@@ -7,7 +7,7 @@ import { Spinner } from "./Loading";
 
 type Found = { id: string; no: string; customer_name: string; total: number; sale_date: string };
 type Item = { id: string; name: string; sold: number; returned: number; remaining: number; net_unit: number };
-type Ret = { id: string; no: string; kind?: string; return_date: string; amount: number; damaged: boolean; reason: string | null; by: string; sale: { id: string; no: string; customer_name: string } | null; lines: { qty: number; name: string }[] };
+type Ret = { id: string; no: string; kind?: string; return_date: string; amount: number; damaged: boolean; reason: string | null; by: string; customer_name?: string; sale: { id: string; no: string; customer_name: string } | null; lines: { qty: number; name: string }[] };
 
 export default function ReturnsView({ initialSale, initialKind = "return" }: { initialSale?: string; initialKind?: "return" | "claim" }) {
   const [q, setQ] = useState("");
@@ -19,12 +19,14 @@ export default function ReturnsView({ initialSale, initialKind = "return" }: { i
   const [damaged, setDamaged] = useState(false);
   const [reason, setReason] = useState("");
   const [hist, setHist] = useState<Ret[]>([]);
+  const [histQuery, setHistQuery] = useState("");
+  const [histPage, setHistPage] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
   const req = useRef(0);
 
-  const loadHist = useCallback(() => { fetch("/api/returns").then((r) => r.json()).then((j) => setHist(j.items ?? [])).catch(() => {}); }, []);
+  const loadHist = useCallback(() => { fetch("/api/returns").then((r) => r.json()).then((j) => { setHist(j.items ?? []); setHistPage(0); }).catch(() => {}); }, []);
   useEffect(() => { loadHist(); }, [loadHist]);
 
   useEffect(() => {
@@ -57,6 +59,10 @@ export default function ReturnsView({ initialSale, initialKind = "return" }: { i
   const credit = items.reduce((x, i) => x + Math.round(Math.min(Number(qty[i.id]) || 0, i.remaining) * i.net_unit), 0);
   const lines = items.map((i) => ({ item_id: i.id, qty: Number(qty[i.id]) || 0 })).filter((l) => l.qty > 0);
   const tooMuch = items.some((i) => (Number(qty[i.id]) || 0) > i.remaining);
+  const matchingHist = hist.filter((r) => `${r.no} ${r.customer_name ?? ""} ${r.reason ?? ""}`.toLowerCase().includes(histQuery.trim().toLowerCase()));
+  const histPageSize = 100;
+  const histPageCount = Math.max(1, Math.ceil(matchingHist.length / histPageSize));
+  const visibleHist = matchingHist.slice(histPage * histPageSize, (histPage + 1) * histPageSize);
 
   async function save() {
     if (!sale) return;
@@ -127,17 +133,28 @@ export default function ReturnsView({ initialSale, initialKind = "return" }: { i
         </section>
 
         <section className="card p-4 lg:col-span-2">
-          <h2 className="mb-2 font-semibold">Returns and claims recorded</h2>
-          {!hist.length && <p className="text-sm text-muted">Nothing recorded yet.</p>}
+          <div className="mb-2 flex items-center gap-3">
+            <h2 className="font-semibold">Returns and claims recorded ({matchingHist.length})</h2>
+            <input className="input ml-auto max-w-xs" type="search" value={histQuery} onChange={(e) => { setHistQuery(e.target.value); setHistPage(0); }} placeholder="Find invoice or customer" aria-label="Find a recorded return" />
+          </div>
+          {!matchingHist.length && <p className="text-sm text-muted">{hist.length ? "No returns match." : "Nothing recorded yet."}</p>}
           <ul className="divide-y divide-line">
-            {hist.map((r) => (
+            {visibleHist.map((r) => (
               <li key={r.id} className="py-2">
-                <div className="flex items-center gap-2"><b>{r.no}</b>{r.kind === "claim" && <span className="pill border border-amber bg-amber-bg text-amber">Claim</span>}<span className="text-xs text-muted">{niceDate(r.return_date)} · {r.sale?.no} · {r.sale?.customer_name}</span><span className="flex-1" />
-                  <span className={"pill " + (r.damaged ? "bg-red-bg text-red" : "bg-green-bg text-green")}>{r.damaged ? "Damaged" : "Restocked"}</span><b>{rs(r.amount)}</b></div>
+                <div className="flex items-center gap-2"><b>{r.no}</b>{r.kind === "claim" && <span className="pill border border-amber bg-amber-bg text-amber">Claim</span>}<span className="text-xs text-muted">{niceDate(r.return_date)} · {r.sale ? `${r.sale.no} · ${r.sale.customer_name}` : `Original invoice not linked · ${r.customer_name ?? ""}`}</span><span className="flex-1" />
+                  {r.no.startsWith("OLD-RET-")
+                    ? <span className="pill bg-bg text-muted">Historical · stock unchanged</span>
+                    : <span className={"pill " + (r.damaged ? "bg-red-bg text-red" : "bg-green-bg text-green")}>{r.damaged ? "Damaged" : "Restocked"}</span>}
+                  <b>{rs(r.amount)}</b></div>
                 <p className="text-xs text-muted">{r.lines.map((l) => fmtQty(l.qty) + " × " + l.name).join(", ")}{r.reason ? " — " + r.reason : ""}{r.by ? " · " + r.by : ""}</p>
               </li>
             ))}
           </ul>
+          {matchingHist.length > histPageSize && <div className="mt-3 flex items-center justify-end gap-3 text-sm">
+            <span className="text-muted">Page {histPage + 1} of {histPageCount}</span>
+            <button type="button" className="btn min-h-9" disabled={histPage === 0} onClick={() => setHistPage((page) => page - 1)}>Previous</button>
+            <button type="button" className="btn min-h-9" disabled={histPage + 1 >= histPageCount} onClick={() => setHistPage((page) => page + 1)}>Next</button>
+          </div>}
         </section>
       </div>
       {toast && <Toast msg={toast} onHide={() => setToast("")} />}

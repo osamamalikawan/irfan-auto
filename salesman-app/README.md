@@ -11,8 +11,11 @@ Kotlin + Jetpack Compose. Talks to the same website/API as the office (`/api/...
   (*Live map*). Without internet the positions are kept on the phone; the moment internet returns they are sent and his current position is reported straight away.
 - **Visit plan**: today's routes and customers, a progress bar, the outcome of each visit, his **remarks** and a promise-to-pay (date and amount); the last visit's remarks
   are shown at each customer. Next days can be previewed.
-- **Customers**: balances, unpaid bills, account statement, call button.
-- **New order**, **Collect payment**, **Return / claim**: saved on the phone and sent to the office for approval (*Field Team > Approvals*). Nothing can be sent twice.
+- **Customers**: balances, unpaid bills, account statement, call button. Tap any invoice (in the statement or the unpaid list) to open it with its lines, totals and payments.
+  **Full ledger** shows every entry of a period with the running balance.
+- **Tasks**: scheduled order actions, customers' promises to pay, and his own tasks (add one, tick it off). Works offline.
+- **My ledger**: every payment he collected and every handover to the office, with the running balance.
+- **New order**, **Collect payment**, **Return / claim** (also directly from an invoice; an invoice that cannot be returned says why): saved on the phone and sent to the office for approval (*Field Team > Approvals*). Nothing can be sent twice.
 - **Requests**: everything waiting to be sent, and the status of everything sent (waiting / approved / rejected with the office's reason).
 - **My account**: sales, collections and visits against target; money still to hand over to the office; what customers owe.
 - **Location warnings**: if location is switched off or the permission is removed while on duty, a red warning appears, the notification turns red, and the office is told.

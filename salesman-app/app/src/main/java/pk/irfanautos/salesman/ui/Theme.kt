@@ -6,6 +6,9 @@ import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -42,6 +45,8 @@ private val AppTypography = Typography(
 
 @Composable
 fun AppTheme(content: @Composable () -> Unit) {
+    val d = LocalDensity.current
+    CompositionLocalProvider(LocalDensity provides Density(d.density, fontScale = minOf(d.fontScale, 1.1f))) {
     MaterialTheme(
         colorScheme = lightColorScheme(
             primary = Brand, onPrimary = Color.White, primaryContainer = BrandSoft, onPrimaryContainer = Navy,
@@ -52,4 +57,5 @@ fun AppTheme(content: @Composable () -> Unit) {
         shapes = Shapes(small = RoundedCornerShape(10.dp), medium = RoundedCornerShape(16.dp), large = RoundedCornerShape(22.dp)),
         content = content,
     )
+    }
 }

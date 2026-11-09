@@ -68,18 +68,23 @@ export function parseInsert(line: string): { table: string; row: Row } | null {
   return { table: m[2], row };
 }
 
-/** Streams the file and keeps only the wanted tables (so a huge dump does not fill memory). */
-export async function readOracleDump(path: string, wanted: string[]): Promise<Record<string, Row[]>> {
+/** Streams only wanted rows from a dump without retaining them in memory. */
+export async function* streamOracleDump(path: string, wanted: string[]): AsyncGenerator<{ table: string; row: Row }> {
   const want = new Set(wanted.map((t) => t.toUpperCase()));
-  const out: Record<string, Row[]> = {};
-  for (const t of want) out[t] = [];
   const rl = createInterface({ input: createReadStream(path, { encoding: "utf8" }), crlfDelay: Infinity });
   for await (const line of rl) {
     if (!line.startsWith("INSERT INTO")) continue;
     const t = /^INSERT INTO "\w+"\."(\w+)"/.exec(line)?.[1]?.toUpperCase();
     if (!t || !want.has(t)) continue;
     const p = parseInsert(line);
-    if (p) out[t].push(p.row);
+    if (p) yield { table: t, row: p.row };
   }
+}
+
+/** Streams the file and keeps only the wanted tables (so a huge dump does not fill memory). */
+export async function readOracleDump(path: string, wanted: string[]): Promise<Record<string, Row[]>> {
+  const out: Record<string, Row[]> = {};
+  for (const t of wanted) out[t.toUpperCase()] = [];
+  for await (const row of streamOracleDump(path, wanted)) out[row.table].push(row.row);
   return out;
 }

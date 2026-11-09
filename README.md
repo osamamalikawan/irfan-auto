@@ -70,7 +70,23 @@ See `docs/LEGACY_MAPPING.md`. To preview or import customers into the existing `
 npm run import:oracle -- path/to/dump.sql --customers-only
 npm run import:oracle -- path/to/dump.sql --customers-only --apply
 ```
-The first command is a preview. The importer never creates tables. Customer opening balances are stored in the existing `customers.opening_balance` column; if an existing `customer_ledger` table is available, the importer also syncs its opening entries. A full `--apply` syncs customers first, then maps the other supported Oracle master data to existing tables.
+The first command is a preview. After importing master data, preview or import historical invoices, purchases, and payments:
+```bash
+npm run import:oracle:history -- path/to/dump.sql
+npm run import:oracle:history -- path/to/dump.sql apply
+npm run import:oracle:history -- path/to/dump.sql customer-payments-only apply
+npm run import:oracle:history -- path/to/dump.sql customer-discounts-only apply
+npm run import:oracle:history -- path/to/dump.sql sales-returns-only apply
+npm run import:oracle:history -- path/to/dump.sql customer-phones-only
+npm run import:oracle:history -- path/to/dump.sql customer-phones-only apply
+npm run import:oracle:history -- path/to/dump.sql routes-only
+npm run import:oracle:history -- path/to/dump.sql routes-only apply
+npm run import:oracle:history -- path/to/dump.sql areas-only
+npm run import:oracle:history -- path/to/dump.sql areas-only apply
+npm run import:oracle:history -- path/to/dump.sql supplier-payments-only
+npm run import:oracle:history -- path/to/dump.sql supplier-payments-only apply
+```
+The history importer is preview-only by default, idempotent, and does not change stock. Use `customer-discounts-only apply` to import Oracle `CASHD1` sale discounts as customer credits labeled "Sale Discount". Use `sales-returns-only apply` to import returns without reprocessing invoices or payments. Use `customer-phones-only` to preview and `customer-phones-only apply` to merge Oracle `CUST.CONTACT`, `CUST.PHONENO`, and `CUST2.MOBILE` into customer phone records without replacing existing numbers. Use `routes-only` to preview and `routes-only apply` to import Oracle `ROUTE` records and assign customers from `CUST.ROUTE`; existing manually assigned routes are preserved. Route salespeople are linked only if matching users have already been imported. Use `areas-only` to preview and `areas-only apply` to create the "No city" city, import every Oracle `CITY` row as an area beneath it, and assign customers from `CUST.CITYNO`, preserving manually assigned areas. Oracle supplier accounts share the `CUST` master with customers; use `supplier-payments-only` to preview and `supplier-payments-only apply` to reconcile supplier profiles from accounts referenced by `INV0P` or `CASHP1` and import supplier payments without reprocessing purchases or customer history. It requires the existing Supabase tables and master records to be present; see `docs/LEGACY_MAPPING.md` for included tables and known exclusions.
 
 ## Customers and routes
 `/customers` (search, route and area filters, remarks, archive, move to another route) and `/routes` (routes with salesman,

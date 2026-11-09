@@ -39,6 +39,9 @@ object Outbox {
         "visit" -> "Visit"
         "att_start" -> "Start work"
         "att_end" -> "End work"
+        "task_add" -> "New task"
+        "task_done" -> "Task update"
+        "sale_task" -> "Order action"
         else -> type
     }
 
@@ -46,6 +49,7 @@ object Outbox {
         "visit" -> "/api/visits"
         "att_start" -> "/api/attendance"
         "att_end" -> "/api/attendance/check-out"
+        "task_add" -> "/api/tasks"
         else -> "/api/requests/$type"
     }
 
@@ -54,7 +58,7 @@ object Outbox {
         for (item in all()) {
             if (item.error != null) continue
             try {
-                val answer = Api.send(path(item.type), item.body)
+                val answer = Api.sendRaw(item.method ?: "POST", item.path ?: path(item.type), item.body)
                 if (item.type == "orders" || item.type == "payments" || item.type == "returns") {
                     runCatching { sentNo[item.id] = Api.json.decodeFromString<Created>(answer).no }
                 }
@@ -63,7 +67,7 @@ object Outbox {
                 // no connection, signed out, busy or a server fault: keep it and try again later
                 if (e.offline || e.code == 401 || e.code == 429 || e.code >= 500) return@withLock false
                 // refused by the office system: a repeated start / end of work needs no action, anything else stays visible so it can be deleted
-                if (item.type == "att_start" || item.type == "att_end") remove(item.id) else markError(item.id, e.message ?: "Rejected")
+                if (item.type == "att_start" || item.type == "att_end" || item.type == "task_done") remove(item.id) else markError(item.id, e.message ?: "Rejected")
             }
         }
         true
@@ -131,9 +135,9 @@ object Submit {
     }
 
     /** Saves something on the phone (visit, start / end of work) and sends it in the background: the screen never waits for the internet. */
-    fun queue(type: String, body: JsonObject, label: String) {
+    fun queue(type: String, body: JsonObject, label: String, path: String? = null, method: String? = null) {
         val key = body["idem_key"]?.jsonPrimitive?.content ?: newKey()
-        Outbox.add(OutboxItem(key, type, body.toString(), label, System.currentTimeMillis()))
+        Outbox.add(OutboxItem(key, type, body.toString(), label, System.currentTimeMillis(), path = path, method = method))
         App.scope.launch { Sync.runAll() }
         Sync.schedule()
     }
