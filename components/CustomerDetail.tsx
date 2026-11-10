@@ -76,6 +76,23 @@ export default function CustomerDetail({ id }: { id: string }) {
     router.push("/suppliers/" + j.supplier_id);
   }
 
+  async function hardDelete() {
+    const name = d?.customer.name ?? "this customer";
+    if (!window.confirm('Delete "' + name + '" for good, with all their invoices, payments and returns? This cannot be undone.')) return;
+    const url = "/api/customers/" + id;
+    let r = await fetch(url, { method: "DELETE" });
+    let j = await r.json().catch(() => ({}));
+    if (r.ok && j.needs_confirm) {
+      const bits: [number, string][] = [[j.invoices, "invoices"], [j.payments, "payments"], [j.returns, "returns"], [j.requests, "salesman requests"]];
+      const list = bits.filter(([n]) => n > 0).map(([n, w]) => n + " " + w).join(", ") || "no invoices or payments";
+      if (!window.confirm('Last check. Deleting "' + name + '" permanently removes: ' + list + ".\n\nBalance: Rs " + Number(j.balance || 0).toLocaleString() + ". Stock is not changed.\n\nDelete everything?")) return;
+      r = await fetch(url + "?force=1", { method: "DELETE" });
+      j = await r.json().catch(() => ({}));
+    }
+    if (!r.ok) return setToast(j.error || "Could not delete");
+    router.push("/customers");
+  }
+
   if (error) return <p className="p-4 text-red">{error} <Link href="/customers" className="underline">Back</Link></p>;
   if (!d) return <PageLoading />;
   const c = d.customer;
@@ -133,6 +150,7 @@ export default function CustomerDetail({ id }: { id: string }) {
                 ? <button className="btn" onClick={() => setStatus("archived")}>Archive</button>
                 : <button className="btn btn-primary" onClick={() => setStatus("active")}>Make active</button>)}
               {can("customers.edit") && can("suppliers.edit") && !c.is_walk_in && <button className="btn" onClick={moveToSupplier}>Move to suppliers</button>}
+              {can("customers.edit") && !c.is_walk_in && <button className="btn text-red" onClick={hardDelete}>Delete</button>}
             </div>
             {d.history.length > 1 && (
               <details className="mt-3 text-sm">

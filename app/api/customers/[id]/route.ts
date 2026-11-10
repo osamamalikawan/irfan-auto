@@ -4,6 +4,7 @@ import { authorize } from "@/lib/auth";
 import { allowedRouteIds } from "@/lib/customer-scope";
 import { isAdmin } from "@/lib/permissions";
 import { cleanPhones, phoneColumns, saveGroups, savePhones } from "@/lib/customer-extras";
+import { dbError } from "@/lib/sql-error";
 
 type Ctx = { params: Promise<{ id: string }> };
 const one = <T,>(x: T | T[] | null | undefined): T | null => (Array.isArray(x) ? x[0] ?? null : x ?? null);
@@ -87,4 +88,15 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }
   return NextResponse.json({ ok: true });
+}
+
+/** Hard delete with all invoices, payments, returns and requests. ?force=1 confirms. Without it the answer is
+ *  { deleted: false, needs_confirm: true, ...counts } and nothing is removed. */
+export async function DELETE(req: NextRequest, { params }: Ctx) {
+  const a = await authorize("customers.edit");
+  if (a.error) return a.error;
+  const { id } = await params;
+  const { data, error } = await db().rpc("delete_customer", { p_customer: id, p_force: req.nextUrl.searchParams.get("force") === "1" });
+  if (error) return dbError(error);
+  return NextResponse.json(data);
 }

@@ -61,6 +61,23 @@ export default function SupplierDetail({ id }: { id: string }) {
     router.push("/customers/" + j.customer_id);
   }
 
+  async function hardDelete() {
+    const name = d?.supplier.name ?? "this supplier";
+    if (!window.confirm('Delete "' + name + '" for good, with all their purchases, payments and returns? This cannot be undone.')) return;
+    const url = "/api/suppliers/" + id;
+    let r = await fetch(url, { method: "DELETE" });
+    let j = await r.json().catch(() => ({}));
+    if (r.ok && j.needs_confirm) {
+      const bits: [number, string][] = [[j.purchases, "purchases"], [j.payments, "payments"], [j.returns, "returns"], [j.orders, "purchase orders"]];
+      const list = bits.filter(([n]) => n > 0).map(([n, w]) => n + " " + w).join(", ") || "no purchases or payments";
+      if (!window.confirm('Last check. Deleting "' + name + '" permanently removes: ' + list + ".\n\nBalance: Rs " + Number(j.balance || 0).toLocaleString() + ". Stock is not changed.\n\nDelete everything?")) return;
+      r = await fetch(url + "?force=1", { method: "DELETE" });
+      j = await r.json().catch(() => ({}));
+    }
+    if (!r.ok) return setToast(j.error || "Could not delete");
+    router.push("/suppliers");
+  }
+
   if (error) return <p className="p-4 text-red">{error} <Link href="/suppliers" className="underline">Back</Link></p>;
   if (!d) return <PageLoading />;
   const s = d.supplier;
@@ -105,6 +122,7 @@ export default function SupplierDetail({ id }: { id: string }) {
               {can("suppliers.pay") && <button className="btn" onClick={() => setPay(true)}>Pay supplier</button>}
               {can("suppliers.edit") && (s.status === "active" ? <button className="btn" onClick={() => setStatus("archived")}>Archive</button> : <button className="btn btn-primary" onClick={() => setStatus("active")}>Make active</button>)}
               {can("suppliers.edit") && can("customers.edit") && <button className="btn" onClick={moveToCustomer}>Move to customers</button>}
+              {can("suppliers.edit") && <button className="btn text-red" onClick={hardDelete}>Delete</button>}
             </div>
           </section>
         </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase";
 import { authorize } from "@/lib/auth";
+import { dbError } from "@/lib/sql-error";
 
 export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string }> };
@@ -42,4 +43,15 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   const { error } = await db().from("suppliers").update(patch).eq("id", id);
   if (error) return NextResponse.json({ error: error.code === "23505" ? "That name is already used." : error.message }, { status: error.code === "23505" ? 409 : 500 });
   return NextResponse.json({ ok: true });
+}
+
+/** Hard delete with all purchases, payments, returns and purchase orders. ?force=1 confirms. Without it the answer is
+ *  { deleted: false, needs_confirm: true, ...counts } and nothing is removed. */
+export async function DELETE(req: NextRequest, { params }: Ctx) {
+  const a = await authorize("suppliers.edit");
+  if (a.error) return a.error;
+  const { id } = await params;
+  const { data, error } = await db().rpc("delete_supplier", { p_supplier: id, p_force: req.nextUrl.searchParams.get("force") === "1" });
+  if (error) return dbError(error);
+  return NextResponse.json(data);
 }
