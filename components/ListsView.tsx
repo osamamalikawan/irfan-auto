@@ -22,13 +22,32 @@ export default function ListsView() {
     if (!r.ok) return setError(j.error || "Could not save");
     setError(""); setLists((ls) => ls && ls.map((x) => (x.id === l.id ? { ...x, visible } : x)));
   }
+  async function hardDelete(l: L) {
+    if (!window.confirm('Delete the list "' + l.name + '" for good? This cannot be undone.')) return;
+    setSaving(l.id);
+    const url = "/api/inventory/lists/" + l.id;
+    let r = await fetch(url, { method: "DELETE" });
+    let j = await r.json().catch(() => ({}));
+    if (r.ok && j.needs_confirm) {
+      const bits: string[] = [];
+      if (j.products) bits.push(j.products + " product" + (j.products === 1 ? "" : "s") + " will be left with no list");
+      if (j.deleted_products) bits.push(j.deleted_products + " deleted product" + (j.deleted_products === 1 ? "" : "s") + " will be left with no list");
+      if (j.routes) bits.push(j.routes + " route" + (j.routes === 1 ? "" : "s") + " will sell from any list");
+      if (!window.confirm('"' + l.name + '" is still in use:\n\n' + bits.join("\n") + "\n\nProducts are not deleted. Delete the list anyway?")) { setSaving(""); return; }
+      r = await fetch(url + "?force=1", { method: "DELETE" });
+      j = await r.json().catch(() => ({}));
+    }
+    setSaving("");
+    if (!r.ok) return setError(j.error || "Could not delete the list");
+    setError(""); setLists((ls) => ls && ls.filter((x) => x.id !== l.id));
+  }
   useEffect(() => {
     fetch("/api/inventory/lists").then((r) => r.json()).then((j) => (j.error ? setError(j.error) : setLists(j.lists))).catch(() => setError("Could not load the lists"));
   }, []);
   return (
     <div className="p-3 lg:px-5 lg:py-4">
       <h1 className="mb-1 text-lg font-bold">Price lists</h1>
-      <p className="mb-3 text-sm text-muted">Open a list to add, edit or delete its products, or print it on A4. Hide a list to remove it from the stock screens, or show it again.</p>
+      <p className="mb-3 text-sm text-muted">Open a list to add, edit or delete its products, or print it on A4. Hide a list to remove it from the stock screens, or show it again. Delete removes the list for good (its products are kept).</p>
       {error && <p role="alert" className="rounded-lg bg-red-bg p-2 text-sm text-red">{error}</p>}
       {!lists && !error && <ListSkeleton rows={6} />}
       <ul className="grid gap-2 lg:grid-cols-2">
@@ -40,6 +59,7 @@ export default function ListsView() {
             </Link>
             {(can("stock.manage") || can("settings.edit")) && <button className="btn min-h-9 px-3" disabled={saving === l.id} onClick={() => setVisible(l, !l.visible)}>{l.visible ? "Hide" : "Show"}</button>}
             <button className="btn min-h-9 px-3" onClick={() => setPrint(l)}>Print A4</button>
+            {(can("stock.manage") || can("settings.edit")) && <button className="btn min-h-9 px-3 text-red" disabled={saving === l.id} onClick={() => hardDelete(l)}>Delete</button>}
             <Link href={"/lists/" + l.id} className="btn btn-primary min-h-9 px-3">Open</Link>
           </li>
         ))}

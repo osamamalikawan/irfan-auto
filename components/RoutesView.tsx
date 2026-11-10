@@ -47,6 +47,22 @@ export default function RoutesView() {
   useEffect(() => { load(); }, [load]);
   useEffect(() => { fetch("/api/inventory/meta").then((r) => r.json()).then((j) => setLists(j.lists ?? [])).catch(() => {}); }, []);
 
+  async function hardDelete(r: Route) {
+    if (!window.confirm('Delete the route "' + r.name + '" for good? This cannot be undone.')) return;
+    const url = "/api/routes/" + r.id;
+    let res = await fetch(url, { method: "DELETE" });
+    let j = await res.json().catch(() => ({}));
+    if (res.ok && j.needs_confirm) {
+      const bits: [number, string][] = [[j.sales, "invoices"], [j.payments, "payments"], [j.returns, "returns"], [j.expenses, "expenses"], [j.visits, "visits"]];
+      const list = bits.filter(([n]) => n > 0).map(([n, w]) => n + " " + w).join(", ");
+      const runs = j.runs ? "\n\n" + j.runs + " completed route run" + (j.runs === 1 ? "" : "s") + " will be deleted with it." : "";
+      if (!window.confirm('"' + r.name + '" has history' + (list ? ": " + list : "") + ". They stay, but will show no route." + runs + "\n\nDelete the route anyway?")) return;
+      res = await fetch(url + "?force=1", { method: "DELETE" });
+      j = await res.json().catch(() => ({}));
+    }
+    if (!res.ok) return setToast(j.error || "Could not delete the route");
+    setToast(r.name + " deleted"); load();
+  }
   const routeName = (id: string) => routes?.find((r) => r.id === id)?.name ?? "?";
   const byCity = (r: Route) => {
     const m = new Map<string, string[]>();
@@ -87,6 +103,7 @@ export default function RoutesView() {
                       <p className="text-sm">{r.salesman ? r.salesman.name : <span className="pill bg-red-bg text-red">No salesman</span>}</p>
                     </div>
                     <button className="btn min-h-9 px-3" onClick={() => setEditR(r)}>Edit</button>
+                    <button className="btn min-h-9 px-3 text-red" onClick={() => hardDelete(r)}>Delete</button>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1">
                     <span className="pill bg-green-bg text-green">{FREQ_LABEL[r.frequency]}</span>{r.visit_days.length ? <span className="pill bg-bg text-ink">{describeSchedule(r)}</span> : <span className="pill bg-amber-bg text-amber">No visit day</span>}

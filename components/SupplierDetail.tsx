@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { niceDate } from "@/lib/dates";
 import { rs } from "@/lib/format";
@@ -17,6 +18,7 @@ type Detail = { supplier: SupplierRow & { code: string; status: string; balance:
 
 export default function SupplierDetail({ id }: { id: string }) {
   const { can } = useMe();
+  const router = useRouter();
   const [d, setD] = useState<Detail | null>(null);
   const [error, setError] = useState("");
   const [edit, setEdit] = useState(false);
@@ -49,6 +51,14 @@ export default function SupplierDetail({ id }: { id: string }) {
     const j = await r.json().catch(() => ({}));
     if (!r.ok) return setToast(j.error || "Could not change status");
     setToast(status === "archived" ? "Archived" : "Made active"); load();
+  }
+
+  async function moveToCustomer() {
+    if (!window.confirm('Move "' + (d?.supplier.name ?? "this supplier") + '" to customers?\n\nTheir details are copied to a new customer (add a route afterwards) and this supplier is archived. Purchases and payments stay on the archived supplier.')) return;
+    const r = await fetch("/api/suppliers/" + id + "/to-customer", { method: "POST" });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return setToast(j.error || "Could not move");
+    router.push("/customers/" + j.customer_id);
   }
 
   if (error) return <p className="p-4 text-red">{error} <Link href="/suppliers" className="underline">Back</Link></p>;
@@ -94,6 +104,7 @@ export default function SupplierDetail({ id }: { id: string }) {
               {can("purchases.create") && s.status === "active" && <Link href={"/purchases/new?supplier=" + id} className="btn btn-primary">New purchase</Link>}
               {can("suppliers.pay") && <button className="btn" onClick={() => setPay(true)}>Pay supplier</button>}
               {can("suppliers.edit") && (s.status === "active" ? <button className="btn" onClick={() => setStatus("archived")}>Archive</button> : <button className="btn btn-primary" onClick={() => setStatus("active")}>Make active</button>)}
+              {can("suppliers.edit") && can("customers.edit") && <button className="btn" onClick={moveToCustomer}>Move to customers</button>}
             </div>
           </section>
         </div>

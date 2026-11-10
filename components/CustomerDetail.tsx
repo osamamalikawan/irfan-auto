@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { withArea } from "@/lib/cust";
 import { useCallback, useEffect, useState } from "react";
 import { rs } from "@/lib/format";
@@ -26,6 +27,7 @@ type Detail = {
 
 export default function CustomerDetail({ id }: { id: string }) {
   const { can, canAny } = useMe();
+  const router = useRouter();
   const [d, setD] = useState<Detail | null>(null);
   const [error, setError] = useState("");
   const [text, setText] = useState("");
@@ -64,6 +66,14 @@ export default function CustomerDetail({ id }: { id: string }) {
     const j = await r.json().catch(() => ({}));
     if (!r.ok) return setToast(j.error || "Could not change status");
     setToast(status === "archived" ? "Archived" : "Restored"); load();
+  }
+
+  async function moveToSupplier() {
+    if (!window.confirm('Move "' + (d?.customer.name ?? "this customer") + '" to suppliers?\n\nTheir details are copied to a new supplier and this customer is archived. Invoices and payments stay on the archived customer.')) return;
+    const r = await fetch("/api/customers/" + id + "/to-supplier", { method: "POST" });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return setToast(j.error || "Could not move");
+    router.push("/suppliers/" + j.supplier_id);
   }
 
   if (error) return <p className="p-4 text-red">{error} <Link href="/customers" className="underline">Back</Link></p>;
@@ -122,6 +132,7 @@ export default function CustomerDetail({ id }: { id: string }) {
               {can("customers.edit") && !c.is_walk_in && (c.status === "active"
                 ? <button className="btn" onClick={() => setStatus("archived")}>Archive</button>
                 : <button className="btn btn-primary" onClick={() => setStatus("active")}>Make active</button>)}
+              {can("customers.edit") && can("suppliers.edit") && !c.is_walk_in && <button className="btn" onClick={moveToSupplier}>Move to suppliers</button>}
             </div>
             {d.history.length > 1 && (
               <details className="mt-3 text-sm">

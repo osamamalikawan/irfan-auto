@@ -3,6 +3,7 @@ import { db } from "@/lib/supabase";
 import { authorize } from "@/lib/auth";
 import { cleanDays } from "@/lib/days";
 import { cleanDate, cleanFreq, cleanMonthWeek } from "@/lib/schedule";
+import { dbError } from "@/lib/sql-error";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -48,4 +49,15 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     }
   }
   return NextResponse.json({ ok: true });
+}
+
+/** Hard delete. ?force=1 confirms deleting a route that has history. Without it the answer is
+ *  { deleted: false, needs_confirm: true, ...counts } and nothing is removed. Customers must be moved off the route first. */
+export async function DELETE(req: NextRequest, { params }: Ctx) {
+  const a = await authorize("routes.manage");
+  if (a.error) return a.error;
+  const { id } = await params;
+  const { data, error } = await db().rpc("delete_route", { p_route: id, p_force: req.nextUrl.searchParams.get("force") === "1" });
+  if (error) return dbError(error);
+  return NextResponse.json(data);
 }
