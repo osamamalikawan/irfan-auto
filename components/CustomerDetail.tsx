@@ -69,7 +69,7 @@ export default function CustomerDetail({ id }: { id: string }) {
   }
 
   async function moveToSupplier() {
-    if (!window.confirm('Move "' + (d?.customer.name ?? "this customer") + '" to suppliers?\n\nTheir details are copied to a new supplier and this customer is archived. Invoices and payments stay on the archived customer.')) return;
+    if (!window.confirm('Move "' + (d?.customer.name ?? "this customer") + '" to suppliers?\n\nThis customer becomes a supplier. Their sales invoices become purchases, payments received become payments made, and returns move too. The balance stays the same number. The customer record is removed and stock is not changed.')) return;
     const r = await fetch("/api/customers/" + id + "/to-supplier", { method: "POST" });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) return setToast(j.error || "Could not move");

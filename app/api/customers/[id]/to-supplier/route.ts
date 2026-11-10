@@ -7,8 +7,8 @@ import { dbError } from "@/lib/sql-error";
 export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string }> };
 
-/** Move a customer to the suppliers list: details are copied to a new supplier and the customer is archived.
- *  Refused while the customer has a balance. Needs both customers.edit and suppliers.edit. */
+/** Convert a customer into a supplier: invoices become purchases, payments received become payments made, returns and the
+ *  ledger move across, and the customer record is removed (all or nothing). Needs both customers.edit and suppliers.edit. */
 export async function POST(_req: NextRequest, { params }: Ctx) {
   const a = await authorize("customers.edit");
   if (a.error) return a.error;
