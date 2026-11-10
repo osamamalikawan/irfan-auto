@@ -1,11 +1,11 @@
 /**
  * Imports the old Oracle system's master data (from an "INSERT INTO" dump) into this app.
  *
- *   npm run import:oracle -- path/to/dump.sql                 preview only, nothing is written
- *   npm run import:oracle -- path/to/dump.sql --customers-only --apply
+ *   npm run import:oracle -- path/to/dump-or-folder                    preview only, nothing is written
+ *   npm run import:oracle -- path/to/dump-or-folder customers-only apply
  *                                                            import customers into the existing customers table
- *   npm run import:oracle -- path/to/dump.sql --apply         write customers first, then inventory/master data
- *   npm run import:oracle -- path/to/dump.sql --apply --users also create users from the COLLECTOR table
+ *   npm run import:oracle -- path/to/dump-or-folder apply              write customers first, then inventory/master data
+ *   npm run import:oracle -- path/to/dump-or-folder apply users        also create users from the COLLECTOR table
  *   options: --cp=SRATELOSE|SRATEPACK|RATEA|RATEB|RATEC   --name=CPNAME|PNAME   --reorder=REQTY|MAXQTY|none
  *
  * Safe to re-run: rows are matched on the old ids. Products already imported from the Excel file are matched on
@@ -22,7 +22,7 @@ const args = process.argv.slice(2);
 const WORDS = ["apply", "users", "customers-only"];
 const file = args.find((a) => !a.startsWith("--") && !WORDS.includes(a));
 const flag = (n: string) => args.find((a) => a.startsWith("--" + n + "="))?.split("=")[1];
-if (!file) { console.error("Usage: npm run import:oracle -- <dump.sql> [--apply] [--customers-only] [--users]"); process.exit(1); }
+if (!file) { console.error("Usage: npm run import:oracle -- <dump.sql|dump-folder> [--apply] [--customers-only] [--users]"); process.exit(1); }
 const has = (name: string) => args.includes("--" + name) || args.includes(name);
 const apply = has("apply"), withUsers = has("users"), customersOnly = has("customers-only");
 if (customersOnly && withUsers) {
@@ -96,7 +96,12 @@ async function main() {
     check("customer_ledger", ledgerSchemaError);
   }
 
+  const existingCustomerCodes = new Map(
+    (await fetchAll<{ ora_ccode: number | null; code: string }>("customers", "ora_ccode,code"))
+      .flatMap((customer) => customer.ora_ccode == null ? [] : [[customer.ora_ccode, customer.code] as const])
+  );
   const customerRows = plan.customers.map((customer) => ({
+    code: existingCustomerCodes.get(customer.ora_ccode) ?? `ORA-C-${customer.ora_ccode}`,
     ora_ccode: customer.ora_ccode,
     name: customer.name,
     name_ur: customer.name_ur,
@@ -117,6 +122,18 @@ async function main() {
     check("customers", (await sb.from("customers").upsert(c, { onConflict: "ora_ccode" })).error);
   }
   console.log("Customers synced:", customerRows.length);
+
+  const { data: walkInCustomer, error: walkInError } = await sb.from("customers")
+    .select("id").eq("is_walk_in", true).maybeSingle();
+  check("walk-in customer", walkInError);
+  if (!walkInCustomer) {
+    check("walk-in customer", (await sb.from("customers").insert({
+      code: "WALK-IN",
+      name: "Walk-in customer",
+      is_walk_in: true,
+    })).error);
+    console.log("Created the missing walk-in customer.");
+  }
 
   if (plan.customers.length) {
     const customerIds = new Map<number, string>();
@@ -169,8 +186,7 @@ async function main() {
 
   /** Finds each old row in the app by old id, then by name; creates what is missing. Returns old id -> new id. */
   async function sync(table: string, oraCol: string, items: Named[], extra: (n: Named) => Record<string, unknown> = () => ({})) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const existing = await fetchAll<any>(table, "id,name," + oraCol);
+    const existing = await fetchAll<{ id: string; name: string; [key: string]: unknown }>(table, "id,name," + oraCol);
     const byOra = new Map(existing.filter((e) => e[oraCol] != null).map((e) => [Number(e[oraCol]), e]));
     const byName = new Map(existing.map((e) => [String(e.name).trim().toLowerCase(), e]));
     const out = new Map<number, string>();

@@ -1,5 +1,7 @@
 // Reads an Oracle "INSERT INTO" dump (as produced by Open DUMP Viewer) without a database.
 import { createReadStream } from "node:fs";
+import { readdir, stat } from "node:fs/promises";
+import { join } from "node:path";
 import { createInterface } from "node:readline";
 
 export type Val = string | number | null;
@@ -56,32 +58,91 @@ export function evalExpr(raw: string): Val {
   return ok && out !== "" ? out : null; // Oracle treats '' as NULL
 }
 
-const INSERT = /^INSERT INTO "(\w+)"\."(\w+)" \((.*?)\) VALUES \((.*)\);\s*$/;
+const INSERT = /^INSERT INTO "(\w+)"\."(\w+)" \(([\s\S]*?)\) VALUES \(([\s\S]*)\);\s*$/;
 
-export function parseInsert(line: string): { table: string; row: Row } | null {
-  const m = INSERT.exec(line);
+export function parseInsert(statement: string): { table: string; row: Row } | null {
+  const m = INSERT.exec(statement);
   if (!m) return null;
   const cols = m[3].split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
   const vals = splitTop(m[4]);
+  if (cols.length !== vals.length) {
+    throw new Error(`INSERT into ${m[2]} has ${cols.length} columns but ${vals.length} values.`);
+  }
   const row: Row = {};
   cols.forEach((c, i) => { row[c] = evalExpr(vals[i] ?? "NULL"); });
   return { table: m[2], row };
 }
 
+function statementComplete(statement: string): boolean {
+  let quoted = false;
+  for (let i = 0; i < statement.length; i++) {
+    if (statement[i] === "'") {
+      if (quoted && statement[i + 1] === "'") { i++; continue; }
+      quoted = !quoted;
+    } else if (statement[i] === ";" && !quoted) {
+      return statement.slice(i + 1).trim() === "";
+    }
+  }
+  return false;
+}
+
 /** Streams only wanted rows from a dump without retaining them in memory. */
 export async function* streamOracleDump(path: string, wanted: string[]): AsyncGenerator<{ table: string; row: Row }> {
   const want = new Set(wanted.map((t) => t.toUpperCase()));
-  const rl = createInterface({ input: createReadStream(path, { encoding: "utf8" }), crlfDelay: Infinity });
-  for await (const line of rl) {
-    if (!line.startsWith("INSERT INTO")) continue;
-    const t = /^INSERT INTO "\w+"\."(\w+)"/.exec(line)?.[1]?.toUpperCase();
-    if (!t || !want.has(t)) continue;
-    const p = parseInsert(line);
-    if (p) yield { table: t, row: p.row };
+  const inputStat = await stat(path);
+  const sources = inputStat.isDirectory()
+    ? await (async () => {
+      const entries = await readdir(path, { withFileTypes: true });
+      const files = new Map(entries.filter((entry) => entry.isFile())
+        .map((entry) => [entry.name.toUpperCase(), join(path, entry.name)]));
+      const missing = [...want].filter((table) => !files.has(`${table}.SQL`));
+      if (missing.length) {
+        throw new Error(`Oracle dump directory is missing table file(s): ${missing.map((table) => `${table}.sql`).join(", ")}`);
+      }
+      return [...want].map((table) => ({ table, path: files.get(`${table}.SQL`)! }));
+    })()
+    : [{ table: null as string | null, path }];
+
+  for (const source of sources) {
+    const rl = createInterface({
+      input: createReadStream(source.path, { encoding: "utf8" }),
+      crlfDelay: Infinity,
+    });
+    let statement = "";
+    let statementLine = 0;
+    let lineNumber = 0;
+    for await (const line of rl) {
+      lineNumber++;
+      if (!statement) {
+        if (!line.startsWith("INSERT INTO")) continue;
+        const sourceTable = /^INSERT INTO "\w+"\."(\w+)"/.exec(line)?.[1]?.toUpperCase();
+        if (source.table && sourceTable !== source.table) {
+          throw new Error(`Unexpected INSERT table ${sourceTable ?? "(unrecognized)"} in ${source.path}:${lineNumber}.`);
+        }
+        const table = source.table ?? sourceTable;
+        if (!table) {
+          throw new Error(`Could not identify INSERT table in ${source.path}:${lineNumber}.`);
+        }
+        if (!want.has(table)) continue;
+        statementLine = lineNumber;
+      }
+      statement = statement ? `${statement}\n${line}` : line;
+      if (!statementComplete(statement)) continue;
+      const parsed = parseInsert(statement);
+      if (!parsed) {
+        throw new Error(`Could not parse INSERT in ${source.path}:${statementLine}.`);
+      }
+      yield { table: parsed.table.toUpperCase(), row: parsed.row };
+      statement = "";
+      statementLine = 0;
+    }
+    if (statement) {
+      throw new Error(`Incomplete INSERT in ${source.path}:${statementLine} at end of file.`);
+    }
   }
 }
 
-/** Streams the file and keeps only the wanted tables (so a huge dump does not fill memory). */
+/** Streams requested table files from a directory or requested rows from one combined dump. */
 export async function readOracleDump(path: string, wanted: string[]): Promise<Record<string, Row[]>> {
   const out: Record<string, Row[]> = {};
   for (const t of wanted) out[t.toUpperCase()] = [];

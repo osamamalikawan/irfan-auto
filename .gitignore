@@ -9,3 +9,5 @@ oracle-import-preview.json
 data.sql
 .archify/
 /.archify
+/data
+data/

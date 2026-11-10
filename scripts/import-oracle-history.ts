@@ -1,8 +1,8 @@
 /**
  * Imports historical Oracle invoices, purchases, returns, and payment history without changing current stock.
  *
- *   npm run import:oracle:history -- path/to/dump.sql           preview only
- *   npm run import:oracle:history -- path/to/dump.sql --apply   import history
+ *   npm run import:oracle:history -- path/to/dump.sql-or-folder           preview only
+ *   npm run import:oracle:history -- path/to/dump.sql-or-folder --apply   import history
  */
 import { createHash } from "node:crypto";
 import { streamOracleDump, type Row, type Val } from "../lib/oracle-dump";
@@ -29,7 +29,7 @@ if ([customerPaymentsOnly, salesReturnsOnly, customerDiscountsOnly, customerPhon
   process.exit(1);
 }
 if (!file) {
-  console.error("Usage: npm run import:oracle:history -- <dump.sql> [--customer-payments-only | --supplier-payments-only | --sales-returns-only | --customer-discounts-only | --customer-phones-only | --routes-only | --areas-only] [apply]");
+  console.error("Usage: npm run import:oracle:history -- <dump.sql|dump-folder> [--customer-payments-only | --supplier-payments-only | --sales-returns-only | --customer-discounts-only | --customer-phones-only | --routes-only | --areas-only] [apply]");
   process.exit(1);
 }
 
@@ -2337,10 +2337,23 @@ async function main() {
   const purchaseLineBatch: Record<string, unknown>[] = [];
   let saleLinesWritten = 0;
   let purchaseLinesWritten = 0;
+  let nextSaleLineProgress = 100_000;
   async function flushLines(batch: Record<string, unknown>[], table: "sale_items" | "purchase_items") {
-    for (const part of chunks(batch)) check(table, (await client.from(table).upsert(part, { onConflict: "id" })).error);
-    if (table === "sale_items") saleLinesWritten += batch.length;
-    else purchaseLinesWritten += batch.length;
+    const parts = chunks(batch);
+    for (let i = 0; i < parts.length; i += 2) {
+      await Promise.all(parts.slice(i, i + 2).map((part) =>
+        retryNetworkWrite(table, () => client.from(table).upsert(part, { onConflict: "id", ignoreDuplicates: true }))
+      ));
+    }
+    if (table === "sale_items") {
+      saleLinesWritten += batch.length;
+      if (saleLinesWritten >= nextSaleLineProgress) {
+        console.log(`Sale lines synced: ${saleLinesWritten}`);
+        nextSaleLineProgress += 100_000;
+      }
+    } else {
+      purchaseLinesWritten += batch.length;
+    }
   }
   for await (const { table, row } of streamOracleDump(file!, ["INV1S", "INV1P"])) {
     const sourceId = legacyId(row, "INVNO");
@@ -2365,7 +2378,7 @@ async function main() {
         disc_pct: roundMoney(number(row, "DISC_PCENT")),
         line_disc: roundMoney(number(row, "DISC")),
       });
-      if (saleLineBatch.length >= 500) {
+      if (saleLineBatch.length >= 2000) {
         await flushLines(saleLineBatch, "sale_items");
         saleLineBatch.length = 0;
       }
@@ -2386,7 +2399,7 @@ async function main() {
         disc_pct: roundMoney(number(row, "DISC_PCENT")),
         line_disc: roundMoney(number(row, "DISC")),
       });
-      if (purchaseLineBatch.length >= 500) {
+      if (purchaseLineBatch.length >= 2000) {
         await flushLines(purchaseLineBatch, "purchase_items");
         purchaseLineBatch.length = 0;
       }
@@ -2396,6 +2409,7 @@ async function main() {
   if (purchaseLineBatch.length) await flushLines(purchaseLineBatch, "purchase_items");
 
   await importOracleReturns(client, summary, usableSales, customerIds, productByCode);
+  await importOraclePurchaseReturnCredits(client, summary, customerIds, productByCode);
 
   const payments: Record<string, unknown>[] = [];
   const customerLedger: Record<string, unknown>[] = [];

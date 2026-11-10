@@ -1,6 +1,6 @@
 # Old Oracle system -> this app
 
-Source: full Oracle dump supplied to the importer (77 tables). Rows marked "my reading" are guesses from column
+Source: Oracle tables supplied as separate SQL files in `data/` (77 tables). Rows marked "my reading" are guesses from column
 names and sample data; confirm them against the old screens.
 
 ## 1. Imported by `npm run import:oracle`
@@ -9,31 +9,32 @@ Customers must be imported before dependent sales records. The importer does not
 it writes only to existing Supabase tables. Preview and import customer rows into the existing `customers` table:
 
 ```bash
-npm run import:oracle -- path/to/dump.sql --customers-only
-npm run import:oracle -- path/to/dump.sql --customers-only --apply
-npm run import:oracle:history -- path/to/dump.sql
-npm run import:oracle:history -- path/to/dump.sql apply
-npm run import:oracle:history -- path/to/dump.sql customer-payments-only apply
-npm run import:oracle:history -- path/to/dump.sql customer-discounts-only apply
-npm run import:oracle:history -- path/to/dump.sql sales-returns-only apply
-npm run import:oracle:history -- path/to/dump.sql customer-phones-only
-npm run import:oracle:history -- path/to/dump.sql customer-phones-only apply
-npm run import:oracle:history -- path/to/dump.sql routes-only
-npm run import:oracle:history -- path/to/dump.sql routes-only apply
-npm run import:oracle:history -- path/to/dump.sql areas-only
-npm run import:oracle:history -- path/to/dump.sql areas-only apply
-npm run import:oracle:history -- path/to/dump.sql supplier-payments-only
-npm run import:oracle:history -- path/to/dump.sql supplier-payments-only apply
+npm run import:oracle -- data
+npm run import:oracle -- data apply users
+npm run import:oracle:history -- data routes-only
+npm run import:oracle:history -- data routes-only apply
+npm run import:oracle:history -- data areas-only
+npm run import:oracle:history -- data areas-only apply
+npm run import:oracle:history -- data customer-phones-only
+npm run import:oracle:history -- data customer-phones-only apply
+npm run import:oracle:history -- data apply
+npm run import:oracle:history -- data customer-discounts-only
+npm run import:oracle:history -- data customer-discounts-only apply
 ```
 
 The customer stage imports `CUST` rows with `CODE = 'C'`, keyed idempotently by `CCODE` in the existing `ora_ccode`
-column. It maps the core profile, credit terms, active status, and opening balance to existing customer columns and
+column. New customer codes use the distinct `ORA-C-<CCODE>` namespace so they cannot collide with app-generated
+`C-####` codes; existing customer codes are preserved on re-runs. It maps the core profile, credit terms, active status, and opening balance to existing customer columns and
 syncs `COBAL` as an opening entry in `customer_ledger`. Apply the Supabase migrations, including
 `supabase/migrations/0007_sales.sql`, before importing; the importer stops before writing if the ledger table is
-missing. This imports opening balances only, not historical invoices or payments. `CUST2` mobile numbers are imported
+missing. It also ensures the required `WALK-IN` customer exists. This imports opening balances only, not historical invoices or payments. `CUST2` mobile numbers are imported
 by `customer-phones-only apply`, merged with `CUST.CONTACT`,
 `CUST.PHONENO`, and existing customer phone records. Existing numbers are retained, and the `customer_phones` relation
 plus `customers.phone`, `phone2`, and `phone_search` are synchronized.
+
+The importers map only supported application data; they do not execute the SQL files or copy unsupported tables
+raw. In particular, Oracle passwords, push tokens, session/security data, audit logs, and binary attachments are
+not imported. `data/` must contain the table files referenced by the selected import scope.
 
 After importing master data, `import:oracle:history` previews or imports `INV0S` / `INV1S` customer invoices,
 `INV0P` / `INV1P` purchases, `INVR0` / `INVR1` sales returns, `CASHR1` customer receipts, and `CASHP1` supplier payments. Customer and supplier identities share the Oracle `CUST` account table; a record can be used in both roles. Supplier records are matched or created from accounts referenced by purchase/payment transactions, not by requiring `CUST.CODE = 'S'`. The history importer is idempotent and inserts rows
