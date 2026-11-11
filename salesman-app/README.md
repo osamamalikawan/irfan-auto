@@ -14,7 +14,7 @@ Kotlin + Jetpack Compose. Talks to the same website/API as the office (`/api/...
 - **Customers**: balances, unpaid bills, account statement, call button. Tap any invoice (in the statement or the unpaid list) to open it with its lines, totals and payments.
   **Full ledger** shows every entry of a period with the running balance.
 - **Tasks**: scheduled order actions, customers' promises to pay, and his own tasks (add one, tick it off). Works offline.
-- **My ledger**: every payment he collected and every handover to the office, with the running balance.
+- **My ledger**: his own salary account with the shop (salary earned, paid, advances, bonuses, deductions, and what is still owed to him) and, on a second tab, the cash he collected from customers and handed over. Works offline.
 - **New order**, **Collect payment**, **Return / claim** (also directly from an invoice; an invoice that cannot be returned says why): saved on the phone and sent to the office for approval (*Field Team > Approvals*). Nothing can be sent twice.
 - **Requests**: everything waiting to be sent, and the status of everything sent (waiting / approved / rejected with the office's reason).
 - **My account**: sales, collections and visits against target; money still to hand over to the office; what customers owe.

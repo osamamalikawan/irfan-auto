@@ -132,7 +132,7 @@ fun AccountScreen(onChangePin: () -> Unit, onLedger: () -> Unit) {
                         Row(Modifier.padding(18.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text("My ledger", style = MaterialTheme.typography.titleMedium)
-                                Text("Every payment collected and every handover to the office", style = MaterialTheme.typography.bodySmall, color = Muted)
+                                Text("Your salary account, and the cash you collected and handed over", style = MaterialTheme.typography.bodySmall, color = Muted)
                             }
                             Text("Open", color = Brand, style = MaterialTheme.typography.labelLarge)
                         }

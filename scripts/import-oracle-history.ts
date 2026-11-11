@@ -258,7 +258,7 @@ async function readSummary(path: string, productIds?: Set<number>, tables = TABL
       line.invalid++;
     }
     line.gross += qty * price;
-    line.discount += lineDiscount;
+    if (table === "INV1P") line.discount += lineDiscount;
   }
 
   const plan = buildPlan({ CUST: summary.customers, PROD: [] }, DEFAULT_CONFIG);
@@ -2375,8 +2375,8 @@ async function main() {
         qty: number(row, "QTY"),
         free: number(row, "GQTY"),
         price: roundMoney(number(row, "UPRICE")),
-        disc_pct: roundMoney(number(row, "DISC_PCENT")),
-        line_disc: roundMoney(number(row, "DISC")),
+        disc_pct: 0,
+        line_disc: 0,
       });
       if (saleLineBatch.length >= 2000) {
         await flushLines(saleLineBatch, "sale_items");

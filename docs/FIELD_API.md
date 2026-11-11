@@ -78,6 +78,21 @@ Nothing changes stock or the ledger until the office approves. Send an `idem_key
 Approving twice returns the same result and changes nothing. If stock or the customer balance no longer allows it, the approve call answers 409 with the reason and the request stays pending.
 
 ## Go-live checklist
-1. Run `0016_field_work.sql`, `0018_salesman_account.sql` and `0025_offline_field.sql` and `0026_tasks_idem.sql` (run them before deploying the website that uses them) (add tables, functions and the new permissions; nothing existing changes). The salesman cash account counts from the day you run 0018 (`app_users.cash_start`).
+1. Run `0016_field_work.sql`, `0018_salesman_account.sql` and `0025_offline_field.sql` and `0026_tasks_idem.sql` and `0027_employees.sql` (run them before deploying the website that uses them) (add tables, functions and the new permissions; nothing existing changes). The salesman cash account counts from the day you run 0018 (`app_users.cash_start`).
 2. Test with the Android app and the approval screens.
 3. Run `0021_salesman_approval_switch.sql` to stop salesmen creating invoices/payments directly.
+
+## Employees (office)
+Every login is an employee (a database trigger makes the record); an employee does not need a login. Salary is `daily`, `weekly` or `monthly`; the salary of every finished day / week / month is posted to the employee's ledger once (a part period is paid in proportion). Payments and advances also create an Expenses > Salaries entry in the cash book.
+| Call | Purpose |
+|---|---|
+| `GET /api/employees?status=active\|left\|all&q=` | the list with what the shop owes each employee (`balance`, negative = advance) and his login |
+| `POST /api/employees` | `{ name, phone?, cnic?, address?, designation?, join_date?, salary_type, salary_amount, weekly_off?, notes?, opening_balance? }` (`employees.manage`) |
+| `GET /api/employees/:id?from=&to=` | details, balance, login and the ledger with running balance |
+| `PATCH /api/employees/:id` | edit details, salary, status (`status: "left"` with `leave_date`) |
+| `POST /api/employees/:id/pay` | `{ kind: "payment"\|"advance", amount, date?, method?, note? }` (`employees.pay`) |
+| `POST /api/employees/:id/adjust` | `{ kind: "bonus"\|"deduction"\|"opening", amount, date?, note? }` |
+| `POST /api/employees/:id/entries/:entryId/void` | cancel an entry (and its cash-book entry) |
+| `POST /api/employees/accrue` | `{ id? }` post the salary that is due |
+| `POST /api/employees/:id/login` | `{ role_id, pin, is_salesman? }` give an employee a login (`users.manage`) |
+| `GET /api/me/employee-ledger?range=month\|3m\|year\|all` | the signed-in person's own salary ledger (also in the offline pack as `my_ledger`) |

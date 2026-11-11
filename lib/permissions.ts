@@ -14,6 +14,10 @@ export const PERM_GROUPS: { title: string; perms: [string, string][] }[] = [
   { title: "Field work", perms: [
     ["planner.edit", "Edit the weekly planner"], ["visits.record", "Record visits"], ["targets.manage", "Set targets"], ["reports.view", "View reports"],
   ] },
+  { title: "Employees", perms: [
+    ["employees.view", "View employees and their salary ledgers"], ["employees.manage", "Add and edit employees, post salary"],
+    ["employees.pay", "Pay salary and advances, add bonus or deduction, cancel entries"],
+  ] },
   { title: "Salesman app", perms: [
     ["attendance.mark", "Mark own attendance and share location (Android app)"], ["orders.request", "Request orders (office approves)"],
     ["payments.request", "Request payment collections (office approves)"], ["returns.request", "Request returns and claims (office approves)"],

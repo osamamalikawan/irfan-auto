@@ -33,6 +33,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import pk.irfanautos.salesman.App
 import pk.irfanautos.salesman.data.Api
+import pk.irfanautos.salesman.data.EmpLedger
 import pk.irfanautos.salesman.data.LedgerResp
 import pk.irfanautos.salesman.data.Load
 import pk.irfanautos.salesman.data.Offline
@@ -135,7 +136,7 @@ fun LedgerScreen(customerId: String, onBack: () -> Unit, onInvoice: (String) -> 
 /** The salesman's own ledger: every payment he collected and every handover of money to the office, with the running balance
  *  (what he still has to hand over). */
 @Composable
-fun MyLedgerScreen(onBack: () -> Unit) {
+private fun CashLedger() {
     var range by remember { mutableStateOf("month") }
     var tick by remember { mutableStateOf(0) }
     var data by remember { mutableStateOf<JsonObject?>(null) }
@@ -159,7 +160,7 @@ fun MyLedgerScreen(onBack: () -> Unit) {
         loading = false
     }
 
-    Page("My ledger", onBack, actions = { OnlineChip(); Spacer(Modifier.width(12.dp)) }) {
+    Column(Modifier.fillMaxSize()) {
         Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("today" to "Today", "week" to "Week", "month" to "Month", "3m" to "3 months").forEach { (k, label) ->
                 FilterChip(selected = range == k, onClick = { range = k }, label = { Text(label) })
@@ -205,5 +206,126 @@ fun MyLedgerScreen(onBack: () -> Unit) {
                 }
             }
         }
+    }
+}
+
+private fun typeColor(type: String) = when (type) {
+    "salary", "bonus", "opening" -> Good
+    "payment" -> Brand
+    "advance" -> Warn
+    else -> Bad
+}
+
+/** His own account with the shop as an employee: salary earned, salary paid, advances, bonuses and deductions, with what is still owed to him.
+ *  The last 4 months are downloaded with the rest, and every period he opens is kept, so it works without internet. */
+@Composable
+private fun SalaryLedger() {
+    var range by remember { mutableStateOf("month") }
+    var tick by remember { mutableStateOf(0) }
+    var data by remember { mutableStateOf<EmpLedger?>(null) }
+    var loading by remember { mutableStateOf(true) }
+    var note by remember { mutableStateOf("") }
+
+    LaunchedEffect(range, tick) {
+        val key = "salary:$range"
+        data = App.localDb.get(key)?.let { s -> runCatching { Api.json.decodeFromString<EmpLedger>(s) }.getOrNull() }
+        loading = data == null
+        note = ""
+        when (val r = load { Api.employeeLedger(range) }) {
+            is Load.Ok -> {
+                data = r.value
+                App.localDb.put(key, Api.json.encodeToString(r.value))
+            }
+            is Load.Err -> {
+                if (data == null) {
+                    val saved = Offline.myLedger()
+                    if (saved?.employee != null) {
+                        data = saved
+                        note = "No internet: showing the last 4 months saved on this phone."
+                    } else {
+                        note = "No internet and nothing saved yet."
+                    }
+                } else {
+                    note = "No internet: showing this ledger as it was last saved " + ago(App.localDb.savedAt(key)) + "."
+                }
+            }
+            else -> {}
+        }
+        loading = false
+    }
+
+    Column(Modifier.fillMaxSize()) {
+        Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("month" to "This month", "3m" to "3 months", "year" to "Year", "all" to "Everything").forEach { (k, label) ->
+                FilterChip(selected = range == k, onClick = { range = k }, label = { Text(label) })
+            }
+        }
+        val d = data
+        val emp = d?.employee
+        if (d == null || emp == null) {
+            if (loading) LoadingBox()
+            else EmptyState(
+                if (d != null) "No salary record yet" else "Nothing to show",
+                if (d != null) "Your login is not linked to an employee record. Ask the office." else note,
+            )
+        } else {
+            val rows = d.rows.asReversed()
+            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (note.isNotEmpty()) item { InfoBanner(note) }
+                item {
+                    AppCard(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(18.dp)) {
+                            Text(
+                                if (d.balance > 0) "The shop owes you" else if (d.balance < 0) "Advance you have taken" else "Nothing owed",
+                                style = MaterialTheme.typography.bodyMedium, color = Muted,
+                            )
+                            Text(money(Math.abs(d.balance)), style = MaterialTheme.typography.headlineMedium, color = if (d.balance > 0) Good else if (d.balance < 0) Warn else Ink)
+                            Text(emp.name + "  ·  " + emp.code + (if (!emp.designation.isNullOrBlank()) "  ·  " + emp.designation else ""), style = MaterialTheme.typography.bodySmall, color = Muted, modifier = Modifier.padding(top = 6.dp))
+                            if (emp.rate.isNotBlank()) Text("Salary: " + emp.rate, style = MaterialTheme.typography.bodySmall, color = Muted)
+                        }
+                    }
+                }
+                item {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Figure("Opening", money(d.opening), Modifier.weight(1f))
+                        Figure("Earned", money(d.totalDebit), Modifier.weight(1f), Good)
+                    }
+                }
+                item {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Figure("Paid / deducted", money(d.totalCredit), Modifier.weight(1f), Brand)
+                        Figure("Closing", money(d.closing), Modifier.weight(1f))
+                    }
+                }
+                if (rows.isEmpty()) item { Text("No entries in this period.", color = Muted) }
+                items(rows.size) { i ->
+                    val r = rows[i]
+                    Column(Modifier.fillMaxWidth()) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(r.label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                            Text(if (r.debit > 0) "+" + money(r.debit) else "-" + money(r.credit), style = MaterialTheme.typography.titleSmall, color = typeColor(r.type))
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(r.date, style = MaterialTheme.typography.bodySmall, color = Muted)
+                            Text("balance " + money(r.balance), style = MaterialTheme.typography.bodySmall, color = Muted)
+                        }
+                        HorizontalDivider(Modifier.padding(top = 8.dp), color = Line)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** His own ledger: his salary account with the shop, and the cash he collected from customers (what he still has to hand over). */
+@Composable
+fun MyLedgerScreen(onBack: () -> Unit) {
+    var tab by remember { mutableStateOf(0) }
+    Page("My ledger", onBack, actions = { OnlineChip(); Spacer(Modifier.width(12.dp)) }) {
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(selected = tab == 0, onClick = { tab = 0 }, label = { Text("My salary") })
+            FilterChip(selected = tab == 1, onClick = { tab = 1 }, label = { Text("Cash I collected") })
+        }
+        if (tab == 0) SalaryLedger() else CashLedger()
     }
 }

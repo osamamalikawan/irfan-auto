@@ -35,7 +35,8 @@ export const MENU: MenuGroup[] = [
   { label: "People", items: [
     { label: "Customers", href: "/customers", perms: CUSTOMERS },
     { label: "Suppliers", href: "/suppliers", perms: SUPPLIERS },
-    { label: "Employees", href: "/users?tab=users", perms: ["users.manage"] },
+    { label: "Employees", href: "/employees", perms: ["employees.view", "employees.manage", "employees.pay"] },
+    { label: "Logins", href: "/users?tab=users", perms: ["users.manage"] },
     { label: "Customer promises", href: "/promises", perms: ["visits.record", "payments.receive", "reports.view", "customers.view"] },
   ] },
   { label: "Visit Planning", items: [

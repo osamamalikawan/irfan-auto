@@ -31,6 +31,8 @@ object Offline {
     fun methods(): List<Method> = read<List<Method>>("methods") ?: emptyList()
     fun plan(): PlanData? = read<PlanData>("plan")
     fun tasks(): TasksPack? = read<TasksPack>("tasks")
+    /** His own salary ledger (the last 4 months), downloaded with the rest. */
+    fun myLedger(): EmpLedger? = read<EmpLedger>("my_ledger")
     /** May this salesman tick off the office's scheduled order actions (pack / deliver)? Decided by his permissions on the website. */
     fun canSaleStatus(): Boolean = read<PackCan>("can")?.sale_status == true
     /** An invoice from the phone: first from the customer's saved account, then from one opened earlier. */
@@ -118,6 +120,7 @@ object Offline {
             write("plan", base.plan)
             write("last_visits", base.last_visits)
             write("can", base.can)
+            base.my_ledger?.let { write("my_ledger", it) }
             prefs.packAt = now
             version++
             try {

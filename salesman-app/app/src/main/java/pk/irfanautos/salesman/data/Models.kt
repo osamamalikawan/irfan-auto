@@ -75,6 +75,7 @@ import kotlinx.serialization.Serializable
 @Serializable data class BasePack(
     val server_time: String = "", val customers: List<MyCustomer> = emptyList(), val methods: List<Method> = emptyList(),
     val plan: PlanData = PlanData(), val last_visits: Map<String, LastVisit> = emptyMap(), val can: PackCan = PackCan(),
+    val my_ledger: EmpLedger? = null,
 )
 @Serializable data class InvoiceSnap(val id: String = "", val no: String = "", val sale_date: String? = null, val total: Double = 0.0, val items: List<RetItem> = emptyList())
 @Serializable data class CustomerSnap(
@@ -108,3 +109,14 @@ import kotlinx.serialization.Serializable
 )
 @Serializable data class PackCan(val sale_status: Boolean = false)
 @Serializable data class TasksPack(val today: String = "", val items: List<TaskRow> = emptyList(), val can: PackCan = PackCan())
+
+// ---- his own salary ledger (he is an employee of the shop)
+@Serializable data class EmpInfo(
+    val code: String = "", val name: String = "", val designation: String? = null, val salary_type: String = "monthly", val salary_amount: Double = 0.0,
+    val join_date: String = "", val status: String = "active", val rate: String = "",
+)
+@Serializable data class EmpLine(val date: String = "", val type: String = "", val label: String = "", val debit: Double = 0.0, val credit: Double = 0.0, val balance: Double = 0.0)
+@Serializable data class EmpLedger(
+    val employee: EmpInfo? = null, val balance: Double = 0.0, val opening: Double = 0.0, val closing: Double = 0.0,
+    val totalDebit: Double = 0.0, val totalCredit: Double = 0.0, val rows: List<EmpLine> = emptyList(),
+)

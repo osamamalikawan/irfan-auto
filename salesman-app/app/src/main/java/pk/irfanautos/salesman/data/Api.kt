@@ -113,6 +113,7 @@ object Api {
     suspend fun offlineProducts(offset: Int): ProductsPage = get("/api/me/offline/products?limit=2000&offset=$offset")
     suspend fun offlineCustomers(offset: Int): SnapPage = get("/api/me/offline/customers?limit=10&offset=$offset")
     suspend fun offlineTasks(): TasksPack = get("/api/me/offline/tasks")
+    suspend fun employeeLedger(range: String): EmpLedger = get("/api/me/employee-ledger?range=$range")
     suspend fun invoice(key: String): InvoiceDoc? = get<DocResp>("/api/me/invoice/" + enc(key)).doc
     suspend fun ledgerFrom(customerId: String, from: String?): LedgerResp = get("/api/customers/$customerId/ledger" + (if (from != null) "?from=$from" else ""))
     suspend fun accountBetween(from: String, to: String): JsonObject = json.parseToJsonElement(raw("GET", "/api/me/account?range=custom&from=$from&to=$to")).jsonObject

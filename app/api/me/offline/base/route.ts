@@ -3,6 +3,9 @@ import { db } from "@/lib/supabase";
 import { authorize } from "@/lib/auth";
 import { hasPerm } from "@/lib/permissions";
 import { buildPlan, lastVisits } from "@/lib/offline-pack";
+import { myEmployeeLedger } from "@/lib/employees";
+import { addDays } from "@/lib/schedule";
+import { todayPk } from "@/lib/field";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +25,10 @@ export async function GET() {
     if (cs.error) throw new Error(cs.error.message);
     const customers = (cs.data ?? []) as { id: string }[];
     const last = await lastVisits(sb, customers.map((c) => c.id));
-    return NextResponse.json({ server_time: new Date().toISOString(), customers, methods: pm.data ?? [], plan, last_visits: last, can: { sale_status: hasPerm(a.user, "sales.status") } });
+    // his salary ledger of the last 4 months, so "My ledger" opens without internet (null if he has no employee record or the employees update is not installed yet)
+    const today = todayPk();
+    const my_ledger = await myEmployeeLedger(sb, a.user.id, today, addDays(today, -120), null).catch(() => null);
+    return NextResponse.json({ server_time: new Date().toISOString(), customers, methods: pm.data ?? [], plan, last_visits: last, my_ledger, can: { sale_status: hasPerm(a.user, "sales.status") } });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }
