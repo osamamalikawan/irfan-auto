@@ -1,5 +1,5 @@
 import { cookies, headers } from "next/headers";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { SignJWT, jwtVerify } from "jose";
 import { db } from "./supabase";
 import { hasAny, type SessionUser } from "./permissions";
@@ -22,11 +22,17 @@ export async function readSession(token: string | undefined): Promise<string | n
   try { return (await jwtVerify(token, secret())).payload.sub ?? null; } catch { return null; }
 }
 
-export function setSessionCookie(res: NextResponse, token: string) {
-  res.cookies.set(SESSION_COOKIE, token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: MAX_AGE });
+/** Secure cookies only over HTTPS (the Cloudflare tunnel); on the plain-HTTP LAN a Secure cookie would never stick. */
+function isHttps(req?: NextRequest): boolean {
+  if (!req) return process.env.NODE_ENV === "production" && process.env.APO_LOCAL !== "1";
+  const xf = req.headers.get("x-forwarded-proto");
+  return (xf ? xf.split(",")[0].trim() : req.nextUrl.protocol.replace(":", "")) === "https";
 }
-export function clearSessionCookie(res: NextResponse) {
-  res.cookies.set(SESSION_COOKIE, "", { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 0 });
+export function setSessionCookie(res: NextResponse, token: string, req?: NextRequest) {
+  res.cookies.set(SESSION_COOKIE, token, { httpOnly: true, secure: isHttps(req), sameSite: "lax", path: "/", maxAge: MAX_AGE });
+}
+export function clearSessionCookie(res: NextResponse, req?: NextRequest) {
+  res.cookies.set(SESSION_COOKIE, "", { httpOnly: true, secure: isHttps(req), sameSite: "lax", path: "/", maxAge: 0 });
 }
 
 /** The Android app sends "Authorization: Bearer <token>"; the website uses the session cookie. */

@@ -1,3 +1,5 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {};
-export default nextConfig;
+export default {
+  output: "standalone",          // self-contained server.js for the desktop server app
+  typescript: { ignoreBuildErrors: false },
+};

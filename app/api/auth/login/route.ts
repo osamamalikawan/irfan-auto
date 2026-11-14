@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     const token = await signSession(u.id);
     // the Android app sends { client: "app" } and keeps the token itself; the website only gets the httpOnly cookie
     const res = NextResponse.json({ ok: true, mustChangePin: !!u.must_change_pin, ...(b?.client === "app" ? { token } : {}) });
-    setSessionCookie(res, token);
+    setSessionCookie(res, token, req);
     return res;
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
